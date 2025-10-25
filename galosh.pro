@@ -1,6 +1,7 @@
 TEMPLATE = app
 QT = core gui widgets network
 CONFIG += debug
+CONFIG -= debug_and_release release
 INCLUDEPATH += src/ qtermwidget/lib
 OBJECTS_DIR = .build
 MOC_DIR = .build

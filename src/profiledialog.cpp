@@ -17,6 +17,7 @@
 #include <QToolButton>
 #include <QLabel>
 #include <QDir>
+#include <QtDebug>
 
 static const char* defaultLoginPrompt = "By what name do you wish to be known?";
 static const char* defaultPasswordPrompt = "Password:";
