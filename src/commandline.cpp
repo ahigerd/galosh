@@ -42,7 +42,6 @@ void CommandLine::onLineReceived(const QString& line)
     completionModel.setData(completionModel.index(row, 0), word);
     knownWords << lower;
   }
-  qDebug() << completionModel.stringList();
 }
 
 void CommandLine::onReturnPressed()

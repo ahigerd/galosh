@@ -2,6 +2,7 @@
 #define GALOSH_GALOSHTERM_H
 
 #include <QWidget>
+#include <QAbstractSocket>
 class QTermWidget;
 class CommandLine;
 class TermSocket;
@@ -25,6 +26,7 @@ public slots:
 private slots:
   void onConnected();
   void onDisconnected();
+  void onSocketError(QAbstractSocket::SocketError err);
   void onEchoChanged(bool on);
 
 private:

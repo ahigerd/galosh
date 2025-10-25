@@ -3,9 +3,13 @@
 #include "telnetsocket.h"
 #include "infomodel.h"
 #include "roomview.h"
+#include "profiledialog.h"
+#include <QSettings>
 #include <QSplitter>
 #include <QTreeView>
 #include <QStatusBar>
+#include <QToolBar>
+#include <QToolButton>
 #include <QLabel>
 #include <QEvent>
 #include <QtDebug>
@@ -32,6 +36,10 @@ GaloshWindow::GaloshWindow(QWidget* parent)
   infoView->setModel(infoModel);
   infoView->setItemsExpandable(false);
   splitter->addWidget(infoView);
+
+  QToolBar* tb = new QToolBar(this);
+  tb->addAction("Connect", [this]{ openProfileDialog(true); });
+  addToolBar(tb);
 
   QStatusBar* bar = new QStatusBar(this);
   bar->setSizeGripEnabled(false);
@@ -90,8 +98,26 @@ void GaloshWindow::updateStatus()
 
 void GaloshWindow::gmcpEvent(const QString& key, const QVariant& value)
 {
+  qDebug() << key << value;
   if (key.toUpper() == "CHAR") {
     infoModel->loadTree(value);
     infoView->expandAll();
   }
+}
+
+void GaloshWindow::openProfileDialog(bool forConnect)
+{
+  ProfileDialog* dlg = new ProfileDialog(forConnect, this);
+  if (forConnect) {
+    QObject::connect(dlg, SIGNAL(connectToProfile(QString)), this, SLOT(connectToProfile(QString)));
+  }
+  dlg->open();
+}
+
+void GaloshWindow::connectToProfile(const QString& path)
+{
+  triggers.loadProfile(path);
+  QSettings settings(path, QSettings::IniFormat);
+  settings.beginGroup("Profile");
+  term->socket()->connectToHost(settings.value("host").toString(), settings.value("port").toInt());
 }

@@ -23,6 +23,8 @@ private:
     QRegularExpression pattern;
     QString command;
     bool echo;
+    bool once;
+    bool triggered;
   };
   QList<Trigger> triggers;
 };

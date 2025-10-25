@@ -26,6 +26,7 @@ int main(int argc, char** argv)
 
   GaloshWindow win;
   win.show();
+  win.openProfileDialog(true);
 
   return app.exec();
 }

@@ -4,6 +4,7 @@
 #include "infomodel.h"
 #include "qtermwidget.h"
 #include "commandline.h"
+#include <QMetaEnum>
 #include <QFontDatabase>
 #include <QVBoxLayout>
 #include <QShortcut>
@@ -30,15 +31,13 @@ GaloshTerm::GaloshTerm(QWidget* parent)
   QObject::connect(tel, SIGNAL(echoChanged(bool)), this, SLOT(onEchoChanged(bool)));
   QObject::connect(tel, SIGNAL(connected()), this, SLOT(onConnected()));
   QObject::connect(tel, SIGNAL(disconnected()), this, SLOT(onDisconnected()));
+  QObject::connect(tel, SIGNAL(errorOccurred(QAbstractSocket::SocketError)), this, SLOT(onSocketError(QAbstractSocket::SocketError)));
   ts->bindDevice(tel);
 
   line = new CommandLine(this);
   QObject::connect(ts, SIGNAL(lineReceived(QString)), line, SLOT(onLineReceived(QString)));
   QObject::connect(line, SIGNAL(commandEntered(QString, bool)), this, SLOT(executeCommand(QString, bool)));
   layout->addWidget(line);
-
-  //tel->connectToHost("fierymud.org", 4000);
-  tel->connectToHost("localhost", 9999);
 
   line->setFocus();
 
@@ -109,4 +108,27 @@ void GaloshTerm::onConnected()
 void GaloshTerm::onDisconnected()
 {
   ts->write("\r\n\x1b[1;4;31m* Disconnected\x1b[0m\r\n");
+}
+
+void GaloshTerm::onSocketError(QAbstractSocket::SocketError err)
+{
+  if (err == QAbstractSocket::RemoteHostClosedError) {
+    // Normal operation
+    return;
+  }
+  QByteArray name = QMetaEnum::fromType<QAbstractSocket::SocketError>().valueToKey(err);
+  name = name.replace("Error", "");
+  QByteArray msg = "Error:";
+  int words = 1;
+  for (char ch : name) {
+    if (ch >= 'A' && ch <= 'Z') {
+      ++words;
+      msg += ' ';
+    }
+    msg += ch;
+  }
+  if (words < 3) {
+    msg += " Error";
+  }
+  ts->write("\r\n\x1b[1;4;31m* " + msg + "\x1b[0m\r\n");
 }

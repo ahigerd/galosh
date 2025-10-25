@@ -16,11 +16,15 @@ Q_OBJECT
 public:
   GaloshWindow(QWidget* parent = nullptr);
 
+public slots:
+  void openProfileDialog(bool forConnect = false);
+
 protected:
   void showEvent(QShowEvent* event) override;
   void paintEvent(QPaintEvent* event) override;
 
 private slots:
+  void connectToProfile(const QString& profilePath);
   void updateStatus();
   void gmcpEvent(const QString& key, const QVariant& value);
 

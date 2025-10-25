@@ -36,6 +36,7 @@ public:
 signals:
   void connected();
   void disconnected();
+  void errorOccurred(QAbstractSocket::SocketError);
   void echoChanged(bool on);
   void msspEvent(const QString& key, const QString& value);
   void gmcpEvent(const QString& key, const QVariant& value);

@@ -11,14 +11,21 @@ DEFINES += HAVE_UPDWTMPX HAVE_POSIX_OPENPT HAVE_SYS_TIME_H
 DEFINES += KB_LAYOUT_DIR='\\"/usr/share/qtermwidget6/kb-layouts\\"'
 DEFINES += COLORSCHEMES_DIR='\\"/usr/share/qtermwidget6/color-schemes\\"'
 
-HEADERS += src/galoshwindow.h   src/galoshterm.h   src/infomodel.h
-SOURCES += src/galoshwindow.cpp src/galoshterm.cpp src/infomodel.cpp
+# windows
+HEADERS += src/galoshwindow.h   src/profiledialog.h
+SOURCES += src/galoshwindow.cpp src/profiledialog.cpp
 
-HEADERS += src/triggermanager.h   src/mapmanager.h   src/roomview.h
-SOURCES += src/triggermanager.cpp src/mapmanager.cpp src/roomview.cpp
+# widges
+HEADERS += src/galoshterm.h   src/roomview.h   src/commandline.h
+SOURCES += src/galoshterm.cpp src/roomview.cpp src/commandline.cpp
 
-HEADERS += src/termsocket.h   src/telnetsocket.h   src/commandline.h
-SOURCES += src/termsocket.cpp src/telnetsocket.cpp src/commandline.cpp
+# models
+HEADERS += src/triggermanager.h   src/mapmanager.h   src/infomodel.h
+SOURCES += src/triggermanager.cpp src/mapmanager.cpp src/infomodel.cpp
+
+# networking
+HEADERS += src/termsocket.h   src/telnetsocket.h
+SOURCES += src/termsocket.cpp src/telnetsocket.cpp
 
 SOURCES += src/main.cpp
 

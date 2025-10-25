@@ -10,6 +10,7 @@ TelnetSocket::TelnetSocket(QObject* parent)
   tcp = new QTcpSocket(this);
   QObject::connect(tcp, SIGNAL(connected()), this, SIGNAL(connected()));
   QObject::connect(tcp, SIGNAL(disconnected()), this, SIGNAL(disconnected()));
+  QObject::connect(tcp, SIGNAL(errorOccurred(QAbstractSocket::SocketError)), this, SIGNAL(errorOccurred(QAbstractSocket::SocketError)));
   QObject::connect(tcp, SIGNAL(readyRead()), this, SLOT(consume()));
 }
 
