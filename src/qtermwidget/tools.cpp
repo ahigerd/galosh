@@ -6,6 +6,8 @@
 
 
 Q_LOGGING_CATEGORY(qtermwidgetLogger, "qtermwidget", QtWarningMsg)
+#define KB_LAYOUT_DIR ":/kb"
+#define COLORSCHEMES_DIR ":/cs"
 
 /*! Helper function to get possible location of layout files.
 By default the KB_LAYOUT_DIR is used (linux/BSD/macports).

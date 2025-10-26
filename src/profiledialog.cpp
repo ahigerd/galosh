@@ -1,4 +1,5 @@
 #include "profiledialog.h"
+#include "triggertab.h"
 #include <QMessageBox>
 #include <QRegularExpression>
 #include <QStandardPaths>
@@ -61,6 +62,7 @@ ProfileDialog::ProfileDialog(bool forConnection, QWidget* parent)
   QWidget* tServer = new QWidget(tabs);
   QFormLayout* lServer = new QFormLayout(tServer);
   tabs->addTab(tServer, "&Server");
+  tabs->addTab(tTriggers = new TriggerTab(tabs), "&Triggers");
 
   lServer->addRow("Profile &name:", profileName = new QLineEdit(tServer));
   lServer->addRow(horizontalLine(tServer));
@@ -104,6 +106,7 @@ ProfileDialog::ProfileDialog(bool forConnection, QWidget* parent)
       }
     }
   }
+  QObject::connect(tTriggers, SIGNAL(markDirty()), this, SLOT(markDirty()));
 }
 
 void ProfileDialog::loadProfiles()
@@ -160,7 +163,7 @@ void ProfileDialog::closePromptUnsaved()
 bool ProfileDialog::save()
 {
   if (!dirty) {
-    //return true;
+    return true;
   }
 
   if (profileName->text().isEmpty()) {
@@ -211,6 +214,7 @@ bool ProfileDialog::save()
     QMessageBox::critical(this, "Galosh", QStringLiteral("Could not save %1").arg(path));
   } else {
     item->setData(profileName->text().trimmed(), Qt::DisplayRole);
+    tTriggers->save(path);
   }
   return true;
 }
@@ -281,5 +285,7 @@ bool ProfileDialog::loadProfile(const QString& path)
   password->setText(settings.value("password").toString());
   loginPrompt->setText(settings.value("loginPrompt").toString());
   passwordPrompt->setText(settings.value("passwordPrompt").toString());
-  return false;
+
+  tTriggers->load(path);
+  return true;
 }

@@ -14,15 +14,11 @@ win32 {
   LIBS += -licu
 }
 
-DEFINES += HAVE_UPDWTMPX HAVE_POSIX_OPENPT HAVE_SYS_TIME_H
-DEFINES += KB_LAYOUT_DIR='\\"/usr/share/qtermwidget6/kb-layouts\\"'
-DEFINES += COLORSCHEMES_DIR='\\"/usr/share/qtermwidget6/color-schemes\\"'
-
 # windows
-HEADERS += src/galoshwindow.h   src/profiledialog.h
-SOURCES += src/galoshwindow.cpp src/profiledialog.cpp
+HEADERS += src/galoshwindow.h   src/profiledialog.h   src/triggertab.h
+SOURCES += src/galoshwindow.cpp src/profiledialog.cpp src/triggertab.cpp
 
-# widges
+# widgets
 HEADERS += src/galoshterm.h   src/roomview.h   src/commandline.h
 SOURCES += src/galoshterm.cpp src/roomview.cpp src/commandline.cpp
 
@@ -49,7 +45,5 @@ SOURCES += $$QTW/tools.cpp $$QTW/konsole_wcwidth.cpp $$QTW/History.cpp
 HEADERS += $$QTW/TerminalCharacterDecoder.h   $$QTW/BlockArray.h
 SOURCES += $$QTW/TerminalCharacterDecoder.cpp $$QTW/BlockArray.cpp
 
-HEADERS += $$QTW/Vt102Emulation.h
+HEADERS += $$QTW/Vt102Emulation.h $$QTW/Character.h $$QTW/CharacterColor.h
 SOURCES += $$QTW/Vt102Emulation.cpp
-
-HEADERS += $$QTW/Character.h $$QTW/CharacterColor.h

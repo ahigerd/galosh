@@ -7,6 +7,7 @@ class QListView;
 class QLineEdit;
 class QStandardItemModel;
 class QDialogButtonBox;
+class TriggerTab;
 
 class ProfileDialog : public QDialog
 {
@@ -41,6 +42,7 @@ private:
   QLineEdit* password;
   QLineEdit* loginPrompt;
   QLineEdit* passwordPrompt;
+  TriggerTab* tTriggers;
   QDialogButtonBox* buttons;
   bool emitConnect;
   bool dirty;

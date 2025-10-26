@@ -54,13 +54,6 @@ GaloshTerm::GaloshTerm(QWidget* parent)
   line->setFocus();
 
   term->installEventFilter(this);
-  /*
-  for (QObject* child : term->children()) {
-    if (dynamic_cast<QWidget*>(child)) {
-      child->installEventFilter(this);
-    }
-  }
-  */
 
   refreshThrottle.setSingleShot(true);
   refreshThrottle.setInterval(5);
