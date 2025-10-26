@@ -29,7 +29,7 @@ void InfoModel::recurseTree(const QString& path, const QString& key, QVariant va
     item->setData(fullKey, Qt::UserRole);
     parent->appendRow({ item, new QStandardItem });
   }
-  if (value.typeId() == QVariant::List) {
+  if (value.type() == QVariant::List) {
     QVariantList list = value.toList();
     int len = list.length();
     for (int i = 0; i < len; i++) {
@@ -38,7 +38,7 @@ void InfoModel::recurseTree(const QString& path, const QString& key, QVariant va
     while (item->rowCount() > len) {
       removeChildren(item, item->rowCount() - 1);
     }
-  } else if (value.typeId() == QVariant::Map) {
+  } else if (value.type() == QVariant::Map) {
     QVariantMap map = value.toMap();
     for (const QString& subKey : map.keys()) {
       recurseTree(fullKey, subKey, map[subKey]);

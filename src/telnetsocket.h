@@ -2,6 +2,7 @@
 #define GALOSH_TELNETSOCKET_H
 
 #include <QTcpSocket>
+#include <QTimer>
 #include <QMetaEnum>
 #include <QHash>
 
@@ -9,6 +10,8 @@ class TelnetSocket : public QIODevice
 {
 Q_OBJECT
 public:
+  static QString stripVT100(const QByteArray& payload);
+
   enum Telnet : quint8 {
     SE = 240,
     SB = 250,
@@ -40,9 +43,14 @@ signals:
   void echoChanged(bool on);
   void msspEvent(const QString& key, const QString& value);
   void gmcpEvent(const QString& key, const QVariant& value);
+  void lineReceived(const QString& line);
 
 public slots:
-  void consume();
+  void onReadyRead();
+
+private slots:
+  void processLines();
+  void checkForPrompts();
 
 protected:
   qint64 readData(char* data, qint64 maxSize) override;
@@ -57,6 +65,8 @@ private:
   QByteArray protocolBuffer;
   QByteArray outputBuffer;
   QString connectedHost;
+  QByteArray lineBuffer;
+  QTimer lineTimer;
 };
 
 using Telnet = TelnetSocket::Telnet;

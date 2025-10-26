@@ -1,5 +1,6 @@
 #include "mapmanager.h"
 #include <QSettings>
+#include <QtDebug>
 
 static const QMap<QString, QString> dirAbbrev{
   { "NORTH", "N" },

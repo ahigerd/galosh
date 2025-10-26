@@ -3,10 +3,15 @@
 
 #include <QWidget>
 #include <QAbstractSocket>
-class QTermWidget;
+#include "Vt102Emulation.h"
 class CommandLine;
 class TermSocket;
 class TelnetSocket;
+
+namespace Konsole {
+  class TerminalDisplay;
+  class ScreenWindow;
+}
 
 class GaloshTerm : public QWidget
 {
@@ -28,10 +33,14 @@ private slots:
   void onDisconnected();
   void onSocketError(QAbstractSocket::SocketError err);
   void onEchoChanged(bool on);
+  void onReadyRead();
 
 private:
-  QTermWidget* term;
-  TermSocket* ts;
+  void writeColorLine(const QByteArray& colorCode, const QByteArray& message);
+
+  Konsole::Vt102Emulation vt102;
+  Konsole::TerminalDisplay* term;
+  Konsole::ScreenWindow* screen;
   TelnetSocket* tel;
   CommandLine* line;
 };

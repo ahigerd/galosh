@@ -1,7 +1,34 @@
 #include "telnetsocket.h"
 #include <QJsonDocument>
-#include <map>
 #include <QtDebug>
+#include <map>
+#include <cstring>
+
+QString TelnetSocket::stripVT100(const QByteArray& payload)
+{
+  QByteArray result;
+  int len = payload.size();
+  bool escape = false;
+  bool csi = false;
+  for (int i = 0; i < len; i++) {
+    char ch = payload[i];
+    if (csi) {
+      if ((ch >= 'A' && ch <= 'Z') || (ch >= 'a' && ch <= 'z')) {
+        csi = false;
+      }
+    } else if (escape) {
+      if (ch == '[') {
+        csi = true;
+      }
+      escape = false;
+    } else if (ch == '\x1b') {
+      escape = true;
+    } else {
+      result += ch;
+    }
+  }
+  return QString::fromUtf8(result);
+}
 
 TelnetSocket::TelnetSocket(QObject* parent)
 : QIODevice(parent)
@@ -11,7 +38,8 @@ TelnetSocket::TelnetSocket(QObject* parent)
   QObject::connect(tcp, SIGNAL(connected()), this, SIGNAL(connected()));
   QObject::connect(tcp, SIGNAL(disconnected()), this, SIGNAL(disconnected()));
   QObject::connect(tcp, SIGNAL(errorOccurred(QAbstractSocket::SocketError)), this, SIGNAL(errorOccurred(QAbstractSocket::SocketError)));
-  QObject::connect(tcp, SIGNAL(readyRead()), this, SLOT(consume()));
+  QObject::connect(tcp, SIGNAL(readyRead()), this, SLOT(onReadyRead()));
+  QObject::connect(&lineTimer, SIGNAL(timeout()), this, SLOT(checkForPrompts()));
 }
 
 QString TelnetSocket::hostname() const
@@ -48,7 +76,7 @@ qint64 TelnetSocket::bytesToWrite() const
   return tcp->bytesToWrite();
 }
 
-void TelnetSocket::consume()
+void TelnetSocket::onReadyRead()
 {
   protocolBuffer += tcp->read(tcp->bytesAvailable());
   qint64 len = protocolBuffer.size();
@@ -107,6 +135,12 @@ qint64 TelnetSocket::readData(char* data, qint64 maxSize)
   int size = maxSize > outputBuffer.size() ? outputBuffer.size() : maxSize;
   std::memcpy(data, outputBuffer.constData(), size);
   outputBuffer.remove(0, size);
+
+  lineBuffer += QByteArray::fromRawData(data, size);
+  if (lineBuffer.contains('\n')) {
+    QTimer::singleShot(16, this, SLOT(processLines()));
+  }
+
   return size;
 }
 
@@ -184,4 +218,30 @@ void TelnetSocket::telnetSB(quint8 option, const QByteArray& payload)
   } else {
     // qDebug() << "SB" << int(option) << payload.toHex() << payload;
   }
+}
+
+void TelnetSocket::processLines()
+{
+  if (lineBuffer.contains('\n')) {
+    QByteArrayList lines = lineBuffer.replace("\r", "").split('\n');
+    lineBuffer = lines.takeLast();
+    for (const QByteArray& line : lines) {
+      emit lineReceived(stripVT100(line));
+    }
+  }
+  if (lineBuffer.isEmpty()) {
+    lineTimer.stop();
+  } else {
+    lineTimer.start(100);
+  }
+}
+
+void TelnetSocket::checkForPrompts()
+{
+  if (lineBuffer.isEmpty() || lineBuffer.contains('\n')) {
+    // Either nothing to do, or onReadyRead will handle it
+    return;
+  }
+  emit lineReceived(stripVT100(lineBuffer));
+  lineBuffer.clear();
 }

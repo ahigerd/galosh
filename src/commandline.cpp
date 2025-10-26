@@ -24,7 +24,7 @@ void CommandLine::setHistorySize(int size)
 {
   historyLimit = size;
   if (size < history.length()) {
-    history.resize(size);
+    history.erase(history.begin() + size, history.end());
   }
 }
 

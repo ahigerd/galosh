@@ -62,7 +62,7 @@ GaloshWindow::GaloshWindow(QWidget* parent)
   QObject::connect(term->socket(), SIGNAL(msspEvent(QString, QString)), &map, SLOT(msspEvent(QString, QString)));
   QObject::connect(term->socket(), SIGNAL(gmcpEvent(QString, QVariant)), &map, SLOT(gmcpEvent(QString, QVariant)));
 
-  QObject::connect(&triggers, SIGNAL(executeCommand(QString, bool)), term, SLOT(executeCommand(QString, bool)));
+  QObject::connect(&triggers, SIGNAL(executeCommand(QString, bool)), term, SLOT(executeCommand(QString, bool)), Qt::QueuedConnection);
 
   QObject::connect(&map, SIGNAL(currentRoomUpdated(MapManager*, int)), roomView, SLOT(setRoom(MapManager*, int)));
 }
