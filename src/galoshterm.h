@@ -4,6 +4,7 @@
 #include <QWidget>
 #include <QAbstractSocket>
 #include "Vt102Emulation.h"
+class QTimer;
 class CommandLine;
 class TermSocket;
 class TelnetSocket;
@@ -34,10 +35,13 @@ private slots:
   void onSocketError(QAbstractSocket::SocketError err);
   void onEchoChanged(bool on);
   void onReadyRead();
+  void scheduleResizeAndScroll();
+  void resizeAndScroll();
 
 private:
   void writeColorLine(const QByteArray& colorCode, const QByteArray& message);
 
+  QTimer refreshThrottle;
   Konsole::Vt102Emulation vt102;
   Konsole::TerminalDisplay* term;
   Konsole::ScreenWindow* screen;

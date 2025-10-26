@@ -5,6 +5,7 @@
 #include "TerminalDisplay.h"
 #include "ScreenWindow.h"
 #include "Vt102Emulation.h"
+#include "History.h"
 #include <QEvent>
 #include <QKeyEvent>
 #include <QMetaEnum>
@@ -21,7 +22,7 @@ GaloshTerm::GaloshTerm(QWidget* parent)
   layout->setContentsMargins(0, 0, 0, 0);
   layout->setSpacing(0);
 
-  vt102.setKeyBindings("linux");
+  vt102.setHistory(HistoryTypeBuffer(1000));
   screen = vt102.createWindow();
   term = new TerminalDisplay(this);
   term->setScreenWindow(screen);
@@ -46,6 +47,7 @@ GaloshTerm::GaloshTerm(QWidget* parent)
 
   line = new CommandLine(this);
   QObject::connect(tel, SIGNAL(lineReceived(QString)), line, SLOT(onLineReceived(QString)));
+  QObject::connect(line, &CommandLine::commandEntered, [this](const QString&, bool) { screen->clearSelection(); });
   QObject::connect(line, SIGNAL(commandEntered(QString, bool)), this, SLOT(executeCommand(QString, bool)));
   layout->addWidget(line);
 
@@ -60,6 +62,9 @@ GaloshTerm::GaloshTerm(QWidget* parent)
   }
   */
 
+  refreshThrottle.setSingleShot(true);
+  refreshThrottle.setInterval(5);
+  QObject::connect(&refreshThrottle, SIGNAL(timeout()), this, SLOT(resizeAndScroll()));
 }
 
 void GaloshTerm::executeCommand(const QString& command, bool echo)
@@ -78,7 +83,6 @@ void GaloshTerm::executeCommand(const QString& command, bool echo)
       continue;
     }
     writeColorLine("93", echo ? payload : QByteArray(command.length(), '*'));
-    qDebug() << payload;
     tel->write(payload + "\r\n");
     payload.clear();
   }
@@ -87,7 +91,7 @@ void GaloshTerm::executeCommand(const QString& command, bool echo)
 bool GaloshTerm::eventFilter(QObject* obj, QEvent* event)
 {
   if (event->type() == QEvent::Resize) {
-    QTimer::singleShot(0, [this]{ vt102.setImageSize(term->lines(), term->columns()); });
+    scheduleResizeAndScroll();
   } else if (event->type() == QEvent::KeyPress) {
     QKeyEvent* ke = static_cast<QKeyEvent*>(event);
     if (!ke->text().isEmpty()) {
@@ -149,7 +153,7 @@ void GaloshTerm::onReadyRead()
   QByteArray data = tel->read(tel->bytesAvailable());
   data = data.replace("\n", "\r\n").replace("\r\r", "\r");
   vt102.receiveData(data.constData(), data.length());
-  term->scrollToEnd();
+  scheduleResizeAndScroll();
 }
 
 void GaloshTerm::writeColorLine(const QByteArray& colorCode, const QByteArray& message)
@@ -161,5 +165,22 @@ void GaloshTerm::writeColorLine(const QByteArray& colorCode, const QByteArray& m
     payload = message + "\r\n";
   }
   vt102.receiveData(payload.constData(), payload.length());
+  scheduleResizeAndScroll();
+}
+
+void GaloshTerm::scheduleResizeAndScroll()
+{
+  if (!refreshThrottle.isActive()) {
+    refreshThrottle.start();
+  }
+}
+
+void GaloshTerm::resizeAndScroll()
+{
+  QSize current = vt102.imageSize();
+  if (term->lines() > 1 && term->columns() > 1 && term->lines() != current.height() && term->columns() != term->width()) {
+    vt102.setImageSize(term->lines(), term->columns());
+  }
+  term->updateImage();
   term->scrollToEnd();
 }

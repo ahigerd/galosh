@@ -55,7 +55,7 @@ GaloshWindow::GaloshWindow(QWidget* parent)
   fixGeometry = true;
 
   QObject::connect(term, SIGNAL(lineReceived(QString)), &map, SLOT(processLine(QString)));
-  QObject::connect(term, SIGNAL(lineReceived(QString)), &triggers, SLOT(processLine(QString)));
+  QObject::connect(term, SIGNAL(lineReceived(QString)), &triggers, SLOT(processLine(QString)), Qt::QueuedConnection);
 
   QObject::connect(term->socket(), SIGNAL(connected()), this, SLOT(updateStatus()));
   QObject::connect(term->socket(), SIGNAL(disconnected()), this, SLOT(updateStatus()));

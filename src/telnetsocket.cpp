@@ -138,7 +138,9 @@ qint64 TelnetSocket::readData(char* data, qint64 maxSize)
 
   lineBuffer += QByteArray::fromRawData(data, size);
   if (lineBuffer.contains('\n')) {
-    QTimer::singleShot(16, this, SLOT(processLines()));
+    QTimer::singleShot(0, this, SLOT(processLines()));
+  } else {
+    lineTimer.start(100);
   }
 
   return size;
