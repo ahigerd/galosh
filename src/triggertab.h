@@ -6,6 +6,7 @@
 class QTreeWidget;
 class QTreeWidgetItem;
 class QLineEdit;
+class QCheckBox;
 class QPushButton;
 
 class TriggerTab : public QWidget
@@ -33,6 +34,7 @@ private:
   QTreeWidget* list;
   QLineEdit* pattern;
   QLineEdit* command;
+  QCheckBox* enable;
   QPushButton* bDelete;
 };
 

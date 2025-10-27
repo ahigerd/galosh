@@ -3,7 +3,6 @@
 #include "telnetsocket.h"
 #include "infomodel.h"
 #include "roomview.h"
-#include "profiledialog.h"
 #include <QSettings>
 #include <QSplitter>
 #include <QTreeView>
@@ -38,7 +37,8 @@ GaloshWindow::GaloshWindow(QWidget* parent)
   splitter->addWidget(infoView);
 
   QToolBar* tb = new QToolBar(this);
-  tb->addAction("Connect", [this]{ openProfileDialog(true); });
+  tb->addAction("Connect", this, SLOT(openConnectDialog()));
+  tb->addAction("Triggers", [this]{ openProfileDialog(ProfileDialog::TriggersTab); });
   addToolBar(tb);
 
   QStatusBar* bar = new QStatusBar(this);
@@ -65,6 +65,13 @@ GaloshWindow::GaloshWindow(QWidget* parent)
   QObject::connect(&triggers, SIGNAL(executeCommand(QString, bool)), term, SLOT(executeCommand(QString, bool)), Qt::QueuedConnection);
 
   QObject::connect(&map, SIGNAL(currentRoomUpdated(MapManager*, int)), roomView, SLOT(setRoom(MapManager*, int)));
+
+  for (QAction* action : tb->actions()) {
+    QToolButton* b = qobject_cast<QToolButton*>(tb->widgetForAction(action));
+    if (b) {
+      b->setAutoRaise(false);
+    }
+  }
 }
 
 void GaloshWindow::showEvent(QShowEvent* event)
@@ -105,19 +112,34 @@ void GaloshWindow::gmcpEvent(const QString& key, const QVariant& value)
   }
 }
 
-void GaloshWindow::openProfileDialog(bool forConnect)
+void GaloshWindow::openConnectDialog()
 {
-  ProfileDialog* dlg = new ProfileDialog(forConnect, this);
-  if (forConnect) {
-    QObject::connect(dlg, SIGNAL(connectToProfile(QString)), this, SLOT(connectToProfile(QString)));
-  }
+  ProfileDialog* dlg = new ProfileDialog(true, this);
+  QObject::connect(dlg, SIGNAL(connectToProfile(QString)), this, SLOT(connectToProfile(QString)));
   dlg->open();
+}
+
+void GaloshWindow::openProfileDialog(ProfileDialog::Tab tab)
+{
+  ProfileDialog* dlg = new ProfileDialog(tab, this);
+  QObject::connect(dlg, SIGNAL(profileUpdated(QString)), this, SLOT(reloadProfile(QString)));
+  dlg->show();
 }
 
 void GaloshWindow::connectToProfile(const QString& path)
 {
+  currentProfile = path;
   triggers.loadProfile(path);
   QSettings settings(path, QSettings::IniFormat);
   settings.beginGroup("Profile");
   term->socket()->connectToHost(settings.value("host").toString(), settings.value("port").toInt());
+  map.loadProfile(path);
+}
+
+void GaloshWindow::reloadProfile(const QString& path)
+{
+  if (path != currentProfile) {
+    return;
+  }
+  triggers.loadProfile(path);
 }

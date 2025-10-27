@@ -6,6 +6,7 @@
 #include <QGroupBox>
 #include <QPushButton>
 #include <QLineEdit>
+#include <QCheckBox>
 
 TriggerTab::TriggerTab(QWidget* parent)
 : QWidget(parent)
@@ -33,6 +34,9 @@ TriggerTab::TriggerTab(QWidget* parent)
 
   lForm->addRow("&Command:", command = new QLineEdit(bForm));
   QObject::connect(command, SIGNAL(textEdited(QString)), this, SLOT(updateTrigger()));
+
+  lForm->addRow("", enable = new QCheckBox("&Enabled", bForm));
+  QObject::connect(enable, SIGNAL(toggled(bool)), this, SLOT(updateTrigger()));
 
   QHBoxLayout* lButtons = new QHBoxLayout;
   lButtons->addStretch(1);
@@ -79,6 +83,13 @@ void TriggerTab::selectTrigger(QTreeWidgetItem* item)
   }
   pattern->setText(item->data(0, Qt::DisplayRole).toString());
   command->setText(item->data(1, Qt::DisplayRole).toString());
+
+  TriggerDefinition* def = manager.findTrigger(item->data(0, Qt::UserRole).toString());
+  if (def) {
+    enable->setChecked(def->enabled);
+  } else {
+    enable->setChecked(true);
+  }
 }
 
 void TriggerTab::newTrigger()
@@ -146,5 +157,6 @@ void TriggerTab::updateTrigger()
   item->setData(1, Qt::DisplayRole, command->text());
   def->pattern.setPattern(pattern->text());
   def->command = command->text();
+  def->enabled = enable->isChecked();
   markDirty();
 }

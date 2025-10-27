@@ -13,12 +13,19 @@ class ProfileDialog : public QDialog
 {
 Q_OBJECT
 public:
+  enum Tab {
+    ServerTab,
+    TriggersTab,
+  };
+
   ProfileDialog(bool forConnection, QWidget* parent = nullptr);
+  ProfileDialog(ProfileDialog::Tab openTab, QWidget* parent = nullptr);
 
   void done(int r) override;
 
 signals:
   void connectToProfile(const QString& path);
+  void profileUpdated(const QString& path);
 
 private slots:
   void profileSelected(const QModelIndex&);

@@ -38,7 +38,7 @@ void RoomView::setRoom(MapManager* map, int roomId)
     // TODO
     return;
   }
-  roomBox->setTitle(room->name);
+  roomBox->setTitle(QStringLiteral("%3: %1 [%2] (%4)").arg(room->name).arg(room->id).arg(room->zone).arg(room->roomType));
   roomDesc->setText(room->description.simplified());
   exits->clear();
   for (const QString& dir : room->exits.keys()) {
@@ -58,6 +58,9 @@ void RoomView::setRoom(MapManager* map, int roomId)
     QString destName = "[unknown]";
     if (dest && !dest->name.isEmpty()) {
       destName = dest->name;
+    }
+    if (exit.dest) {
+      destName += QStringLiteral(" [%1]").arg(exit.dest);
     }
     exits->addItem(QStringLiteral("%1: %2%3").arg(dir).arg(destName).arg(status));
   }

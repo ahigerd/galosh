@@ -4,6 +4,7 @@
 #include <QKeyEvent>
 #include <QRegularExpression>
 #include <QScrollBar>
+#include <QtDebug>
 
 CommandLine::CommandLine(QWidget* parent)
 : QLineEdit(parent), historyLimit(30), historyIndex(-1)
@@ -124,7 +125,13 @@ void CommandLine::checkCompletion(int move, bool completeNow)
   }
   QString line = text();
   int pos = cursorPosition();
-  int wordStart = line.lastIndexOf(' ', pos) + 1;
+  int wordStart = 0;
+  for (int i = pos - 1; i >= 0; --i) {
+    if (line[i] == ' ') {
+      wordStart = i + 1;
+      break;
+    }
+  }
   int wordLen = pos - wordStart;
   if (wordLen < 1) {
     cancelCompletion();

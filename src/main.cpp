@@ -2,6 +2,7 @@
 #include <QDir>
 #include "galoshwindow.h"
 #include "galoshterm.h"
+#include "mudletimport.h"
 
 const char* TRANSLATIONS_DIR = nullptr;
 
@@ -26,7 +27,7 @@ int main(int argc, char** argv)
 
   GaloshWindow win;
   win.show();
-  win.openProfileDialog(true);
+  win.openConnectDialog();
 
   return app.exec();
 }

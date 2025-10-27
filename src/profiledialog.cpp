@@ -109,6 +109,12 @@ ProfileDialog::ProfileDialog(bool forConnection, QWidget* parent)
   QObject::connect(tTriggers, SIGNAL(markDirty()), this, SLOT(markDirty()));
 }
 
+ProfileDialog::ProfileDialog(ProfileDialog::Tab openTab, QWidget* parent)
+: ProfileDialog(false, parent)
+{
+  tabs->setCurrentIndex((int)openTab);
+}
+
 void ProfileDialog::loadProfiles()
 {
   QSettings settings;
@@ -216,6 +222,7 @@ bool ProfileDialog::save()
     item->setData(profileName->text().trimmed(), Qt::DisplayRole);
     tTriggers->save(path);
   }
+  emit profileUpdated(path);
   return true;
 }
 
