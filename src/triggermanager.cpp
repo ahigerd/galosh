@@ -111,7 +111,7 @@ void TriggerManager::saveProfile(const QString& profile)
 void TriggerManager::processLine(const QString& line)
 {
   for (TriggerDefinition& trigger : triggers) {
-    if (trigger.once && trigger.triggered) {
+    if (!trigger.enabled || (trigger.once && trigger.triggered)) {
       continue;
     }
     auto match = trigger.pattern.match(line);
