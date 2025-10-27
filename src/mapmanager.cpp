@@ -50,6 +50,10 @@ void MapManager::loadMap(const QString& mapFileName)
   roomDirty = false;
 
   for (const QString& zone : mapFile->childGroups()) {
+    if (zone.startsWith("  ")) {
+      // MapManager metadata
+      continue;
+    }
     mapFile->beginGroup(zone);
     for (const QString& idStr : mapFile->childGroups()) {
       int id = idStr.toInt();
@@ -155,35 +159,6 @@ void MapManager::gmcpEvent(const QString& key, const QVariant& value)
   }
 }
 
-void MapManager::downloadMap(const QString& url)
-{
-  if (!mapFile) {
-    return;
-  }
-  QStringList downloadedUrls = mapFile->value("*/downloaded").toStringList();
-  if (downloadedUrls.contains(url)) {
-    // TODO: config option to always download / force download
-    qDebug() << "Skipping download of known map" << url;
-    return;
-  }
-  QNetworkAccessManager* qnam = new QNetworkAccessManager(this);
-  QObject::connect(qnam, &QNetworkAccessManager::finished, [=](QNetworkReply* reply){
-    MudletImport imp(this, reply);
-    if (!imp.importError().isEmpty()) {
-      qDebug() << imp.importError();
-    }
-    reply->deleteLater();
-    qnam->deleteLater();
-    QStringList downloadedUrls = mapFile->value("*/downloaded").toStringList();
-    if (!downloadedUrls.contains(url)) {
-      downloadedUrls << url;
-    }
-    mapFile->setValue("*/downloaded", downloadedUrls);
-  });
-  qDebug() << "Fetching map from" << url;
-  qnam->get(QNetworkRequest(QUrl(url)));
-}
-
 void MapManager::updateRoom(const QVariantMap& info)
 {
   int roomId = info["id"].toInt();
@@ -267,3 +242,78 @@ void MapManager::saveRoom(MapRoom* room)
   mapFile->endGroup();
   mapFile->endGroup();
 }
+
+class MapDownloader : public QObject
+{
+Q_OBJECT
+public:
+  MapDownloader(MapManager* map, QSettings* mapFile, const QString& url)
+  : QObject(map), map(map), mapFile(mapFile), url(url), qnam(new QNetworkAccessManager(map)), aborted(false)
+  {
+    urlKey = "downloaded-" + QString(url).replace(QRegularExpression("[/\\:]+"), "_");
+
+    if (mapFile->contains(urlKey)) {
+      lastDownloaded = QDateTime::fromString(mapFile->value(urlKey).toString(), Qt::ISODate);
+      if (lastDownloaded > QDateTime::currentDateTimeUtc().addDays(-1)) {
+        // TODO: config option to force download
+        qDebug() << "Skipping recently downloaded map" << url;
+        return;
+      }
+    }
+
+    qDebug() << "Fetching map from" << url;
+    qnam->setRedirectPolicy(QNetworkRequest::UserVerifiedRedirectPolicy);
+    reply = qnam->get(QNetworkRequest(QUrl(url)));
+    QObject::connect(reply, SIGNAL(redirected(QUrl)), reply, SIGNAL(redirectAllowed()));
+    headersConn = QObject::connect(reply, &QIODevice::readyRead, [this]{ headersReceived(); });
+    QObject::connect(reply, &QNetworkReply::finished, [this]{ onFinished(); });
+  }
+
+private slots:
+  void headersReceived()
+  {
+    QObject::disconnect(headersConn);
+    QDateTime lastUpdated = reply->header(QNetworkRequest::LastModifiedHeader).toDateTime();
+    if (!lastDownloaded.isNull() && lastDownloaded > lastUpdated) {
+      qDebug() << "Map data unchanged since last download" << url;
+      mapFile->setValue(urlKey, QDateTime::currentDateTimeUtc().toString(Qt::ISODate));
+      aborted = true;
+      reply->abort();
+    }
+  }
+
+  void onFinished()
+  {
+    if (!aborted) {
+      MudletImport imp(map, reply);
+      if (!imp.importError().isEmpty()) {
+        qDebug() << imp.importError();
+      }
+    }
+    mapFile->setValue(urlKey, QDateTime::currentDateTimeUtc().toString(Qt::ISODate));
+    reply->deleteLater();
+    qnam->deleteLater();
+    deleteLater();
+  }
+
+private:
+  MapManager* map;
+  QSettings* mapFile;
+  QString url;
+  QString urlKey;
+  QDateTime lastDownloaded;
+
+  QNetworkAccessManager* qnam;
+  QNetworkReply* reply;
+  bool aborted;
+  QMetaObject::Connection headersConn;
+};
+
+void MapManager::downloadMap(const QString& url)
+{
+  if (mapFile) {
+    new MapDownloader(this, mapFile, url);
+  }
+}
+
+#include "mapmanager.moc"
