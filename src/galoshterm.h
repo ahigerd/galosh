@@ -35,7 +35,7 @@ private slots:
   void onSocketError(QAbstractSocket::SocketError err);
   void onEchoChanged(bool on);
   void onReadyRead();
-  void scheduleResizeAndScroll();
+  void scheduleResizeAndScroll(bool scroll);
   void resizeAndScroll();
 
 private:
@@ -47,6 +47,7 @@ private:
   Konsole::ScreenWindow* screen;
   TelnetSocket* tel;
   CommandLine* line;
+  bool pendingScroll;
 };
 
 #endif

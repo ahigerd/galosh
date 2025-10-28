@@ -16,7 +16,7 @@
 using namespace Konsole;
 
 GaloshTerm::GaloshTerm(QWidget* parent)
-: QWidget(parent)
+: QWidget(parent), pendingScroll(false)
 {
   QVBoxLayout* layout = new QVBoxLayout(this);
   layout->setContentsMargins(0, 0, 0, 0);
@@ -84,7 +84,7 @@ void GaloshTerm::executeCommand(const QString& command, bool echo)
 bool GaloshTerm::eventFilter(QObject* obj, QEvent* event)
 {
   if (event->type() == QEvent::Resize) {
-    scheduleResizeAndScroll();
+    scheduleResizeAndScroll(true);
   } else if (event->type() == QEvent::KeyPress) {
     QKeyEvent* ke = static_cast<QKeyEvent*>(event);
     if (!ke->text().isEmpty()) {
@@ -146,7 +146,7 @@ void GaloshTerm::onReadyRead()
   QByteArray data = tel->read(tel->bytesAvailable());
   data = data.replace("\n", "\r\n").replace("\r\r", "\r");
   vt102.receiveData(data.constData(), data.length());
-  scheduleResizeAndScroll();
+  scheduleResizeAndScroll(false);
 }
 
 void GaloshTerm::writeColorLine(const QByteArray& colorCode, const QByteArray& message)
@@ -158,11 +158,14 @@ void GaloshTerm::writeColorLine(const QByteArray& colorCode, const QByteArray& m
     payload = message + "\r\n";
   }
   vt102.receiveData(payload.constData(), payload.length());
-  scheduleResizeAndScroll();
+  scheduleResizeAndScroll(true);
 }
 
-void GaloshTerm::scheduleResizeAndScroll()
+void GaloshTerm::scheduleResizeAndScroll(bool scroll)
 {
+  if (scroll) {
+    pendingScroll = true;
+  }
   if (!refreshThrottle.isActive()) {
     refreshThrottle.start();
   }
@@ -175,5 +178,8 @@ void GaloshTerm::resizeAndScroll()
     vt102.setImageSize(term->lines(), term->columns());
   }
   term->updateImage();
-  term->scrollToEnd();
+  if (pendingScroll) {
+    term->scrollToEnd();
+    pendingScroll = false;
+  }
 }

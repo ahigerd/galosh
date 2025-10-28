@@ -12,6 +12,10 @@ static const QMap<QString, QString> dirAbbrev{
   { "WEST", "W" },
   { "SOUTH", "S" },
   { "EAST", "E" },
+  { "NORTHWEST", "NW" },
+  { "SOUTHWEST", "SW" },
+  { "NORTHEAST", "NE" },
+  { "SOUTHEAST", "SE" },
   { "UP", "U" },
   { "DOWN", "D" },
 };
@@ -50,10 +54,6 @@ void MapManager::loadMap(const QString& mapFileName)
   roomDirty = false;
 
   for (const QString& zone : mapFile->childGroups()) {
-    if (zone.startsWith("  ")) {
-      // MapManager metadata
-      continue;
-    }
     mapFile->beginGroup(zone);
     for (const QString& idStr : mapFile->childGroups()) {
       int id = idStr.toInt();
@@ -147,10 +147,8 @@ void MapManager::gmcpEvent(const QString& key, const QVariant& value)
   Q_UNUSED(key);
   Q_UNUSED(value);
   if (key.toUpper() == "ROOM") {
-    // QVariant(QVariantMap, QMap(("Exits", QVariant(QVariantMap, QMap(("D", QVariant(QVariantMap, QMap(("is_door", QVariant(bool, false))("to_room", QVariant(qlonglong, 3052))))))))("id", QVariant(qlonglong, 3054))("name", QVariant(QString, "The Forest Inn Reception Area"))("type", QVariant(QString, "Structure"))("zone", QVariant(QString, "Mielikki"))))
     updateRoom(value.toMap());
   } else if (key.toUpper() == "CLIENT.MAP") {
-    // QVariant(QVariantMap, QMap(("url", QVariant(QString, "http://www.fierymud.org/mudlet/default_map.dat"))))
     QVariantMap map = value.toMap();
     QString url = map.value("url").toString();
     if (!url.isEmpty()) {

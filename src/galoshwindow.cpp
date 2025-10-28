@@ -105,10 +105,25 @@ void GaloshWindow::updateStatus()
 
 void GaloshWindow::gmcpEvent(const QString& key, const QVariant& value)
 {
-  qDebug() << key << value;
   if (key.toUpper() == "CHAR") {
     infoModel->loadTree(value);
     infoView->expandAll();
+  } else if (key.toUpper() == "EXTERNAL.DISCORD.STATUS") {
+    QVariantMap map = value.toMap();
+    QString state = map["state"].toString();
+    QString details = map["details"].toString();
+    QStringList parts;
+    if (!state.isEmpty()) {
+      parts << state;
+    }
+    if( !details.isEmpty()) {
+      parts << details;
+    }
+    if (!parts.isEmpty()) {
+      sbStatus->setText(parts.join(" - "));
+    }
+  } else if (key.toUpper() != "ROOM") {
+    qDebug() << key << value;
   }
 }
 
