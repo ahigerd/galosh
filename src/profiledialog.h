@@ -23,6 +23,10 @@ public:
 
   void done(int r) override;
 
+protected:
+  void moveEvent(QMoveEvent*) override;
+  void resizeEvent(QResizeEvent*) override;
+
 signals:
   void connectToProfile(const QString& path);
   void profileUpdated(const QString& path);

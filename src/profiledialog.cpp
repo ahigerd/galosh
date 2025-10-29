@@ -107,6 +107,9 @@ ProfileDialog::ProfileDialog(bool forConnection, QWidget* parent)
     }
   }
   QObject::connect(tTriggers, SIGNAL(markDirty()), this, SLOT(markDirty()));
+
+  QSettings settings;
+  restoreGeometry(settings.value("profiles").toByteArray());
 }
 
 ProfileDialog::ProfileDialog(ProfileDialog::Tab openTab, QWidget* parent)
@@ -295,4 +298,17 @@ bool ProfileDialog::loadProfile(const QString& path)
 
   tTriggers->load(path);
   return true;
+}
+
+void ProfileDialog::moveEvent(QMoveEvent*)
+{
+  resizeEvent(nullptr);
+}
+
+void ProfileDialog::resizeEvent(QResizeEvent*)
+{
+  if (isVisible()) {
+    QSettings settings;
+    settings.setValue("profiles", saveGeometry());
+  }
 }

@@ -3,40 +3,74 @@
 #include "telnetsocket.h"
 #include "infomodel.h"
 #include "roomview.h"
+#include <QApplication>
 #include <QSettings>
+#include <QDockWidget>
 #include <QSplitter>
 #include <QTreeView>
-#include <QStatusBar>
+#include <QHeaderView>
+#include <QMenuBar>
 #include <QToolBar>
+#include <QStatusBar>
 #include <QToolButton>
 #include <QLabel>
 #include <QEvent>
 #include <QtDebug>
 
 GaloshWindow::GaloshWindow(QWidget* parent)
-: QMainWindow(parent)
+: QMainWindow(parent), geometryReady(false)
 {
+  setCorner(Qt::TopLeftCorner, Qt::LeftDockWidgetArea);
+  setCorner(Qt::BottomLeftCorner, Qt::LeftDockWidgetArea);
+  setCorner(Qt::TopRightCorner, Qt::RightDockWidgetArea);
+  setCorner(Qt::BottomRightCorner, Qt::RightDockWidgetArea);
+
   QSplitter* splitter = new QSplitter(this);
   setCentralWidget(splitter);
 
-  QSplitter* vsplit = new QSplitter(Qt::Vertical, this);
-  splitter->addWidget(vsplit);
-
-  roomView = new RoomView(vsplit);
-  vsplit->addWidget(roomView);
-
-  term = new GaloshTerm(vsplit);
-  vsplit->addWidget(term);
+  term = new GaloshTerm(this);
+  splitter->addWidget(term);
 
   infoModel = new InfoModel(this);
   QObject::connect(term->socket(), SIGNAL(gmcpEvent(QString, QVariant)), this, SLOT(gmcpEvent(QString, QVariant)));
 
-  infoView = new QTreeView(splitter);
+  infoDock = new QDockWidget(this);
+  infoDock->setWindowTitle("Character Stats");
+  infoDock->setObjectName("infoView");
+  infoView = new QTreeView(infoDock);
   infoView->setModel(infoModel);
   infoView->setItemsExpandable(false);
-  splitter->addWidget(infoView);
+  infoView->header()->setStretchLastSection(true);
+  infoDock->setWidget(infoView);
+  addDockWidget(Qt::RightDockWidgetArea, infoDock);
+
+  roomDock = new QDockWidget(this);
+  roomDock->setObjectName("roomView");
+  roomView = new RoomView(this);
+  roomDock->setWidget(roomView);
+  QObject::connect(roomView, SIGNAL(roomUpdated(QString)), roomDock, SLOT(setWindowTitle(QString)));
+  addDockWidget(Qt::TopDockWidgetArea, roomDock);
+
+  QMenuBar* mb = new QMenuBar(this);
+  setMenuBar(mb);
+
+  QMenu* fileMenu = new QMenu("&File", mb);
+  fileMenu->addAction("&Connect...", this, SLOT(openConnectDialog()));
+  fileMenu->addSeparator();
+  fileMenu->addAction("E&xit", qApp, SLOT(quit()));
+  mb->addMenu(fileMenu);
+
+  QMenu* viewMenu = new QMenu("&View", mb);
+  viewMenu->addAction("&Profiles...", this, SLOT(openProfileDialog()));
+  viewMenu->addSeparator();
+  roomAction = viewMenu->addAction("&Room Description", this, SLOT(toggleRoomDock(bool)));
+  roomAction->setCheckable(true);
+  infoAction = viewMenu->addAction("Character &Stats", this, SLOT(toggleInfoDock(bool)));
+  infoAction->setCheckable(true);
+  mb->addMenu(viewMenu);
 
   QToolBar* tb = new QToolBar(this);
+  tb->setObjectName("toolbar");
   tb->addAction("Connect", this, SLOT(openConnectDialog()));
   tb->addAction("Triggers", [this]{ openProfileDialog(ProfileDialog::TriggersTab); });
   addToolBar(tb);
@@ -50,8 +84,6 @@ GaloshWindow::GaloshWindow(QWidget* parent)
   bar->addWidget(sbStatus, 1);
 
   resize(800, 600);
-  vsplit->setSizes({ height() * 0.1, height() * 0.9 });
-  splitter->setSizes({ width() * 0.75, width() * 0.25 });
   fixGeometry = true;
 
   QObject::connect(term, SIGNAL(lineReceived(QString)), &map, SLOT(processLine(QString)));
@@ -72,6 +104,13 @@ GaloshWindow::GaloshWindow(QWidget* parent)
       b->setAutoRaise(false);
     }
   }
+
+  infoDock->installEventFilter(this);
+  roomDock->installEventFilter(this);
+  stateThrottle.setSingleShot(true);
+  stateThrottle.setInterval(100);
+  QObject::connect(&stateThrottle, SIGNAL(timeout()), this, SLOT(updateGeometry()));
+  QObject::connect(infoView->header(), &QHeaderView::sectionResized, [this](int, int, int){ updateGeometry(true); });
 }
 
 void GaloshWindow::showEvent(QShowEvent* event)
@@ -83,10 +122,21 @@ void GaloshWindow::showEvent(QShowEvent* event)
 void GaloshWindow::paintEvent(QPaintEvent* event)
 {
   if (fixGeometry) {
+    QSettings settings;
+    restoreGeometry(settings.value("window").toByteArray());
+    restoreState(settings.value("docks").toByteArray());
+    QStringList sizes = settings.value("infoColumns").toStringList();
+    for (int i = 0; i < sizes.size(); i++) {
+      infoView->setColumnWidth(i, sizes[i].toInt());
+    }
+    infoAction->setChecked(infoView->isVisible());
+    roomAction->setChecked(roomView->isVisible());
+
     if (pos().x() < 0 || pos().y() < 0) {
       move(0, 0);
     }
     fixGeometry = false;
+    geometryReady = true;
   }
   QMainWindow::paintEvent(event);
 }
@@ -157,4 +207,56 @@ void GaloshWindow::reloadProfile(const QString& path)
     return;
   }
   triggers.loadProfile(path);
+}
+
+void GaloshWindow::moveEvent(QMoveEvent*)
+{
+  updateGeometry(true);
+}
+
+void GaloshWindow::resizeEvent(QResizeEvent*)
+{
+  updateGeometry(true);
+}
+
+bool GaloshWindow::eventFilter(QObject*, QEvent* event)
+{
+  if (event->type() == QEvent::Resize || event->type() == QEvent::Move || event->type() == QEvent::Close) {
+    updateGeometry(true);
+  }
+  return false;
+}
+
+void GaloshWindow::updateGeometry(bool queue)
+{
+  if (queue) {
+    stateThrottle.start();
+    return;
+  }
+  if (isVisible()) {
+    QSettings settings;
+    settings.setValue("window", saveGeometry());
+    settings.setValue("docks", saveState());
+
+    QStringList sizes;
+    for (int i = 0; i < infoModel->columnCount(); i++) {
+      sizes << QString::number(infoView->columnWidth(i));
+    }
+    settings.setValue("infoColumns", sizes);
+
+    infoAction->setChecked(infoView->isVisible());
+    roomAction->setChecked(roomView->isVisible());
+  }
+}
+
+void GaloshWindow::toggleRoomDock(bool checked)
+{
+  roomDock->setVisible(checked);
+  updateGeometry(false);
+}
+
+void GaloshWindow::toggleInfoDock(bool checked)
+{
+  infoDock->setVisible(checked);
+  updateGeometry(false);
 }

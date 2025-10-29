@@ -13,12 +13,17 @@ Q_OBJECT
 public:
   RoomView(QWidget* parent = nullptr);
 
+  QSize sizeHint() const override;
+
 public slots:
   void setRoom(MapManager* map, int roomId);
 
+signals:
+  void roomUpdated(const QString& title);
+
 private:
-  QGroupBox* roomBox;
   QLabel* roomDesc;
+  QGroupBox* exitBox;
   QListWidget* exits;
 };
 
