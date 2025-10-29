@@ -50,7 +50,7 @@ GaloshTerm::GaloshTerm(QWidget* parent)
   term->setTerminalSizeStartup(true);
   term->setVTFont(QFontDatabase::systemFont(QFontDatabase::FixedFont));
   term->setKeyboardCursorShape(Emulation::KeyboardCursorShape::NoCursor);
-  term->setBackgroundColor(Qt::black);
+  term->setBackgroundColor(QColor(32, 32, 32));
   term->setForegroundColor(QColor(24, 240, 24));
   hLayout->addWidget(term, 1);
   new QShortcut(QKeySequence::Copy, term, SLOT(copyClipboard()), nullptr, Qt::WidgetWithChildrenShortcut);
