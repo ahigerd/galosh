@@ -11,6 +11,7 @@
 #include <QMetaEnum>
 #include <QFontDatabase>
 #include <QVBoxLayout>
+#include <QScrollBar>
 #include <QShortcut>
 
 using namespace Konsole;
@@ -18,13 +19,30 @@ using namespace Konsole;
 GaloshTerm::GaloshTerm(QWidget* parent)
 : QWidget(parent), pendingScroll(false)
 {
+  tel = new TelnetSocket(this);
+  QObject::connect(tel, SIGNAL(echoChanged(bool)), this, SLOT(onEchoChanged(bool)));
+  QObject::connect(tel, SIGNAL(connected()), this, SLOT(onConnected()));
+  QObject::connect(tel, SIGNAL(disconnected()), this, SLOT(onDisconnected()));
+  QObject::connect(tel, SIGNAL(errorOccurred(QAbstractSocket::SocketError)), this, SLOT(onSocketError(QAbstractSocket::SocketError)));
+  QObject::connect(tel, SIGNAL(readyRead()), this, SLOT(onReadyRead()));
+  QObject::connect(tel, SIGNAL(lineReceived(QString)), this, SIGNAL(lineReceived(QString)));
+
   QVBoxLayout* layout = new QVBoxLayout(this);
   layout->setContentsMargins(0, 0, 0, 0);
   layout->setSpacing(0);
 
+  QFrame* frame = new QFrame(this);
+  frame->setFrameStyle(QFrame::StyledPanel | QFrame::Sunken);
+  layout->addWidget(frame, 1);
+
+  QHBoxLayout* hLayout = new QHBoxLayout(frame);
+  hLayout->setContentsMargins(0, 1, 1, 1);
+  hLayout->setSpacing(2);
+
   vt102.setHistory(HistoryTypeBuffer(1000));
   screen = vt102.createWindow();
-  term = new TerminalDisplay(this);
+  term = new TerminalDisplay(frame);
+  term->setBackgroundRole(QPalette::Window);
   term->setScreenWindow(screen);
   term->setBellMode(TerminalDisplay::NotifyBell);
   term->setTerminalSizeHint(true);
@@ -34,26 +52,27 @@ GaloshTerm::GaloshTerm(QWidget* parent)
   term->setKeyboardCursorShape(Emulation::KeyboardCursorShape::NoCursor);
   term->setBackgroundColor(Qt::black);
   term->setForegroundColor(QColor(24, 240, 24));
-  layout->addWidget(term);
+  hLayout->addWidget(term, 1);
   new QShortcut(QKeySequence::Copy, term, SLOT(copyClipboard()), nullptr, Qt::WidgetWithChildrenShortcut);
 
-  tel = new TelnetSocket(this);
-  QObject::connect(tel, SIGNAL(echoChanged(bool)), this, SLOT(onEchoChanged(bool)));
-  QObject::connect(tel, SIGNAL(connected()), this, SLOT(onConnected()));
-  QObject::connect(tel, SIGNAL(disconnected()), this, SLOT(onDisconnected()));
-  QObject::connect(tel, SIGNAL(errorOccurred(QAbstractSocket::SocketError)), this, SLOT(onSocketError(QAbstractSocket::SocketError)));
-  QObject::connect(tel, SIGNAL(readyRead()), this, SLOT(onReadyRead()));
-  QObject::connect(tel, SIGNAL(lineReceived(QString)), this, SIGNAL(lineReceived(QString)));
+  scrollBar = new QScrollBar(Qt::Vertical, frame);
+  QObject::connect(scrollBar, SIGNAL(valueChanged(int)), term->scrollBar(), SLOT(setValue(int)));
+  QObject::connect(term->scrollBar(), SIGNAL(valueChanged(int)), scrollBar, SLOT(setValue(int)));
+  QObject::connect(term->scrollBar(), SIGNAL(rangeChanged(int, int)), scrollBar, SLOT(setRange(int, int)));
+  scrollBar->setRange(term->scrollBar()->minimum(), term->scrollBar()->maximum());
+  scrollBar->setValue(term->scrollBar()->value());
+  hLayout->addWidget(scrollBar, 0);
 
   line = new CommandLine(this);
   QObject::connect(tel, SIGNAL(lineReceived(QString)), line, SLOT(onLineReceived(QString)));
   QObject::connect(line, &CommandLine::commandEntered, [this](const QString&, bool) { screen->clearSelection(); });
   QObject::connect(line, SIGNAL(commandEntered(QString, bool)), this, SLOT(executeCommand(QString, bool)));
-  layout->addWidget(line);
+  layout->addWidget(line, 0);
 
   line->setFocus();
 
   term->installEventFilter(this);
+  line->installEventFilter(this);
 
   refreshThrottle.setSingleShot(true);
   refreshThrottle.setInterval(5);
@@ -83,13 +102,25 @@ void GaloshTerm::executeCommand(const QString& command, bool echo)
 
 bool GaloshTerm::eventFilter(QObject* obj, QEvent* event)
 {
-  if (event->type() == QEvent::Resize) {
+  if (obj == term && event->type() == QEvent::Resize) {
     scheduleResizeAndScroll(true);
   } else if (event->type() == QEvent::KeyPress) {
     QKeyEvent* ke = static_cast<QKeyEvent*>(event);
-    if (!ke->text().isEmpty()) {
-      line->setFocus();
-      line->event(event);
+    if (ke->key() == Qt::Key_PageUp) {
+      screen->handleCommandFromKeyboard(KeyboardTranslator::ScrollPageUpCommand);
+    } else if (ke->key() == Qt::Key_PageDown) {
+      screen->handleCommandFromKeyboard(KeyboardTranslator::ScrollPageDownCommand);
+    } else if (obj == term) {
+      if (ke->key() == Qt::Key_Home) {
+        screen->handleCommandFromKeyboard(KeyboardTranslator::ScrollUpToTopCommand);
+      } else if (ke->key() == Qt::Key_End) {
+        screen->handleCommandFromKeyboard(KeyboardTranslator::ScrollDownToBottomCommand);
+      } else if (!ke->text().isEmpty()) {
+        line->setFocus();
+        line->event(event);
+      }
+    } else {
+      return false;
     }
     return true;
   }

@@ -86,7 +86,17 @@ namespace Konsole
 extern unsigned short vt100_graphics[32];
 
 class ScreenWindow;
-class ScrollBar;
+
+class ScrollBar : public QScrollBar
+{
+Q_OBJECT
+
+public:
+    ScrollBar(QWidget* parent = nullptr);
+protected:
+    void enterEvent(ENTER_EVENT* event) override;
+};
+
 
 /**
  * A widget which displays output from a terminal emulation and sends input keypresses and mouse activity
@@ -213,6 +223,7 @@ public:
 
     void setLineSpacing(uint);
     void setMargin(int);
+    inline QScrollBar* scrollBar() const { return _scrollBar; }
 
     int margin() const;
     uint lineSpacing() const;
@@ -910,16 +921,6 @@ protected:
 private:
     QWidget* widget() const { return static_cast<QWidget*>(parent()); }
     int _timerId;
-};
-
-class ScrollBar : public QScrollBar
-{
-Q_OBJECT
-
-public:
-    ScrollBar(QWidget* parent = nullptr);
-protected:
-    void enterEvent(ENTER_EVENT* event) override;
 };
 
 }

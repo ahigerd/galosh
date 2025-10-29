@@ -4,6 +4,7 @@
 #include <QWidget>
 #include <QAbstractSocket>
 #include "Vt102Emulation.h"
+class QScrollBar;
 class QTimer;
 class CommandLine;
 class TermSocket;
@@ -21,6 +22,7 @@ public:
   GaloshTerm(QWidget* parent = nullptr);
 
   bool eventFilter(QObject* obj, QEvent* event);
+
   inline TelnetSocket* socket() { return tel; }
 
 signals:
@@ -47,6 +49,7 @@ private:
   Konsole::ScreenWindow* screen;
   TelnetSocket* tel;
   CommandLine* line;
+  QScrollBar* scrollBar;
   bool pendingScroll;
 };
 
