@@ -1,0 +1,512 @@
+BlockArray.h
+
+
+-----
+
+CharacterColor.h
+
+
+-----
+
+Character.h
+
+
+-----
+
+Emulation.h
+
+34,35d33
+< 
+< #if QT_VERSION >= 0x060000
+37d34
+< #endif
+38a36
+> #include "qtermwidget_export.h"
+123c121
+< class Emulation : public QObject
+---
+> class QTERMWIDGET_EXPORT Emulation : public QObject
+145,147c143
+<       IBeamCursor = 2,
+<       /** Do not render the text cursor. */
+<       NoCursor = -1,
+---
+>       IBeamCursor = 2
+501d496
+< #if QT_VERSION >= 0x060000
+503d497
+< #endif
+
+-----
+
+Filter.h
+
+30a31,33
+> // Local
+> #include "qtermwidget_export.h"
+> 
+55c58
+< class Filter : public QObject
+---
+> class QTERMWIDGET_EXPORT Filter : public QObject
+184c187
+< class RegExpFilter : public Filter
+---
+> class QTERMWIDGET_EXPORT RegExpFilter : public Filter
+241c244
+< class UrlFilter : public RegExpFilter
+---
+> class QTERMWIDGET_EXPORT UrlFilter : public RegExpFilter
+296c299
+< class FilterObject : public QObject
+---
+> class QTERMWIDGET_NO_EXPORT FilterObject : public QObject
+328c331
+< class FilterChain : protected QList<Filter*>
+---
+> class QTERMWIDGET_EXPORT FilterChain : protected QList<Filter*>
+362c365
+< class TerminalImageFilterChain : public FilterChain
+---
+> class QTERMWIDGET_NO_EXPORT TerminalImageFilterChain : public FilterChain
+
+-----
+
+History.h
+
+38,40d37
+< #ifdef Q_OS_WIN
+< #include "mman-win32/mman.h"
+< #else
+42d38
+< #endif
+
+-----
+
+KeyboardTranslator.h
+
+4,5d3
+<     Modified in 2025 by Adam Higerd <chighland@gmail.com>
+< 
+
+-----
+
+konsole_wcwidth.h
+
+
+-----
+
+LineFont.h
+
+
+-----
+
+Screen.h
+
+
+-----
+
+ScreenWindow.h
+
+
+-----
+
+TerminalCharacterDecoder.h
+
+
+-----
+
+TerminalDisplay.h
+
+32c32,33
+< #include "Emulation.h"
+---
+> #include "qtermwidget.h"
+> //#include "konsole_export.h"
+48,52c49
+< #if QT_VERSION >= 0x060000
+< #define ENTER_EVENT QEnterEvent
+< #else
+< #define ENTER_EVENT QEvent
+< #endif
+---
+> //class KMenu;
+56,63d52
+<     enum ScrollBarPosition {
+<         /** Do not show the scroll bar. */
+<         NoScrollBar = 0,
+<         /** Show the scroll bar on the left side of the display. */
+<         ScrollBarLeft = 1,
+<         /** Show the scroll bar on the right side of the display. */
+<         ScrollBarRight = 2
+<     };
+134c123
+<     void setScrollBarPosition(ScrollBarPosition position);
+---
+>     void setScrollBarPosition(QTermWidget::ScrollBarPosition position);
+232c221
+<     void setKeyboardCursorShape(Konsole::Emulation::KeyboardCursorShape shape);
+---
+>     void setKeyboardCursorShape(QTermWidget::KeyboardCursorShape shape);
+236c225
+<     Emulation::KeyboardCursorShape keyboardCursorShape() const;
+---
+>     QTermWidget::KeyboardCursorShape keyboardCursorShape() const;
+610c599
+<     void enterEvent(ENTER_EVENT* event) override;
+---
+>     void enterEvent(QEnterEvent* event) override;
+812c801
+<     ScrollBarPosition _scrollbarLocation;
+---
+>     QTermWidget::ScrollBarPosition _scrollbarLocation;
+861c850
+<     Emulation::KeyboardCursorShape _cursorShape;
+---
+>     QTermWidget::KeyboardCursorShape _cursorShape;
+919c908
+<     void enterEvent(ENTER_EVENT* event) override;
+---
+>     void enterEvent(QEnterEvent* event) override;
+
+-----
+
+tools.h
+
+
+-----
+
+Vt102Emulation.h
+
+196a197,198
+> 
+>   QStringEncoder _toUtf8;
+
+-----
+
+BlockArray.cpp
+
+29a30
+> #include <sys/mman.h>
+34,39d34
+< #ifdef Q_OS_WIN
+< #define getpagesize() 4096
+< #include "mman-win32/mman.h"
+< #else
+< #include <sys/mman.h>
+< #endif
+
+-----
+
+Emulation.cpp
+
+38a39
+> 
+40d40
+< #include <QtDebug>
+47c47
+< // #include "Session.h"
+---
+> #include "Session.h"
+56,59c56,57
+<   _bracketedPasteMode(false)
+< #if QT_VERSION >= 0x060000
+<   , _toUtf16(QStringConverter::Utf8)
+< #endif
+---
+>   _bracketedPasteMode(false),
+>   _toUtf16(QStringConverter::Utf8)
+234d231
+< #if QT_VERSION >= 0x060000
+236,238d232
+< #else
+<     QString str = QString::fromLocal8Bit(ba);
+< #endif
+
+-----
+
+Filter.cpp
+
+365c365
+<         QRegularExpression::NormalMatch, QRegularExpression::AnchoredMatchOption);
+---
+>         QRegularExpression::NormalMatch, QRegularExpression::AnchorAtOffsetMatchOption);
+
+-----
+
+History.cpp
+
+29a30
+> #include <sys/mman.h>
+
+-----
+
+KeyboardTranslator.cpp
+
+4,5d3
+<     Modified in 2025 by Adam Higerd <chighland@gmail.com>
+< 
+40a39,40
+> #include "tools.h"
+> 
+69c69
+< QString KeyboardTranslatorManager::findTranslatorPath(const QString&)
+---
+> QString KeyboardTranslatorManager::findTranslatorPath(const QString& name)
+71c71,72
+<   return QString();
+---
+>     return QString(get_kb_layout_dir() + name + QLatin1String(".keytab"));
+>     //return KGlobal::dirs()->findResource("data","konsole/"+name+".keytab");
+75a77,100
+>     QDir dir(get_kb_layout_dir());
+>     QStringList filters;
+>     filters << QLatin1String("*.keytab");
+>     dir.setNameFilters(filters);
+>     QStringList list = dir.entryList(filters);
+> //    QStringList list = KGlobal::dirs()->findAllResources("data",
+> //                                                         "konsole/*.keytab",
+> //                                                        KStandardDirs::NoDuplicates);
+> 
+>     // add the name of each translator to the list and associated
+>     // the name with a null pointer to indicate that the translator
+>     // has not yet been loaded from disk
+>     QStringListIterator listIter(list);
+>     while (listIter.hasNext())
+>     {
+>         QString translatorPath = listIter.next();
+> 
+>         QString name = QFileInfo(translatorPath).baseName();
+> 
+>         if ( !_translators.contains(name) )
+>             _translators.insert(name,0);
+>     }
+> 
+>     _haveLoadedAll = true;
+78c103
+< const KeyboardTranslator* KeyboardTranslatorManager::findTranslator(const QString&)
+---
+> const KeyboardTranslator* KeyboardTranslatorManager::findTranslator(const QString& name)
+80c105,118
+<   return nullptr;
+---
+>     if ( name.isEmpty() )
+>         return defaultTranslator();
+> 
+>     if ( _translators.contains(name) && _translators[name] != 0 )
+>         return _translators[name];
+> 
+>     KeyboardTranslator* translator = loadTranslator(name);
+> 
+>     if ( translator != nullptr )
+>         _translators[name] = translator;
+>     else if ( !name.isEmpty() )
+>         qDebug() << "Unable to load translator" << name;
+> 
+>     return translator;
+83c121
+< bool KeyboardTranslatorManager::saveTranslator(const KeyboardTranslator*)
+---
+> bool KeyboardTranslatorManager::saveTranslator(const KeyboardTranslator* translator)
+84a123,149
+> qDebug() << "KeyboardTranslatorManager::saveTranslator" << "unimplemented";
+> Q_UNUSED(translator)
+> #if 0
+>     const QString path = KGlobal::dirs()->saveLocation("data","konsole/")+translator->name()
+>            +".keytab";
+> 
+>     //kDebug() << "Saving translator to" << path;
+> 
+>     QFile destination(path);
+>     if (!destination.open(QIODevice::WriteOnly | QIODevice::Text))
+>     {
+>         qDebug() << "Unable to save keyboard translation:"
+>                    << destination.errorString();
+>         return false;
+>     }
+> 
+>     {
+>         KeyboardTranslatorWriter writer(&destination);
+>         writer.writeHeader(translator->description());
+> 
+>         QListIterator<KeyboardTranslator::Entry> iter(translator->entries());
+>         while ( iter.hasNext() )
+>             writer.writeEntry(iter.next());
+>     }
+> 
+>     destination.close();
+> #endif
+392d456
+< #if QT_VERSION >= 0x060000
+394,396d457
+< #else
+<         keyCode = sequence[0];
+< #endif
+624c685
+<             result.replace(i, 1, QByteArray(escaped));
+---
+>             result.replace(i, 1, QByteArrayView(escaped));
+
+-----
+
+konsole_wcwidth.cpp
+
+14,15d13
+< #elif defined(HAVE_ICU)
+< //#include <unicode/uchar.h>
+32,41d29
+< #elif defined(HAVE_ICU)
+<     return 1;
+<     /*
+<     if (u_getIntPropertyValue(ucs, UCHAR_EAST_ASIAN_WIDTH)) {
+<       return 2;
+<     } else if (u_charType(ucs) == U_FORMAT_CHAR) {
+<       return 0;
+<     }
+<     */
+<     return 1;
+
+-----
+
+Screen.cpp
+
+
+-----
+
+ScreenWindow.cpp
+
+
+-----
+
+TerminalCharacterDecoder.cpp
+
+
+-----
+
+TerminalDisplay.cpp
+
+355c355
+< ,_scrollbarLocation(Konsole::NoScrollBar)
+---
+> ,_scrollbarLocation(QTermWidget::NoScrollBar)
+686c686
+< void TerminalDisplay::setKeyboardCursorShape(Emulation::KeyboardCursorShape shape)
+---
+> void TerminalDisplay::setKeyboardCursorShape(QTermWidget::KeyboardCursorShape shape)
+692c692
+< Emulation::KeyboardCursorShape TerminalDisplay::keyboardCursorShape() const
+---
+> QTermWidget::KeyboardCursorShape TerminalDisplay::keyboardCursorShape() const
+763,766d762
+<     if (keyboardCursorShape() == Emulation::KeyboardCursorShape::NoCursor) {
+<         return;
+<     }
+< 
+993c989
+<     if ( _scrollbarLocation == Konsole::ScrollBarLeft )
+---
+>     if ( _scrollbarLocation == QTermWidget::ScrollBarLeft )
+1405c1401
+< void TerminalDisplay::enterEvent(ENTER_EVENT* _event)
+---
+> void TerminalDisplay::enterEvent(QEnterEvent* event)
+1407d1402
+<   QEnterEvent* event = static_cast<QEnterEvent*>(_event);
+1410c1405
+<       && !_scrollBar->rect().contains(_scrollBar->mapFromParent(event->localPos().toPoint())))
+---
+>       && !_scrollBar->rect().contains(_scrollBar->mapFromParent(event->position().toPoint())))
+1412c1407
+<     gs_futureDeadSpot = event->localPos().toPoint();
+---
+>     gs_futureDeadSpot = event->position().toPoint();
+1583c1578
+<                      + ((_scrollbarLocation == Konsole::ScrollBarLeft
+---
+>                      + ((_scrollbarLocation == QTermWidget::ScrollBarLeft
+2068c2063
+< void TerminalDisplay::setScrollBarPosition(Konsole::ScrollBarPosition position)
+---
+> void TerminalDisplay::setScrollBarPosition(QTermWidget::ScrollBarPosition position)
+2073c2068
+<   if ( position == Konsole::NoScrollBar )
+---
+>   if ( position == QTermWidget::NoScrollBar )
+2218c2213
+<       gs_futureDeadSpot = ev->localPos().toPoint();
+---
+>       gs_futureDeadSpot = ev->position().toPoint();
+2226c2221
+<                    + ((_scrollbarLocation == Konsole::ScrollBarLeft
+---
+>                    + ((_scrollbarLocation == QTermWidget::ScrollBarLeft
+2230c2225
+<   getCharacterPosition(ev->localPos().toPoint(),charLine,charColumn);
+---
+>   getCharacterPosition(ev->position().toPoint(),charLine,charColumn);
+2307,2308c2302,2303
+<    if ( ev->localPos().x() > dragInfo.start.x() + distance || ev->localPos().x() < dragInfo.start.x() - distance ||
+<         ev->localPos().y() > dragInfo.start.y() + distance || ev->localPos().y() < dragInfo.start.y() - distance)
+---
+>    if ( ev->position().x() > dragInfo.start.x() + distance || ev->position().x() < dragInfo.start.x() - distance ||
+>         ev->position().y() > dragInfo.start.y() + distance || ev->position().y() < dragInfo.start.y() - distance)
+2330c2325
+<   extendSelection(ev->localPos().toPoint());
+---
+>   extendSelection(ev->position().toPoint());
+3283c3278
+<     case Konsole::NoScrollBar :
+---
+>     case QTermWidget::NoScrollBar :
+3287c3282
+<     case Konsole::ScrollBarLeft :
+---
+>     case QTermWidget::ScrollBarLeft :
+3292c3287
+<     case Konsole::ScrollBarRight:
+---
+>     case QTermWidget::ScrollBarRight:
+3577c3572
+< void ScrollBar::enterEvent(ENTER_EVENT* event)
+---
+> void ScrollBar::enterEvent(QEnterEvent* event)
+
+-----
+
+tools.cpp
+
+9,10d8
+< #define KB_LAYOUT_DIR ":/kb"
+< #define COLORSCHEMES_DIR ":/cs"
+
+-----
+
+Vt102Emulation.cpp
+
+4,5d3
+<     Modified in 2025 by Adam Higerd <chighland@gmail.com>
+< 
+49c47,48
+<      _reportFocusEvents(false)
+---
+>      _reportFocusEvents(false),
+>      _toUtf8(QStringEncoder::Utf8)
+1078c1077
+<           QByteArray bytes = str.toUtf8();
+---
+> 	    QByteArray bytes = _toUtf8(str);
+1094c1093
+< 	    QByteArray bytes = event->text().toUtf8();
+---
+> 	    QByteArray bytes = _toUtf8(event->text());
+1358c1357
+<   qDebug() << "Undecodable sequence:" << QString::fromWCharArray(tokenBuffer, tokenBufferPos);
+---
+>   qCDebug(qtermwidgetLogger) << "Undecodable sequence:" << QString::fromWCharArray(tokenBuffer, tokenBufferPos);
+1359a1359,1361
+> 
+> //#include "Vt102Emulation.moc"
+> 
+
+-----
+

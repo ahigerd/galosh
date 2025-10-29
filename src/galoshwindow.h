@@ -24,6 +24,8 @@ public slots:
   void openConnectDialog();
   void openProfileDialog(ProfileDialog::Tab tab = ProfileDialog::ServerTab);
   void openConfigFolder();
+  void openWebsite();
+  void about();
 
 protected:
   void showEvent(QShowEvent* event) override;

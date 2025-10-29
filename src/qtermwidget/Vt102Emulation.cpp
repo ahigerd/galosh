@@ -1,6 +1,8 @@
 /*
     This file is part of Konsole, an X terminal.
 
+    Modified in 2025 by Adam Higerd <chighland@gmail.com>
+
     Copyright 2007-2008 by Robert Knight <robert.knight@gmail.com>
     Copyright 1997,1998 by Lars Doelle <lars.doelle@on-line.de>
 
@@ -22,7 +24,6 @@
 
 // Own
 #include "Vt102Emulation.h"
-#include "tools.h"
 
 // Standard
 #include <cstdio>
@@ -1353,8 +1354,5 @@ void Vt102Emulation::reportDecodingError()
 {
   if (tokenBufferPos == 0 || ( tokenBufferPos == 1 && (tokenBuffer[0] & 0xff) >= 32) )
     return;
-  qCDebug(qtermwidgetLogger) << "Undecodable sequence:" << QString::fromWCharArray(tokenBuffer, tokenBufferPos);
+  qDebug() << "Undecodable sequence:" << QString::fromWCharArray(tokenBuffer, tokenBufferPos);
 }
-
-//#include "Vt102Emulation.moc"
-

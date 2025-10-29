@@ -5,9 +5,9 @@
 #include "roomview.h"
 #include <QDesktopServices>
 #include <QApplication>
+#include <QMessageBox>
 #include <QSettings>
 #include <QDockWidget>
-#include <QSplitter>
 #include <QTreeView>
 #include <QHeaderView>
 #include <QMenuBar>
@@ -26,11 +26,8 @@ GaloshWindow::GaloshWindow(QWidget* parent)
   setCorner(Qt::TopRightCorner, Qt::RightDockWidgetArea);
   setCorner(Qt::BottomRightCorner, Qt::RightDockWidgetArea);
 
-  QSplitter* splitter = new QSplitter(this);
-  setCentralWidget(splitter);
-
   term = new GaloshTerm(this);
-  splitter->addWidget(term);
+  setCentralWidget(term);
 
   infoModel = new InfoModel(this);
   QObject::connect(term->socket(), SIGNAL(gmcpEvent(QString, QVariant)), this, SLOT(gmcpEvent(QString, QVariant)));
@@ -71,6 +68,13 @@ GaloshWindow::GaloshWindow(QWidget* parent)
   viewMenu->addSeparator();
   viewMenu->addAction("Open &Configuration Folder...", this, SLOT(openConfigFolder()));
   mb->addMenu(viewMenu);
+
+  QMenu* helpMenu = new QMenu("&Help", mb);
+  helpMenu->addAction("Open &Website...", this, SLOT(openWebsite()));
+  helpMenu->addSeparator();
+  helpMenu->addAction("&About...", this, SLOT(about()));
+  helpMenu->addAction("About &Qt...", qApp, SLOT(aboutQt()));
+  mb->addMenu(helpMenu);
 
   QToolBar* tb = new QToolBar(this);
   tb->setObjectName("toolbar");
@@ -267,4 +271,16 @@ void GaloshWindow::toggleInfoDock(bool checked)
 void GaloshWindow::openConfigFolder()
 {
   QDesktopServices::openUrl(QUrl::fromLocalFile(QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation)));
+}
+
+void GaloshWindow::openWebsite()
+{
+  QDesktopServices::openUrl(QUrl("https://github.com/ahigerd/galosh"));
+}
+
+void GaloshWindow::about()
+{
+  QFile html(":/about.html");
+  html.open(QIODevice::ReadOnly);
+  QMessageBox::about(this, "About Galosh", QString::fromUtf8(html.readAll()));
 }

@@ -1,5 +1,8 @@
 /*
     This file is part of Konsole, an X terminal.
+
+    Modified in 2025 by Adam Higerd <chighland@gmail.com>
+
     Copyright 1997,1998 by Lars Doelle <lars.doelle@on-line.de>
 
     This program is free software; you can redistribute it and/or modify

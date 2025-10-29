@@ -5,6 +5,8 @@
  * <http://www.UNIX-systems.org/online.html>
  *
  * Markus Kuhn -- 2001-01-12 -- public domain
+ *
+ * Modified in 2025 by Adam Higerd <chighland@gmail.com>
  */
 
 #include <QString>
@@ -12,7 +14,7 @@
 #ifdef HAVE_UTF8PROC
 #include <utf8proc.h>
 #elif defined(HAVE_ICU)
-//#include <unicode/uchar.h>
+#include <unicode/uchar.h>
 #else
 #include <cwchar>
 #endif
@@ -30,14 +32,13 @@ int konsole_wcwidth(wchar_t ucs)
     }
     return utf8proc_charwidth( ucs );
 #elif defined(HAVE_ICU)
-    return 1;
-    /*
     if (u_getIntPropertyValue(ucs, UCHAR_EAST_ASIAN_WIDTH)) {
       return 2;
     } else if (u_charType(ucs) == U_FORMAT_CHAR) {
       return 0;
     }
-    */
+    return 1;
+#elif Q_OS_WIN
     return 1;
 #else
     return wcwidth( ucs );

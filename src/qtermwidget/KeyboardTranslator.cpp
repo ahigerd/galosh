@@ -1,6 +1,8 @@
 /*
     This source file is part of Konsole, a terminal emulator.
 
+    Modified in 2025 by Adam Higerd <chighland@gmail.com>
+
     Copyright 2007-2008 by Robert Knight <robertknight@gmail.com>
 
     This program is free software; you can redistribute it and/or modify
@@ -36,8 +38,6 @@
 #include <QtDebug>
 #include <QRegularExpression>
 
-#include "tools.h"
-
 // KDE
 //#include <KDebug>
 //#include <KLocale>
@@ -66,87 +66,22 @@ KeyboardTranslatorManager::~KeyboardTranslatorManager()
 {
     qDeleteAll(_translators);
 }
-QString KeyboardTranslatorManager::findTranslatorPath(const QString& name)
+QString KeyboardTranslatorManager::findTranslatorPath(const QString&)
 {
-    return QString(get_kb_layout_dir() + name + QLatin1String(".keytab"));
-    //return KGlobal::dirs()->findResource("data","konsole/"+name+".keytab");
+  return QString();
 }
 
 void KeyboardTranslatorManager::findTranslators()
 {
-    QDir dir(get_kb_layout_dir());
-    QStringList filters;
-    filters << QLatin1String("*.keytab");
-    dir.setNameFilters(filters);
-    QStringList list = dir.entryList(filters);
-//    QStringList list = KGlobal::dirs()->findAllResources("data",
-//                                                         "konsole/*.keytab",
-//                                                        KStandardDirs::NoDuplicates);
-
-    // add the name of each translator to the list and associated
-    // the name with a null pointer to indicate that the translator
-    // has not yet been loaded from disk
-    QStringListIterator listIter(list);
-    while (listIter.hasNext())
-    {
-        QString translatorPath = listIter.next();
-
-        QString name = QFileInfo(translatorPath).baseName();
-
-        if ( !_translators.contains(name) )
-            _translators.insert(name,0);
-    }
-
-    _haveLoadedAll = true;
 }
 
-const KeyboardTranslator* KeyboardTranslatorManager::findTranslator(const QString& name)
+const KeyboardTranslator* KeyboardTranslatorManager::findTranslator(const QString&)
 {
-    if ( name.isEmpty() )
-        return defaultTranslator();
-
-    if ( _translators.contains(name) && _translators[name] != 0 )
-        return _translators[name];
-
-    KeyboardTranslator* translator = loadTranslator(name);
-
-    if ( translator != nullptr )
-        _translators[name] = translator;
-    else if ( !name.isEmpty() )
-        qDebug() << "Unable to load translator" << name;
-
-    return translator;
+  return nullptr;
 }
 
-bool KeyboardTranslatorManager::saveTranslator(const KeyboardTranslator* translator)
+bool KeyboardTranslatorManager::saveTranslator(const KeyboardTranslator*)
 {
-qDebug() << "KeyboardTranslatorManager::saveTranslator" << "unimplemented";
-Q_UNUSED(translator)
-#if 0
-    const QString path = KGlobal::dirs()->saveLocation("data","konsole/")+translator->name()
-           +".keytab";
-
-    //kDebug() << "Saving translator to" << path;
-
-    QFile destination(path);
-    if (!destination.open(QIODevice::WriteOnly | QIODevice::Text))
-    {
-        qDebug() << "Unable to save keyboard translation:"
-                   << destination.errorString();
-        return false;
-    }
-
-    {
-        KeyboardTranslatorWriter writer(&destination);
-        writer.writeHeader(translator->description());
-
-        QListIterator<KeyboardTranslator::Entry> iter(translator->entries());
-        while ( iter.hasNext() )
-            writer.writeEntry(iter.next());
-    }
-
-    destination.close();
-#endif
     return true;
 }
 
