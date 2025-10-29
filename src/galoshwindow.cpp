@@ -3,6 +3,7 @@
 #include "telnetsocket.h"
 #include "infomodel.h"
 #include "roomview.h"
+#include <QDesktopServices>
 #include <QApplication>
 #include <QSettings>
 #include <QDockWidget>
@@ -67,6 +68,8 @@ GaloshWindow::GaloshWindow(QWidget* parent)
   roomAction->setCheckable(true);
   infoAction = viewMenu->addAction("Character &Stats", this, SLOT(toggleInfoDock(bool)));
   infoAction->setCheckable(true);
+  viewMenu->addSeparator();
+  viewMenu->addAction("Open &Configuration Folder...", this, SLOT(openConfigFolder()));
   mb->addMenu(viewMenu);
 
   QToolBar* tb = new QToolBar(this);
@@ -259,4 +262,9 @@ void GaloshWindow::toggleInfoDock(bool checked)
 {
   infoDock->setVisible(checked);
   updateGeometry(false);
+}
+
+void GaloshWindow::openConfigFolder()
+{
+  QDesktopServices::openUrl(QUrl::fromLocalFile(QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation)));
 }

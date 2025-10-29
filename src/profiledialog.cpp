@@ -33,7 +33,7 @@ static QFrame* horizontalLine(QWidget* parent)
 ProfileDialog::ProfileDialog(bool forConnection, QWidget* parent)
 : QDialog(parent), emitConnect(forConnection), dirty(false)
 {
-  setWindowTitle("Galosh Profiles");
+  setWindowTitle("Profiles");
 
   QGridLayout* layout = new QGridLayout(this);
 
@@ -55,6 +55,11 @@ ProfileDialog::ProfileDialog(bool forConnection, QWidget* parent)
   bAdd->setIcon(style()->standardIcon(QStyle::SP_FileDialogNewFolder));
   QObject::connect(bAdd, SIGNAL(clicked()), this, SLOT(newProfile()));
   lButtons->addWidget(bAdd, 0);
+
+  QToolButton* bDelete = new QToolButton(bList);
+  bDelete->setIcon(style()->standardIcon(QStyle::SP_TrashIcon));
+  QObject::connect(bDelete, SIGNAL(clicked()), this, SLOT(deleteProfile()));
+  lButtons->addWidget(bDelete, 0);
 
   tabs = new QTabWidget(this);
   layout->addWidget(tabs, 0, 1);
@@ -273,6 +278,23 @@ void ProfileDialog::newProfile()
 
   profileName->setFocus();
   dirty = true;
+}
+
+void ProfileDialog::deleteProfile()
+{
+  QStandardItem* item = profileList->itemFromIndex(knownProfiles->selectionModel()->currentIndex());
+  auto button = QMessageBox::question(this, "Galosh", QStringLiteral("Are you sure you want to delete the profile \"%1\"?").arg(item->data(Qt::DisplayRole).toString()));
+  if (button == QMessageBox::Yes) {
+    QString path = item->data(Qt::UserRole).toString();
+    if (!path.isEmpty()) {
+      QFile::remove(path);
+      if (QFile::exists(path)) {
+        QMessageBox::critical(this, "Galosh", QStringLiteral("The profile \"%1\" could not be deleted.").arg(item->data(Qt::DisplayRole).toString()));
+        return;
+      }
+    }
+    profileList->removeRow(item->row());
+  }
 }
 
 void ProfileDialog::markDirty()

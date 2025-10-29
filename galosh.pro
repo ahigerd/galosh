@@ -14,6 +14,8 @@ win32 {
   LIBS += -licu
 }
 
+RESOURCES += res/res.qrc
+
 # windows
 HEADERS += src/galoshwindow.h   src/profiledialog.h   src/triggertab.h
 SOURCES += src/galoshwindow.cpp src/profiledialog.cpp src/triggertab.cpp

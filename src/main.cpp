@@ -1,29 +1,25 @@
 #include <QApplication>
 #include <QDir>
+#include <QIcon>
 #include "galoshwindow.h"
 #include "galoshterm.h"
 #include "mudletimport.h"
 
-const char* TRANSLATIONS_DIR = nullptr;
-
-const char* findDir(const QString& path, QByteArray* buffer)
-{
-  QDir dir(qApp->applicationDirPath());
-  if (dir.exists(path)) {
-    *buffer = dir.filePath(path).toUtf8();
-  } else if (dir.exists("qtermwidget/lib/" + path)) {
-    *buffer = dir.filePath("qtermwidget/lib/" + path).toUtf8();
-  } else if (QDir("/usr/share/qtermwidget6/").exists(path)) {
-    *buffer = QDir("/usr/share/qtermwidget6/").filePath(path).toUtf8();
-  }
-  return buffer->constData();
-}
-
 int main(int argc, char** argv)
 {
+  QApplication::setApplicationName("Galosh");
+  QApplication::setApplicationDisplayName("Galosh");
+  QApplication::setOrganizationName("Alkahest");
+  QApplication::setOrganizationDomain("com.alkahest");
   QApplication app(argc, argv);
-  QByteArray tsDir, kbDir, csDir;
-  TRANSLATIONS_DIR = findDir("translations", &tsDir);
+
+  QIcon icon;
+  icon.addFile(":/icon16.png");
+  icon.addFile(":/icon24.png");
+  icon.addFile(":/icon32.png");
+  icon.addFile(":/icon48.png");
+  icon.addFile(":/icon64.png");
+  app.setWindowIcon(icon);
 
   GaloshWindow win;
   win.show();

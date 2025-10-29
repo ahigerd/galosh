@@ -38,6 +38,7 @@ private slots:
   void closePromptUnsaved();
   void markDirty();
   void newProfile();
+  void deleteProfile();
 
 private:
   void loadProfiles();

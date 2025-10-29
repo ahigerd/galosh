@@ -4,6 +4,8 @@ InfoModel::InfoModel(QObject* parent)
 : QStandardItemModel(0, 2, parent)
 {
   itemsByPath[""] = invisibleRootItem();
+
+  setHorizontalHeaderLabels({ "Stat", "Value" });
 }
 
 void InfoModel::loadTree(const QVariant& data)
