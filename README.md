@@ -51,5 +51,7 @@ of merchantability or fitness for a particular purpose. See [the full text of th
 Galosh makes use of portions of [QTermWidget](https://github.com/lxqt/qtermwidget). QTermWidget is available under the GPLv2 or any later version.
 Some source files may be available under a different license. See each file in [src/qtermwidget](src/qtermwidget) for more information.
 
+On Windows, Galosh uses [mman-win32](https://github.com/alitrack/mman-win32), available under the [MIT license](src/mman-win32/LICENSE.MIT).
+
 Galosh is built upon Qt. Qt is copyright &copy; The Qt Company Ltd and other contributors and used under the terms of the GNU Lesser General Public
 License version 3. See [Qt's licensing page](https://www.qt.io/licensing/open-source-lgpl-obligations) for more information.

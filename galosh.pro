@@ -12,6 +12,10 @@ win32 {
   SOURCES += src/mman-win32/mman.c
   DEFINES += HAVE_ICU
   LIBS += -licu
+  RESOURCES += res/res-win.qrc
+}
+else {
+  RESOURCES += res/res-unix.qrc
 }
 
 RESOURCES += res/res.qrc

@@ -153,10 +153,8 @@ void GaloshWindow::updateStatus()
   if (term->socket()->isConnected()) {
     QString host = term->socket()->hostname();
     sbStatus->setText(QStringLiteral("Connected to %1.").arg(host));
-    setWindowTitle(QStringLiteral("Galosh - %1").arg(host));
   } else {
     sbStatus->setText("Disconnected.");
-    setWindowTitle("Galosh");
   }
 }
 
@@ -201,7 +199,7 @@ void GaloshWindow::openProfileDialog(ProfileDialog::Tab tab)
 void GaloshWindow::connectToProfile(const QString& path)
 {
   currentProfile = path;
-  triggers.loadProfile(path);
+  reloadProfile(path);
   QSettings settings(path, QSettings::IniFormat);
   settings.beginGroup("Profile");
   term->socket()->connectToHost(settings.value("host").toString(), settings.value("port").toInt());
@@ -214,6 +212,9 @@ void GaloshWindow::reloadProfile(const QString& path)
     return;
   }
   triggers.loadProfile(path);
+  QSettings settings(path, QSettings::IniFormat);
+  settings.beginGroup("Profile");
+  setWindowTitle(settings.value("name").toString());
 }
 
 void GaloshWindow::moveEvent(QMoveEvent*)

@@ -1,0 +1,6 @@
+<RCC>
+  <qresource prefix="/">
+    <file alias='about.html'>about-win.html</file>
+  </qresource>
+</RCC>
+
