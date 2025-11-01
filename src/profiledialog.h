@@ -39,6 +39,7 @@ private slots:
   void markDirty();
   void newProfile();
   void deleteProfile();
+  void checkMssp();
 
 private:
   void loadProfiles();

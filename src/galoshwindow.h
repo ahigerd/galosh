@@ -23,6 +23,7 @@ public:
 public slots:
   void openConnectDialog();
   void openProfileDialog(ProfileDialog::Tab tab = ProfileDialog::ServerTab);
+  void openMsspDialog();
   void openConfigFolder();
   void openWebsite();
   void about();
@@ -37,12 +38,15 @@ private slots:
   void connectToProfile(const QString& profilePath);
   void reloadProfile(const QString& profilePath);
   void updateStatus();
+  void msspEvent(const QString&, const QString&);
   void gmcpEvent(const QString& key, const QVariant& value);
   void updateGeometry(bool queue = false);
   void toggleRoomDock(bool checked);
   void toggleInfoDock(bool checked);
 
 private:
+  bool msspAvailable() const;
+
   QTimer stateThrottle;
   QString currentProfile;
   TriggerManager triggers;
@@ -55,6 +59,8 @@ private:
   QDockWidget* roomDock;
   QAction* roomAction;
   RoomView* roomView;
+  QAction* msspButton;
+  QAction* msspMenu;
   QLabel* sbStatus;
   bool fixGeometry;
   bool geometryReady;

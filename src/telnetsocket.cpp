@@ -44,15 +44,18 @@ TelnetSocket::TelnetSocket(QObject* parent)
 
 QString TelnetSocket::hostname() const
 {
-  if (isConnected()) {
-    return connectedHost;
-  }
-  return QString();
+  return connectedHost;
+}
+
+quint16 TelnetSocket::port() const
+{
+  return connectedPort;
 }
 
 void TelnetSocket::connectToHost(const QString& host, quint16 port)
 {
   connectedHost = host;
+  connectedPort = port;
   tcp->connectToHost(host, port);
 }
 

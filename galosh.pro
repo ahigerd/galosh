@@ -24,6 +24,9 @@ RESOURCES += res/res.qrc
 HEADERS += src/galoshwindow.h   src/profiledialog.h   src/triggertab.h
 SOURCES += src/galoshwindow.cpp src/profiledialog.cpp src/triggertab.cpp
 
+HEADERS += src/msspview.h
+SOURCES += src/msspview.cpp
+
 # widgets
 HEADERS += src/galoshterm.h   src/roomview.h   src/commandline.h
 SOURCES += src/galoshterm.cpp src/roomview.cpp src/commandline.cpp

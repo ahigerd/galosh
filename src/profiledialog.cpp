@@ -1,5 +1,7 @@
 #include "profiledialog.h"
 #include "triggertab.h"
+#include "msspview.h"
+#include "telnetsocket.h"
 #include <QMessageBox>
 #include <QRegularExpression>
 #include <QStandardPaths>
@@ -72,7 +74,11 @@ ProfileDialog::ProfileDialog(bool forConnection, QWidget* parent)
   lServer->addRow("Profile &name:", profileName = new QLineEdit(tServer));
   lServer->addRow(horizontalLine(tServer));
   lServer->addRow("&Hostname:", hostname = new QLineEdit(tServer));
-  lServer->addRow("Por&t:", port = new QLineEdit("4000", tServer));
+  QHBoxLayout* portLayout = new QHBoxLayout;
+  portLayout->addWidget(port = new QLineEdit("4000", tServer), 1);
+  QPushButton* msspButton = new QPushButton("&MSSP...", this);
+  portLayout->addWidget(msspButton);
+  lServer->addRow("Por&t:", portLayout);
   lServer->addRow(horizontalLine(tServer));
   lServer->addRow("&Username:", username = new QLineEdit(tServer));
   lServer->addRow("&Password:", password = new QLineEdit(tServer));
@@ -115,6 +121,8 @@ ProfileDialog::ProfileDialog(bool forConnection, QWidget* parent)
 
   QSettings settings;
   restoreGeometry(settings.value("profiles").toByteArray());
+
+  QObject::connect(msspButton, SIGNAL(clicked()), this, SLOT(checkMssp()));
 }
 
 ProfileDialog::ProfileDialog(ProfileDialog::Tab openTab, QWidget* parent)
@@ -333,4 +341,9 @@ void ProfileDialog::resizeEvent(QResizeEvent*)
     QSettings settings;
     settings.setValue("profiles", saveGeometry());
   }
+}
+
+void ProfileDialog::checkMssp()
+{
+  (new MsspView(hostname->text(), port->text().toInt(), this))->open();
 }

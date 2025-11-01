@@ -3,6 +3,7 @@
 #include "telnetsocket.h"
 #include "infomodel.h"
 #include "roomview.h"
+#include "msspview.h"
 #include <QDesktopServices>
 #include <QApplication>
 #include <QMessageBox>
@@ -30,6 +31,7 @@ GaloshWindow::GaloshWindow(QWidget* parent)
   setCentralWidget(term);
 
   infoModel = new InfoModel(this);
+  QObject::connect(term->socket(), SIGNAL(msspEvent(QString, QString)), this, SLOT(msspEvent(QString, QString)));
   QObject::connect(term->socket(), SIGNAL(gmcpEvent(QString, QVariant)), this, SLOT(gmcpEvent(QString, QVariant)));
 
   infoDock = new QDockWidget(this);
@@ -61,6 +63,8 @@ GaloshWindow::GaloshWindow(QWidget* parent)
   QMenu* viewMenu = new QMenu("&View", mb);
   viewMenu->addAction("&Profiles...", this, SLOT(openProfileDialog()));
   viewMenu->addSeparator();
+  msspMenu = viewMenu->addAction("View &MSSP Info...", this, SLOT(openMsspDialog()));
+  viewMenu->addSeparator();
   roomAction = viewMenu->addAction("&Room Description", this, SLOT(toggleRoomDock(bool)));
   roomAction->setCheckable(true);
   infoAction = viewMenu->addAction("Character &Stats", this, SLOT(toggleInfoDock(bool)));
@@ -80,6 +84,8 @@ GaloshWindow::GaloshWindow(QWidget* parent)
   tb->setObjectName("toolbar");
   tb->addAction("Connect", this, SLOT(openConnectDialog()));
   tb->addAction("Triggers", [this]{ openProfileDialog(ProfileDialog::TriggersTab); });
+  tb->addSeparator();
+  msspButton = tb->addAction("MSSP", this, SLOT(openMsspDialog()));
   addToolBar(tb);
 
   QStatusBar* bar = new QStatusBar(this);
@@ -118,6 +124,8 @@ GaloshWindow::GaloshWindow(QWidget* parent)
   stateThrottle.setInterval(100);
   QObject::connect(&stateThrottle, SIGNAL(timeout()), this, SLOT(updateGeometry()));
   QObject::connect(infoView->header(), &QHeaderView::sectionResized, [this](int, int, int){ updateGeometry(true); });
+
+  updateStatus();
 }
 
 void GaloshWindow::showEvent(QShowEvent* event)
@@ -156,6 +164,14 @@ void GaloshWindow::updateStatus()
   } else {
     sbStatus->setText("Disconnected.");
   }
+  msspMenu->setEnabled(msspAvailable());
+  msspButton->setEnabled(msspAvailable());
+}
+
+void GaloshWindow::msspEvent(const QString&, const QString&)
+{
+  msspMenu->setEnabled(true);
+  msspButton->setEnabled(true);
 }
 
 void GaloshWindow::gmcpEvent(const QString& key, const QVariant& value)
@@ -284,4 +300,22 @@ void GaloshWindow::about()
   QFile html(":/about.html");
   html.open(QIODevice::ReadOnly);
   QMessageBox::about(this, "About Galosh", QString::fromUtf8(html.readAll()));
+}
+
+bool GaloshWindow::msspAvailable() const
+{
+  if (!term->socket()) {
+    return false;
+  }
+
+  return !term->socket()->hostname().isEmpty() && !term->socket()->mssp.isEmpty();
+}
+
+void GaloshWindow::openMsspDialog()
+{
+  if (!msspAvailable()) {
+    return;
+  }
+
+  (new MsspView(term->socket(), this))->open();
 }

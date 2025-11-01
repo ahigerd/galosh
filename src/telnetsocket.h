@@ -26,9 +26,9 @@ public:
   TelnetSocket(QObject* parent = nullptr);
 
   void connectToHost(const QString& host, quint16 port);
-  void disconnectFromHost();
   bool isConnected() const;
   QString hostname() const;
+  quint16 port() const;
 
   qint64 bytesAvailable() const override;
   qint64 bytesToWrite() const;
@@ -46,9 +46,10 @@ signals:
   void lineReceived(const QString& line);
 
 public slots:
-  void onReadyRead();
+  void disconnectFromHost();
 
 private slots:
+  void onReadyRead();
   void processLines();
   void checkForPrompts();
 
@@ -64,9 +65,10 @@ private:
   QTcpSocket* tcp;
   QByteArray protocolBuffer;
   QByteArray outputBuffer;
-  QString connectedHost;
   QByteArray lineBuffer;
   QTimer lineTimer;
+  QString connectedHost;
+  quint16 connectedPort;
 };
 
 using Telnet = TelnetSocket::Telnet;
