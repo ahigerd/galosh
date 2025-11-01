@@ -54,9 +54,14 @@ quint16 TelnetSocket::port() const
 
 void TelnetSocket::connectToHost(const QString& host, quint16 port)
 {
+  setHost(host, port);
+  tcp->connectToHost(host, port);
+}
+
+void TelnetSocket::setHost(const QString& host, quint16 port)
+{
   connectedHost = host;
   connectedPort = port;
-  tcp->connectToHost(host, port);
 }
 
 void TelnetSocket::disconnectFromHost()

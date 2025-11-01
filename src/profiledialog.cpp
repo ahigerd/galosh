@@ -94,6 +94,8 @@ ProfileDialog::ProfileDialog(bool forConnection, QWidget* parent)
   buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Apply | QDialogButtonBox::Close, this);
   if (forConnection) {
     buttons->button(QDialogButtonBox::Ok)->setText("&Connect");
+    QPushButton* offlineButton = buttons->addButton("&Offline", QDialogButtonBox::ActionRole);
+    QObject::connect(offlineButton, SIGNAL(clicked()), this, SLOT(loadProfileOffline()));
   }
   QObject::connect(buttons, SIGNAL(accepted()), this, SLOT(saveAndClose()));
   QObject::connect(buttons, SIGNAL(rejected()), this, SLOT(closePromptUnsaved()));
@@ -180,6 +182,18 @@ void ProfileDialog::saveAndClose()
 void ProfileDialog::closePromptUnsaved()
 {
   reject();
+}
+
+void ProfileDialog::loadProfileOffline()
+{
+  QModelIndex idx = knownProfiles->currentIndex();
+  if (idx.isValid() && save()) {
+    QSettings settings;
+    QDir dir(idx.data(Qt::UserRole).toString());
+    settings.setValue("lastProfile", dir.dirName().replace(".galosh", ""));
+    emit connectToProfile(idx.data(Qt::UserRole).toString(), false);
+    reject();
+  }
 }
 
 bool ProfileDialog::save()

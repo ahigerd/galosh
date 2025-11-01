@@ -4,6 +4,7 @@
 #include "infomodel.h"
 #include "roomview.h"
 #include "msspview.h"
+#include "exploredialog.h"
 #include <QDesktopServices>
 #include <QApplication>
 #include <QMessageBox>
@@ -20,7 +21,7 @@
 #include <QtDebug>
 
 GaloshWindow::GaloshWindow(QWidget* parent)
-: QMainWindow(parent), geometryReady(false)
+: QMainWindow(parent), explore(nullptr), lastRoomId(-1), geometryReady(false)
 {
   setCorner(Qt::TopLeftCorner, Qt::LeftDockWidgetArea);
   setCorner(Qt::BottomLeftCorner, Qt::LeftDockWidgetArea);
@@ -48,7 +49,8 @@ GaloshWindow::GaloshWindow(QWidget* parent)
   roomDock->setObjectName("roomView");
   roomView = new RoomView(this);
   roomDock->setWidget(roomView);
-  QObject::connect(roomView, SIGNAL(roomUpdated(QString)), roomDock, SLOT(setWindowTitle(QString)));
+  QObject::connect(roomView, SIGNAL(roomUpdated(QString, int)), this, SLOT(setLastRoom(QString, int)));
+  QObject::connect(roomView, SIGNAL(exploreRoom(int)), this, SLOT(exploreMap(int)));
   addDockWidget(Qt::TopDockWidgetArea, roomDock);
 
   QMenuBar* mb = new QMenuBar(this);
@@ -64,6 +66,8 @@ GaloshWindow::GaloshWindow(QWidget* parent)
   viewMenu->addAction("&Profiles...", this, SLOT(openProfileDialog()));
   viewMenu->addSeparator();
   msspMenu = viewMenu->addAction("View &MSSP Info...", this, SLOT(openMsspDialog()));
+  exploreAction = viewMenu->addAction("E&xplore Map...", this, SLOT(exploreMap()));
+  exploreAction->setEnabled(false);
   viewMenu->addSeparator();
   roomAction = viewMenu->addAction("&Room Description", this, SLOT(toggleRoomDock(bool)));
   roomAction->setCheckable(true);
@@ -201,7 +205,7 @@ void GaloshWindow::gmcpEvent(const QString& key, const QVariant& value)
 void GaloshWindow::openConnectDialog()
 {
   ProfileDialog* dlg = new ProfileDialog(true, this);
-  QObject::connect(dlg, SIGNAL(connectToProfile(QString)), this, SLOT(connectToProfile(QString)));
+  QObject::connect(dlg, SIGNAL(connectToProfile(QString, bool)), this, SLOT(connectToProfile(QString, bool)));
   dlg->open();
 }
 
@@ -212,14 +216,19 @@ void GaloshWindow::openProfileDialog(ProfileDialog::Tab tab)
   dlg->show();
 }
 
-void GaloshWindow::connectToProfile(const QString& path)
+void GaloshWindow::connectToProfile(const QString& path, bool online)
 {
   currentProfile = path;
   reloadProfile(path);
   QSettings settings(path, QSettings::IniFormat);
   settings.beginGroup("Profile");
-  term->socket()->connectToHost(settings.value("host").toString(), settings.value("port").toInt());
   map.loadProfile(path);
+  if (online) {
+    term->socket()->connectToHost(settings.value("host").toString(), settings.value("port").toInt());
+  } else {
+    term->socket()->setHost(settings.value("host").toString(), settings.value("port").toInt());
+    roomView->setRoom(&map, settings.value("lastRoom", -1).toInt());
+  }
 }
 
 void GaloshWindow::reloadProfile(const QString& path)
@@ -318,4 +327,26 @@ void GaloshWindow::openMsspDialog()
   }
 
   (new MsspView(term->socket(), this))->open();
+}
+
+void GaloshWindow::setLastRoom(const QString& title, int roomId)
+{
+  roomDock->setWindowTitle(title);
+  QSettings settings(currentProfile, QSettings::IniFormat);
+  settings.beginGroup("Profile");
+  settings.value("lastRoom", roomId);
+  lastRoomId = roomId;
+  exploreAction->setEnabled(true);
+}
+
+void GaloshWindow::exploreMap(int roomId)
+{
+  if (explore) {
+    explore->roomView()->setRoom(&map, roomId);
+    explore->refocus();
+  } else {
+    explore = new ExploreDialog(&map, roomId, lastRoomId, this);
+    QObject::connect(explore, SIGNAL(exploreRoom(int)), this, SLOT(exploreMap(int)));
+    explore->show();
+  }
 }

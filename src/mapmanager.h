@@ -16,6 +16,8 @@ struct MapExit {
 };
 
 struct MapRoom {
+  static QString normalizeDir(const QString& dir);
+
   int id;
   QString name;
   QString description;

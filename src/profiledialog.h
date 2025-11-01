@@ -28,7 +28,7 @@ protected:
   void resizeEvent(QResizeEvent*) override;
 
 signals:
-  void connectToProfile(const QString& path);
+  void connectToProfile(const QString& path, bool online = true);
   void profileUpdated(const QString& path);
 
 private slots:
@@ -36,6 +36,7 @@ private slots:
   bool save();
   void saveAndClose();
   void closePromptUnsaved();
+  void loadProfileOffline();
   void markDirty();
   void newProfile();
   void deleteProfile();

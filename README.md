@@ -28,15 +28,16 @@ descriptions, and it can keep more information about the current room visible at
 * Command history
 * Tab completion
 * Mudlet map importing
+* Offline map exploration
 
 ## Roadmap
 
 * Context-aware tab completion (spellcasting, etc.)
-* Map visualization and offline exploration
+* Map visualization
 * Item database
 * Smart aliases / custom commands
 * Speedwalking / autowalking
-* Scripting
+* Simple scripting
 * Split-screen
 * Prebuilt releases for Windows and macOS
 
