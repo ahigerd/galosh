@@ -20,6 +20,12 @@ static const QMap<QString, QString> dirAbbrev{
   { "DOWN", "D" },
 };
 
+QString MapRoom::normalizeDir(const QString& dir)
+{
+  QString norm = dir.trimmed().toUpper();
+  return dirAbbrev.value(norm, norm);
+}
+
 MapManager::MapManager(QObject* parent)
 : QObject(parent), mapFile(nullptr), currentRoom(-1), logRoomDescription(false), logExits(false), roomDirty(false)
 {
@@ -116,8 +122,7 @@ void MapManager::processLine(const QString& line)
     if (dest.toLower().contains("too dark to tell")) {
       return;
     }
-    QString dir = line.left(pos).trimmed().toUpper();
-    dir = dirAbbrev.value(dir, dir);
+    QString dir = MapRoom::normalizeDir(line.left(pos));
     if (!room->exits.contains(dir)) {
       qDebug() << "XXX: unexpected exit" << dir << dest;
     }
@@ -215,6 +220,7 @@ void MapManager::saveRoom(MapRoom* room)
   mapFile->beginGroup(QString::number(room->id));
   mapFile->setValue("name", room->name);
   mapFile->setValue("description", room->description);
+  mapFile->setValue("type", room->roomType);
   mapFile->beginGroup("exit");
 
   for (const QString& dir : room->exits.keys()) {

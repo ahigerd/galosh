@@ -2,6 +2,7 @@
 #define GALOSH_GALOSHWINDOW_H
 
 #include <QMainWindow>
+#include <QPointer>
 #include <QTimer>
 #include "triggermanager.h"
 #include "mapmanager.h"
@@ -11,6 +12,7 @@ class QTreeView;
 class GaloshTerm;
 class InfoModel;
 class RoomView;
+class ExploreDialog;
 
 class GaloshWindow : public QMainWindow
 {
@@ -26,6 +28,7 @@ public slots:
   void openMsspDialog();
   void openConfigFolder();
   void openWebsite();
+  void exploreMap(int roomId = -1);
   void about();
 
 protected:
@@ -35,11 +38,12 @@ protected:
   void resizeEvent(QResizeEvent*) override;
 
 private slots:
-  void connectToProfile(const QString& profilePath);
+  void connectToProfile(const QString& profilePath, bool online);
   void reloadProfile(const QString& profilePath);
   void updateStatus();
   void msspEvent(const QString&, const QString&);
   void gmcpEvent(const QString& key, const QVariant& value);
+  void setLastRoom(const QString& title, int roomId);
   void updateGeometry(bool queue = false);
   void toggleRoomDock(bool checked);
   void toggleInfoDock(bool checked);
@@ -52,6 +56,7 @@ private:
   TriggerManager triggers;
   MapManager map;
   GaloshTerm* term;
+  QAction* exploreAction;
   QDockWidget* infoDock;
   QAction* infoAction;
   QTreeView* infoView;
@@ -62,6 +67,8 @@ private:
   QAction* msspButton;
   QAction* msspMenu;
   QLabel* sbStatus;
+  QPointer<ExploreDialog> explore;
+  int lastRoomId;
   bool fixGeometry;
   bool geometryReady;
 };
