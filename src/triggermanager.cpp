@@ -63,7 +63,7 @@ void TriggerManager::loadProfile(const QString& profile)
   QString loginPrompt = settings.value("loginPrompt").toString();
   if (!loginPrompt.isEmpty() && !username.isEmpty()) {
     TriggerDefinition def("\x01username");
-    def.pattern.setPattern(loginPrompt);
+    def.pattern.setPattern(QRegularExpression::escape(loginPrompt));
     def.command = username;
     def.once = true;
     triggers << def;
@@ -73,7 +73,7 @@ void TriggerManager::loadProfile(const QString& profile)
   QString passwordPrompt = settings.value("passwordPrompt").toString();
   if (!passwordPrompt.isEmpty() && !password.isEmpty()) {
     TriggerDefinition def("\x01password");
-    def.pattern.setPattern(passwordPrompt);
+    def.pattern.setPattern(QRegularExpression::escape(passwordPrompt));
     def.command = password;
     def.once = true;
     def.echo = false;

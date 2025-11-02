@@ -105,10 +105,11 @@ GaloshWindow::GaloshWindow(QWidget* parent)
 
   QObject::connect(term, SIGNAL(lineReceived(QString)), &map, SLOT(processLine(QString)));
   QObject::connect(term, SIGNAL(lineReceived(QString)), &triggers, SLOT(processLine(QString)), Qt::QueuedConnection);
+  QObject::connect(term, SIGNAL(commandEntered(QString, bool)), &map, SLOT(commandEntered(QString, bool)), Qt::QueuedConnection);
 
   QObject::connect(term->socket(), SIGNAL(connected()), this, SLOT(updateStatus()));
   QObject::connect(term->socket(), SIGNAL(disconnected()), this, SLOT(updateStatus()));
-  QObject::connect(term->socket(), SIGNAL(msspEvent(QString, QString)), &map, SLOT(msspEvent(QString, QString)));
+  QObject::connect(term->socket(), SIGNAL(promptWaiting()), &map, SLOT(promptWaiting()));
   QObject::connect(term->socket(), SIGNAL(gmcpEvent(QString, QVariant)), &map, SLOT(gmcpEvent(QString, QVariant)));
 
   QObject::connect(&triggers, SIGNAL(executeCommand(QString, bool)), term, SLOT(executeCommand(QString, bool)), Qt::QueuedConnection);

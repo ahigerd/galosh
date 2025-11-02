@@ -113,7 +113,7 @@ ProfileDialog::ProfileDialog(bool forConnection, QWidget* parent)
   resize(minimumSizeHint());
 
   for (int i = 0; i < tabs->count(); i++) {
-    for (QObject* w : tabs->children()) {
+    for (QObject* w : tabs->widget(i)->children()) {
       if (qobject_cast<QLineEdit*>(w)) {
         QObject::connect(w, SIGNAL(textEdited(QString)), this, SLOT(markDirty()));
       }

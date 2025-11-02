@@ -34,7 +34,12 @@ TelnetSocket::TelnetSocket(QObject* parent)
 : QIODevice(parent)
 {
   setOpenMode(QIODevice::ReadWrite);
+
   tcp = new QTcpSocket(this);
+
+  lineTimer.setInterval(250);
+  lineTimer.setSingleShot(true);
+
   QObject::connect(tcp, SIGNAL(connected()), this, SIGNAL(connected()));
   QObject::connect(tcp, SIGNAL(disconnected()), this, SIGNAL(disconnected()));
   QObject::connect(tcp, SIGNAL(errorOccurred(QAbstractSocket::SocketError)), this, SIGNAL(errorOccurred(QAbstractSocket::SocketError)));
@@ -148,7 +153,7 @@ qint64 TelnetSocket::readData(char* data, qint64 maxSize)
   if (lineBuffer.contains('\n')) {
     QTimer::singleShot(0, this, SLOT(processLines()));
   } else {
-    lineTimer.start(100);
+    lineTimer.start();
   }
 
   return size;
@@ -242,7 +247,7 @@ void TelnetSocket::processLines()
   if (lineBuffer.isEmpty()) {
     lineTimer.stop();
   } else {
-    lineTimer.start(100);
+    lineTimer.start();
   }
 }
 
@@ -253,5 +258,6 @@ void TelnetSocket::checkForPrompts()
     return;
   }
   emit lineReceived(stripVT100(lineBuffer));
+  emit promptWaiting();
   lineBuffer.clear();
 }

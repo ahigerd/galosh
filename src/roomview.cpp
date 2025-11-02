@@ -72,7 +72,11 @@ void RoomView::setRoom(MapManager* map, int roomId)
   }
   const MapRoom* room = map ? map->room(roomId) : nullptr;
   if (room) {
-    QString title = QStringLiteral("%3: %1 [%2]").arg(room->name).arg(room->id).arg(room->zone);
+    QString title;
+    if (!room->zone.isEmpty()) {
+      title = room->zone + ": ";
+    }
+    title += QStringLiteral("%1 [%2]").arg(room->name).arg(room->id);
     if (!room->roomType.isEmpty()) {
       title += QStringLiteral(" (%1)").arg(room->roomType);
     }
@@ -103,7 +107,7 @@ void RoomView::setRoom(MapManager* map, int roomId)
         destName += QStringLiteral(" [%1]").arg(exit.dest);
       }
       QListWidgetItem* item = new QListWidgetItem;
-      item->setText(QStringLiteral("%1: %2%3").arg(dir).arg(destName).arg(status));
+      item->setText(QStringLiteral("%1: %2%3").arg(dir == "SOMEWHERE" ? "?" : dir).arg(destName).arg(status));
       item->setData(Qt::UserRole, exit.dest);
       exits->addItem(item);
     }

@@ -20,6 +20,24 @@ static const QMap<QString, QString> dirAbbrev{
   { "DOWN", "D" },
 };
 
+static const QMap<QString, QString> reverseDir{
+  { "N", "S" },
+  { "S", "N" },
+  { "W", "E" },
+  { "E", "W" },
+  { "NW", "SE" },
+  { "SE", "NW" },
+  { "NE", "SW" },
+  { "SW", "NE" },
+  { "IN", "OUT" },
+  { "OUT", "IN" },
+  { "U", "D" },
+  { "D", "U" },
+  { "ENTER", "LEAVE" },
+  { "LEAVE", "ENTER" },
+  { "SOMEWHERE", "SOMEWHERE" },
+};
+
 QString MapRoom::normalizeDir(const QString& dir)
 {
   QString norm = dir.trimmed().toUpper();
@@ -27,7 +45,8 @@ QString MapRoom::normalizeDir(const QString& dir)
 }
 
 MapManager::MapManager(QObject* parent)
-: QObject(parent), mapFile(nullptr), currentRoom(-1), logRoomDescription(false), logExits(false), roomDirty(false)
+: QObject(parent), mapFile(nullptr), gmcpMode(false), logRoomLegacy(false), logRoomDescription(false), logExits(false), roomDirty(false),
+  autoRoomId(1), currentRoom(-1), destinationRoom(-1), previousRoom(-1)
 {
   // initializers only
 }
@@ -53,11 +72,8 @@ void MapManager::loadMap(const QString& mapFileName)
   }
   mapFile = new QSettings(mapFileName, QSettings::IniFormat, this);
   rooms.clear();
-  pendingDescription.clear();
-  currentRoom = -1;
-  logRoomDescription = false;
-  logExits = false;
-  roomDirty = false;
+  endRoomCapture();
+  autoRoomId = mapFile->value("autoID", 1).toInt();
 
   for (const QString& zone : mapFile->childGroups()) {
     mapFile->beginGroup(zone);
@@ -69,7 +85,7 @@ void MapManager::loadMap(const QString& mapFileName)
       }
       mapFile->beginGroup(idStr);
       MapRoom& room = *mutableRoom(id);
-      room.zone = zone;
+      room.zone = zone == "-" ? "" : zone;
       room.name = mapFile->value("name").toString();
       room.description = mapFile->value("description").toString();
       mapFile->beginGroup("exit");
@@ -92,17 +108,171 @@ void MapManager::loadMap(const QString& mapFileName)
   }
 }
 
+void MapManager::promptWaiting()
+{
+  if (logRoomLegacy) {
+    // We didn't get a recognized room description, and now we have a prompt
+    pendingLines.clear();
+    logRoomLegacy = false;
+  }
+}
+
+void MapManager::commandEntered(const QString& rawCommand, bool echo)
+{
+  if (gmcpMode || !echo) {
+    // Using GMCP automapping or entering a password
+    return;
+  }
+  pendingLines.clear();
+  if (logRoomLegacy) {
+    // Moving too quickly
+    qDebug() << "moving too quickly" << rawCommand;
+    logRoomLegacy = false;
+    return;
+  }
+  QStringList command = rawCommand.simplified().toUpper().split(' ');
+  if (command.length() > 1) {
+    if (command[0] != "GO" || command.length() > 2) {
+      return;
+    }
+    command.takeFirst();
+  }
+  QString dir = MapRoom::normalizeDir(command.first());
+  bool isLook = QStringLiteral("LOOK").startsWith(dir);
+  if (isLook && currentRoom < 0) {
+    // Can't correlate unknown position
+    return;
+  }
+  // TODO: "enter" could have a second parameter
+  // TODO: special exits
+  if (reverseDir.contains(dir) || isLook || dir == "ENTER" || dir == "LEAVE") {
+    if (currentRoom >= 0 && (dir == "ENTER" || dir == "LEAVE") && rooms[currentRoom].exits.contains("SOMEWHERE")) {
+      dir = "SOMEWHERE";
+    }
+    destinationDir = dir;
+    if (isLook) {
+      destinationRoom = currentRoom;
+    } else if (currentRoom < 0) {
+      destinationRoom = autoRoomId++;
+    } else if (rooms[currentRoom].exits.contains(dir)) {
+      MapRoom* room = mutableRoom(currentRoom);
+      int dest = room->exits.value(dir).dest;
+      if (dest < 0) {
+        room->exits[dir].dest = dest = autoRoomId++;
+      }
+      destinationRoom = dest;
+    } else {
+      qDebug() << "unknown exit from " << currentRoom << dir;
+      return;
+    }
+    logRoomLegacy = true;
+    logRoomDescription = false;
+    logExits = false;
+  }
+}
+
 void MapManager::processLine(const QString& line)
 {
+  if (logRoomLegacy) {
+    if (line.startsWith("Obvious exits:") || line.startsWith("Exits:")) {
+      if (line.startsWith("Obvious exits:") && pendingLines.isEmpty()) {
+        logExits = true;
+      } else if (pendingLines.isEmpty()) {
+        logRoomLegacy = false;
+        return;
+      } else {
+        // TODO: figure out if we're not where we think we are (description hashing?)
+        if (currentRoom >= 0 && destinationRoom >= 0 && currentRoom != destinationRoom) {
+          MapRoom* room = mutableRoom(destinationRoom);
+          QString back = reverseDir.value(destinationDir);
+          if (!back.isEmpty() && room->exits.contains(back)) {
+            if (room->exits[back].dest < 0) {
+              room->exits[back].dest = currentRoom;
+            } else if (room->exits[back].dest != currentRoom) {
+              qDebug() << "not where we thought we were!";
+            }
+          }
+        }
+        previousRoom = currentRoom;
+        if (destinationRoom < 0) {
+          currentRoom = autoRoomId++;
+        } else {
+          currentRoom = destinationRoom;
+        }
+        MapRoom* room = mutableRoom(currentRoom);
+        QString roomName = pendingLines.takeFirst();
+        if (room->name.isEmpty() || destinationDir == "LOOK") {
+          roomDirty = true;
+          room->name = roomName;
+        } else if (pendingLines.isEmpty() && room->name != roomName) {
+          qDebug() << "not a room maybe?";
+          endRoomCapture();
+          return;
+        }
+        if (pendingLines.isEmpty()) {
+          pendingDescription.clear();
+        } else {
+          pendingDescription = ">" + pendingLines.join('\n');
+          roomDirty = true;
+        }
+        destinationRoom = -1;
+        logRoomLegacy = false;
+        logRoomDescription = true;
+      }
+    } else {
+      if (pendingLines.isEmpty()) {
+        QString parsed = line.simplified();
+        while (parsed.length() > 0 && (parsed.back() == ' ' || parsed.back() == '.')) {
+          parsed.chop(1);
+        }
+        if (parsed.isEmpty() || parsed.toLower() == "ok") {
+          // ignore blank lines after prompt
+          return;
+        }
+      }
+      pendingLines << line;
+      return;
+    }
+  }
   if (logRoomDescription) {
-    if (line.startsWith("Obvious exits:")) {
+    if (line.startsWith("Obvious exits:") || line.startsWith("Exits:")) {
       logRoomDescription = false;
       pendingDescription = pendingDescription.trimmed().mid(1);
-      if (roomDirty) {
-        rooms[currentRoom].description = pendingDescription;
-        saveRoom(&rooms[currentRoom]);
-        emit currentRoomUpdated(this, currentRoom);
+      bool exitsDirty = false;
+      if (line.startsWith("Exits:")) {
+        QStringList exits = line.mid(6).trimmed().split(' ');
+        MapRoom& room = rooms[currentRoom];
+        QString back = reverseDir.value(destinationDir);
+        for (QString exit : exits) {
+          bool locked = exit.startsWith('[');
+          if (locked) {
+            exit = exit.mid(1, exit.length() - 2);
+          }
+          exit = MapRoom::normalizeDir(exit);
+          if (!room.exits.contains(exit)) {
+            if (exit == back) {
+              room.exits[exit].dest = previousRoom;
+            } else {
+              room.exits[exit].dest = -1;
+            }
+            exitsDirty = true;
+          }
+          if (locked && !room.exits[exit].door) {
+            room.exits[exit].door = true;
+            room.exits[exit].open = false;
+            room.exits[exit].locked = true;
+            room.exits[exit].lockable = true;
+            exitsDirty = true;
+          }
+        }
       }
+      if (roomDirty || exitsDirty) {
+        if (roomDirty) {
+          rooms[currentRoom].description = pendingDescription;
+        }
+        saveRoom(&rooms[currentRoom]);
+      }
+      emit currentRoomUpdated(this, currentRoom);
     } else {
       roomDirty = true;
       pendingDescription += line + "\n";
@@ -112,6 +282,7 @@ void MapManager::processLine(const QString& line)
     int pos = line.indexOf(" - ");
     if (pos < 0) {
       logExits = false;
+      endRoomCapture();
       if (roomDirty) {
         saveRoom(&rooms[currentRoom]);
         emit currentRoomUpdated(this, currentRoom);
@@ -127,8 +298,12 @@ void MapManager::processLine(const QString& line)
       qDebug() << "XXX: unexpected exit" << dir << dest;
     }
     int destId = room->exits[dir].dest;
+    if (destId < 0) {
+      room->exits[dir].dest = destId = autoRoomId++;
+    }
     MapRoom* destRoom = &rooms[destId];
     if (destRoom->name.isEmpty()) {
+      // TODO: in legacy mode, detect if we're in an unexpected place
       destRoom->name = dest;
       roomDirty = true;
     }
@@ -140,18 +315,12 @@ void MapManager::processLine(const QString& line)
   }
 }
 
-void MapManager::msspEvent(const QString& key, const QString& value)
-{
-  Q_UNUSED(key);
-  Q_UNUSED(value);
-  qDebug() << "MSSP" << key << value;
-}
-
 void MapManager::gmcpEvent(const QString& key, const QVariant& value)
 {
   Q_UNUSED(key);
   Q_UNUSED(value);
   if (key.toUpper() == "ROOM") {
+    gmcpMode = true;
     updateRoom(value.toMap());
   } else if (key.toUpper() == "CLIENT.MAP") {
     QVariantMap map = value.toMap();
@@ -210,13 +379,35 @@ MapRoom* MapManager::mutableRoom(int id)
   return room;
 }
 
+void MapManager::endRoomCapture()
+{
+  destinationRoom = -1;
+  previousRoom = -1;
+  pendingDescription.clear();
+  pendingLines.clear();
+  roomDirty = false;
+  destinationDir.clear();
+  logRoomLegacy = false;
+  logRoomDescription = false;
+  logExits = false;
+}
+
 void MapManager::saveRoom(MapRoom* room)
 {
   if (!mapFile) {
     qWarning("Cannot save room when no map file is loaded");
     return;
   }
-  mapFile->beginGroup(room->zone);
+
+  if (!gmcpMode) {
+    mapFile->setValue("autoID", autoRoomId);
+  }
+
+  if (room->zone.isEmpty() && gmcpMode) {
+    qWarning() << "No zone in GMCP mode";
+  }
+
+  mapFile->beginGroup(room->zone.isEmpty() ? "-" : room->zone);
   mapFile->beginGroup(QString::number(room->id));
   mapFile->setValue("name", room->name);
   mapFile->setValue("description", room->description);

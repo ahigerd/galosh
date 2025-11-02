@@ -45,6 +45,7 @@ signals:
   void msspEvent(const QString& key, const QString& value);
   void gmcpEvent(const QString& key, const QVariant& value);
   void lineReceived(const QString& line);
+  void promptWaiting();
 
 public slots:
   void disconnectFromHost();

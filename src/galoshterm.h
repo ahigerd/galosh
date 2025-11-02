@@ -27,6 +27,7 @@ public:
 
 signals:
   void lineReceived(const QString& line);
+  void commandEntered(const QString& command, bool echo = true);
 
 public slots:
   void executeCommand(const QString& command, bool echo = true);

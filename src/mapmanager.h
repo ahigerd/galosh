@@ -8,11 +8,11 @@ class QSettings;
 
 struct MapExit {
   QString name;
-  int dest;
-  bool door;
-  bool open;
-  bool locked;
-  bool lockable;
+  int dest = -1;
+  bool door = false;
+  bool open = false;
+  bool locked = false;
+  bool lockable = false;
 };
 
 struct MapRoom {
@@ -43,20 +43,29 @@ public slots:
   void loadProfile(const QString& profile);
   void loadMap(const QString& filename);
   void processLine(const QString& line);
-  void msspEvent(const QString& key, const QString& value);
   void gmcpEvent(const QString& key, const QVariant& value);
+  void promptWaiting();
+  void commandEntered(const QString& command, bool echo);
 
 private:
   void downloadMap(const QString& url);
   void updateRoom(const QVariantMap& info);
+  void endRoomCapture();
 
   QSettings* mapFile;
   QMap<int, MapRoom> rooms;
-  int currentRoom;
+  bool gmcpMode;
+  bool logRoomLegacy;
   bool logRoomDescription;
   bool logExits;
   bool roomDirty;
   QString pendingDescription;
+  QStringList pendingLines;
+  int autoRoomId;
+  int currentRoom;
+  int destinationRoom;
+  int previousRoom;
+  QString destinationDir;
 };
 
 #endif
