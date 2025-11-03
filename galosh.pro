@@ -10,8 +10,8 @@ UI_DIR = .build
 
 win32 {
   SOURCES += src/mman-win32/mman.c
-  DEFINES += HAVE_ICU
-  LIBS += -licu
+  # DEFINES += HAVE_ICU
+  # LIBS += -licu
   RESOURCES += res/res-win.qrc
 }
 else {

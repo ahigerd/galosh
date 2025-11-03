@@ -127,7 +127,14 @@ void TelnetSocket::setHost(const QString& host, quint16 port)
 void TelnetSocket::disconnectFromHost()
 {
   if (program) {
+    pty->close();
+    program->close();
     program->terminate();
+    program->waitForFinished(1000);
+    program->kill();
+    if (program) {
+      program->deleteLater();
+    }
   } else {
     tcp->disconnectFromHost();
   }

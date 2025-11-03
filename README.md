@@ -19,6 +19,7 @@ descriptions, and it can keep more information about the current room visible at
 
 * Cross-platform (Windows, macOS, X11, Wayland)
 * ANSI/VT100/VT102 formatting support
+* Works with Telnet and plain text connections and local text-based programs
 * [MSSP](https://mudstandards.org/mud/mssp) protocol support
 * [GMCP](https://mudstandards.org/mud/gmcp) protocol support
 * Multiple saved profiles

@@ -38,7 +38,8 @@ int konsole_wcwidth(wchar_t ucs)
       return 0;
     }
     return 1;
-#elif Q_OS_WIN
+#elif defined(Q_OS_WIN)
+    Q_UNUSED(ucs);
     return 1;
 #else
     return wcwidth( ucs );
