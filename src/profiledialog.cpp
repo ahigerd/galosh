@@ -12,6 +12,8 @@
 #include <QStandardItemModel>
 #include <QFileDialog>
 #include <QDialogButtonBox>
+#include <QRadioButton>
+#include <QButtonGroup>
 #include <QPushButton>
 #include <QFormLayout>
 #include <QGridLayout>
@@ -73,18 +75,36 @@ ProfileDialog::ProfileDialog(bool forConnection, QWidget* parent)
 
   lServer->addRow("Profile &name:", profileName = new QLineEdit(tServer));
   lServer->addRow(horizontalLine(tServer));
-  lServer->addRow("&Hostname:", hostname = new QLineEdit(tServer));
+
+  QHBoxLayout* lRadio = new QHBoxLayout;
+  lRadio->addWidget(oServer = new QRadioButton("Connect to a &server", tServer), 1);
+  lRadio->addWidget(oProgram = new QRadioButton("Run a p&rogram", tServer), 1);
+  QButtonGroup* group = new QButtonGroup(this);
+  group->addButton(oServer, 0);
+  group->addButton(oProgram, 1);
+  oServer->setChecked(true);
+  lServer->addRow(lRadio);
+  QObject::connect(oServer, SIGNAL(clicked()), this, SLOT(toggleServerOrProgram()));
+  QObject::connect(oProgram, SIGNAL(clicked()), this, SLOT(toggleServerOrProgram()));
+
+  lServer->addRow(hostLabel = new QLabel("&Hostname:", tServer), hostname = new QLineEdit(tServer));
+  hostLabel->setBuddy(hostname);
   QHBoxLayout* portLayout = new QHBoxLayout;
   portLayout->addWidget(port = new QLineEdit("4000", tServer), 1);
-  QPushButton* msspButton = new QPushButton("&MSSP...", this);
+  msspButton = new QPushButton("&MSSP...", this);
   portLayout->addWidget(msspButton);
-  lServer->addRow("Por&t:", portLayout);
+  lServer->addRow(portLabel = new QLabel("Por&t:", tServer), portLayout);
+  portLabel->setBuddy(port);
+
+  //lServer->addRow("&Command:", commandLine = new QLineEdit(tServer));
   lServer->addRow(horizontalLine(tServer));
+
   lServer->addRow("&Username:", username = new QLineEdit(tServer));
   lServer->addRow("&Password:", password = new QLineEdit(tServer));
   lServer->addRow("", new QLabel("<i>Note: passwords are saved in plaintext</i>"));
   lServer->addRow(horizontalLine(tServer));
-  lServer->addRow("U&sername prompt:", loginPrompt = new QLineEdit(defaultLoginPrompt, tServer));
+
+  lServer->addRow("Us&ername prompt:", loginPrompt = new QLineEdit(defaultLoginPrompt, tServer));
   lServer->addRow("P&assword prompt:", passwordPrompt = new QLineEdit(defaultPasswordPrompt, tServer));
   tServer->setMinimumWidth(400);
 
@@ -125,6 +145,7 @@ ProfileDialog::ProfileDialog(bool forConnection, QWidget* parent)
   restoreGeometry(settings.value("profiles").toByteArray());
 
   QObject::connect(msspButton, SIGNAL(clicked()), this, SLOT(checkMssp()));
+  toggleServerOrProgram();
 }
 
 ProfileDialog::ProfileDialog(ProfileDialog::Tab openTab, QWidget* parent)
@@ -237,8 +258,15 @@ bool ProfileDialog::save()
   if (!saveError) {
     settings.beginGroup("Profile");
     settings.setValue("name", profileName->text().trimmed());
-    settings.setValue("host", hostname->text().trimmed());
-    settings.setValue("port", port->text().toInt());
+    if (oServer->isChecked()) {
+      settings.setValue("host", hostname->text().trimmed());
+      settings.setValue("port", port->text().toInt());
+      settings.remove("commandLine");
+    } else {
+      settings.remove("host");
+      settings.remove("port");
+      settings.setValue("commandLine", hostname->text().trimmed());
+    }
     settings.setValue("username", username->text().trimmed());
     settings.setValue("password", password->text());
     settings.setValue("loginPrompt", loginPrompt->text().trimmed());
@@ -333,12 +361,21 @@ bool ProfileDialog::loadProfile(const QString& path)
   }
   settings.beginGroup("Profile");
   profileName->setText(settings.value("name").toString());
-  hostname->setText(settings.value("host").toString());
-  port->setText(QString::number(settings.value("port").toInt()));
+  QString command = settings.value("commandLine").toString();
+  if (command.isEmpty()) {
+    oServer->setChecked(true);
+    hostname->setText(settings.value("host").toString());
+    port->setText(QString::number(settings.value("port").toInt()));
+  } else {
+    oProgram->setChecked(true);
+    hostname->setText(command);
+    port->clear();
+  }
   username->setText(settings.value("username").toString());
   password->setText(settings.value("password").toString());
   loginPrompt->setText(settings.value("loginPrompt").toString());
   passwordPrompt->setText(settings.value("passwordPrompt").toString());
+  toggleServerOrProgram();
 
   tTriggers->load(path);
   return true;
@@ -360,4 +397,14 @@ void ProfileDialog::resizeEvent(QResizeEvent*)
 void ProfileDialog::checkMssp()
 {
   (new MsspView(hostname->text(), port->text().toInt(), this))->open();
+}
+
+void ProfileDialog::toggleServerOrProgram()
+{
+  bool server = oServer->isChecked();
+  hostLabel->setText(server ? "&Hostname:" : "Pro&gram:");
+  port->setEnabled(server);
+  portLabel->setEnabled(server);
+  msspButton->setEnabled(server);
+  dirty = true;
 }

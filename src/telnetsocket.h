@@ -2,9 +2,11 @@
 #define GALOSH_TELNETSOCKET_H
 
 #include <QTcpSocket>
+#include <QPointer>
 #include <QTimer>
 #include <QMetaEnum>
 #include <QHash>
+class QProcess;
 
 class TelnetSocket : public QIODevice
 {
@@ -25,6 +27,7 @@ public:
 
   TelnetSocket(QObject* parent = nullptr);
 
+  void connectCommand(const QString& command);
   void connectToHost(const QString& host, quint16 port);
   void setHost(const QString& host, quint16 port);
   bool isConnected() const;
@@ -54,6 +57,7 @@ private slots:
   void onReadyRead();
   void processLines();
   void checkForPrompts();
+  void childStarted();
 
 protected:
   qint64 readData(char* data, qint64 maxSize) override;
@@ -64,6 +68,8 @@ private:
   void telnetWill(quint8 option, bool wont);
   void telnetSB(quint8 option, const QByteArray& payload);
 
+  QPointer<QIODevice> pty;
+  QPointer<QProcess> program;
   QTcpSocket* tcp;
   QByteArray protocolBuffer;
   QByteArray outputBuffer;

@@ -1,4 +1,9 @@
 #include "telnetsocket.h"
+#ifndef Q_OS_WIN
+#include "kptyprocess.h"
+#include <termios.h>
+#endif
+#include <QProcess>
 #include <QJsonDocument>
 #include <QtDebug>
 #include <map>
@@ -57,6 +62,56 @@ quint16 TelnetSocket::port() const
   return connectedPort;
 }
 
+void TelnetSocket::connectCommand(const QString& command)
+{
+  QStringList args = QProcess::splitCommand(command);
+  if (args.isEmpty()) {
+    return;
+  }
+  connectedHost = args.takeFirst();
+  connectedPort = 65535;
+
+  QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
+  env.insert("TERM", "xterm-256color");
+  env.insert("COLORFGBG", "12;0");
+#ifdef Q_OS_WIN
+  QProcess* p = new QProcess(this);
+  program = p;
+  pty = p;
+  p->setProcessChannelMode(QProcess::MergedChannels);
+  p->setProgram(connectedHost);
+  p->setArguments(args);
+#else
+  KPtyProcess* p = new KPtyProcess(this);
+  p->setPtyChannels(KPtyProcess::AllChannels);
+  p->setUseUtmp(true);
+  p->setProgram(connectedHost, args);
+  program = p;
+  pty = p->pty();
+
+  auto oldSetup = p->childProcessModifier();
+  p->setChildProcessModifier([p, oldSetup]{
+    if (oldSetup) {
+      oldSetup();
+    }
+
+    struct ::termios ttmode;
+    p->pty()->tcGetAttr(&ttmode);
+    ttmode.c_iflag |= IUTF8;
+    ttmode.c_lflag &= ~(ECHO | ICANON);
+    ttmode.c_oflag |= IGNCR;
+    p->pty()->tcSetAttr(&ttmode);
+  });
+#endif
+  program->setProcessEnvironment(env);
+
+  QObject::connect(program, SIGNAL(started()), this, SLOT(childStarted()));
+  QObject::connect(program, SIGNAL(finished(int, QProcess::ExitStatus)), this, SIGNAL(disconnected()));
+  QObject::connect(program, SIGNAL(finished(int, QProcess::ExitStatus)), program, SLOT(deleteLater()));
+
+  p->start();
+}
+
 void TelnetSocket::connectToHost(const QString& host, quint16 port)
 {
   setHost(host, port);
@@ -71,12 +126,26 @@ void TelnetSocket::setHost(const QString& host, quint16 port)
 
 void TelnetSocket::disconnectFromHost()
 {
-  tcp->disconnectFromHost();
+  if (program) {
+    program->terminate();
+  } else {
+    tcp->disconnectFromHost();
+  }
 }
 
 bool TelnetSocket::isConnected() const
 {
+  if (program) {
+    return true;
+  }
   return tcp->state() != QAbstractSocket::UnconnectedState;
+}
+
+void TelnetSocket::childStarted()
+{
+  emit connected();
+  QObject::connect(pty, SIGNAL(readyRead()), this, SLOT(onReadyRead()), Qt::QueuedConnection);
+  onReadyRead();
 }
 
 qint64 TelnetSocket::bytesAvailable() const
@@ -86,12 +155,23 @@ qint64 TelnetSocket::bytesAvailable() const
 
 qint64 TelnetSocket::bytesToWrite() const
 {
-  return tcp->bytesToWrite();
+  if (program) {
+    return pty ? pty->bytesToWrite() : 0;
+  } else {
+    return tcp->bytesToWrite();
+  }
 }
 
 void TelnetSocket::onReadyRead()
 {
-  protocolBuffer += tcp->read(tcp->bytesAvailable());
+  if (program) {
+    if (!pty) {
+      return;
+    }
+    protocolBuffer += pty->read(pty->bytesAvailable());
+  } else {
+    protocolBuffer += tcp->read(tcp->bytesAvailable());
+  }
   qint64 len = protocolBuffer.size();
   if (!len) {
     return;
@@ -162,7 +242,17 @@ qint64 TelnetSocket::readData(char* data, qint64 maxSize)
 qint64 TelnetSocket::writeData(const char* data, qint64 maxSize)
 {
   // qDebug() << "<<<<<<" << QByteArray(data, maxSize).toHex();
-  return tcp->write(data, maxSize);
+  if (program) {
+    QByteArray modified = QByteArray::fromRawData(data, maxSize).replace("\r\n", "\n");
+    qint64 offset = maxSize - modified.size();
+    qint64 result = pty->write(modified.constData(), modified.size());
+    if (result <= 0) {
+      return result;
+    }
+    return result + offset;
+  } else {
+    return tcp->write(data, maxSize);
+  }
 }
 
 void TelnetSocket::telnetDo(quint8 option, bool dont)

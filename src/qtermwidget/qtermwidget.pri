@@ -12,3 +12,14 @@ SOURCES += $$PWD/TerminalCharacterDecoder.cpp $$PWD/BlockArray.cpp
 
 HEADERS += $$PWD/Vt102Emulation.h $$PWD/Character.h $$PWD/CharacterColor.h
 SOURCES += $$PWD/Vt102Emulation.cpp
+
+unix {
+  macx {
+    DEFINES += HAVE_UTMPX UTMPX_COMPAT
+  }
+  else {
+    DEFINES += HAVE_OPENPTY HAVE_PTY_H HAVE_UPDWTMPX
+  }
+  HEADERS += $$PWD/kpty.h   $$PWD/kptydevice.h   $$PWD/kptyprocess.h   $$PWD/kprocess.h   $$PWD/kpty_p.h
+  SOURCES += $$PWD/kpty.cpp $$PWD/kptydevice.cpp $$PWD/kptyprocess.cpp $$PWD/kprocess.cpp
+}

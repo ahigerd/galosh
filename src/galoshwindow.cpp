@@ -58,6 +58,7 @@ GaloshWindow::GaloshWindow(QWidget* parent)
 
   QMenu* fileMenu = new QMenu("&File", mb);
   fileMenu->addAction("&Connect...", this, SLOT(openConnectDialog()));
+  fileMenu->addAction("&Disconnect...", term->socket(), SLOT(disconnectFromHost()));
   fileMenu->addSeparator();
   fileMenu->addAction("E&xit", qApp, SLOT(quit()));
   mb->addMenu(fileMenu);
@@ -87,6 +88,7 @@ GaloshWindow::GaloshWindow(QWidget* parent)
   QToolBar* tb = new QToolBar(this);
   tb->setObjectName("toolbar");
   tb->addAction("Connect", this, SLOT(openConnectDialog()));
+  tb->addAction("Disconnect", term->socket(), SLOT(disconnectFromHost()));
   tb->addAction("Triggers", [this]{ openProfileDialog(ProfileDialog::TriggersTab); });
   tb->addSeparator();
   msspButton = tb->addAction("MSSP", this, SLOT(openMsspDialog()));
@@ -225,7 +227,12 @@ void GaloshWindow::connectToProfile(const QString& path, bool online)
   settings.beginGroup("Profile");
   map.loadProfile(path);
   if (online) {
-    term->socket()->connectToHost(settings.value("host").toString(), settings.value("port").toInt());
+    QString command = settings.value("commandLine").toString();
+    if (command.isEmpty()) {
+      term->socket()->connectToHost(settings.value("host").toString(), settings.value("port").toInt());
+    } else {
+      term->socket()->connectCommand(command);
+    }
   } else {
     term->socket()->setHost(settings.value("host").toString(), settings.value("port").toInt());
     roomView->setRoom(&map, settings.value("lastRoom", -1).toInt());

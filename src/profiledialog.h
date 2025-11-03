@@ -3,8 +3,11 @@
 
 #include <QDialog>
 class QTabWidget;
+class QFormLayout;
 class QListView;
 class QLineEdit;
+class QRadioButton;
+class QLabel;
 class QStandardItemModel;
 class QDialogButtonBox;
 class TriggerTab;
@@ -41,6 +44,7 @@ private slots:
   void newProfile();
   void deleteProfile();
   void checkMssp();
+  void toggleServerOrProgram();
 
 private:
   void loadProfiles();
@@ -49,9 +53,15 @@ private:
   QListView* knownProfiles;
   QStandardItemModel* profileList;
   QTabWidget* tabs;
+
   QLineEdit* profileName;
+  QRadioButton* oServer;
+  QRadioButton* oProgram;
   QLineEdit* hostname;
+  QLabel* hostLabel;
   QLineEdit* port;
+  QLabel* portLabel;
+  QPushButton* msspButton;
   QLineEdit* username;
   QLineEdit* password;
   QLineEdit* loginPrompt;
