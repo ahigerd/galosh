@@ -10,7 +10,7 @@
 #include <QtDebug>
 
 ExploreDialog::ExploreDialog(MapManager* map, int roomId, int lastRoomId, const QString& movement, QWidget* parent)
-: QDialog(parent), map(map)
+: QDialog(parent), map(map), history(map)
 {
   setWindowFlag(Qt::Dialog, true);
   setWindowFlag(Qt::WindowStaysOnTopHint, true);
@@ -47,11 +47,11 @@ ExploreDialog::ExploreDialog(MapManager* map, int roomId, int lastRoomId, const 
 
   const MapRoom* room = nullptr;
   if (lastRoomId != -1) {
-    addHistory(lastRoomId, "");
+    history.goTo(lastRoomId);
     room = map->room(lastRoomId);
   }
   if (roomId != -1) {
-    addHistory(roomId, movement);
+    history.travel(movement, roomId);
     room = map->room(lastRoomId);
   }
   if (room) {
@@ -66,21 +66,8 @@ ExploreDialog::ExploreDialog(MapManager* map, int roomId, int lastRoomId, const 
 void ExploreDialog::roomUpdated(const QString& title, int id, const QString& movement)
 {
   setWindowTitle(title);
-  addHistory(id, movement);
-  backButton->setEnabled(roomHistory.size() > 1);
-}
-
-void ExploreDialog::addHistory(int id, const QString& movement)
-{
-  if (id > 0) {
-    QPair<int, QString> back(-1, "");
-    if (!roomHistory.isEmpty()) {
-      back = roomHistory.back();
-    }
-    if (back.first != id || (!back.second.isEmpty() && back.second != movement)) {
-      roomHistory << qMakePair(id, movement);
-    }
-  }
+  history.travel(movement, id);
+  backButton->setEnabled(history.canGoBack());
 }
 
 void ExploreDialog::doCommand()
@@ -92,7 +79,7 @@ void ExploreDialog::doCommand()
 
   clearResponse();
   if (MapRoom::isDir(dir)) {
-    int dest = room->exitDestination(dir);
+    int dest = history.travel(dir);
     if (dest < 0) {
       setResponse(true);
     } else {
@@ -155,18 +142,41 @@ void ExploreDialog::clearResponse()
 
 void ExploreDialog::do_BACK()
 {
-  if (roomHistory.size() < 2) {
+  if (!history.canGoBack()) {
     setResponse(true, "No room to go back to.");
     return;
   }
-  roomHistory.takeLast();
-  auto back = roomHistory.takeLast();
-  emit exploreRoom(back.first, back.second);
+  int roomId = history.back();
+  const MapRoom* room = map->room(roomId);
+  if (!room) {
+    setResponse(true, "Could not load destination room.");
+    return;
+  }
+  emit exploreRoom(roomId, QString());
   clearResponse();
 }
 
 void ExploreDialog::do_HELP()
 {
+  QStringList messages;
+  messages << "HELP\t\tShow this message";
+  messages << "BACK\t\tReturn to the previous room";
+  messages << "GOTO\tid\tTeleport to a room by ID";
+  messages << "ZONE\t\tList known zones";
+  messages << "ZONE\tname\tShow information about a zone";
+  messages << "SEARCH\twords\tSearch for rooms with names or descriptions containing words";
+  messages << "SEARCH\t-n words\tSearch for rooms with names containing words";
+  messages << "RESET\t\tResets the exploration history";
+  messages << "SIMPLIFY\t\tRemoves backtracking from exploration history";
+  messages << "HISTORY\t\tDisplays the exploration history. Supported options:";
+  messages << "\tnumber\tLimits the number of steps to show (default 10 for non-SPEED)";
+  messages << "\tREVERSE\tShow the steps to travel the path in reverse";
+  messages << "\tSPEED\tShow the steps in speedwalking syntax";
+  messages << "\tALL\tShows the full history (default for SPEED)";
+  messages << "\t*\tShortcut for ALL";
+  messages << "REVERSE\t\tShortcut for HISTORY REVERSE";
+  messages << "SPEED\t\tShortcut for HISTORY SPEED";
+  setResponse(false, messages.join("\n"));
 }
 
 void ExploreDialog::do_GOTO(const QStringList& args)
@@ -192,7 +202,7 @@ void ExploreDialog::do_SEARCH(const QStringList&)
 
 void ExploreDialog::do_HISTORY(const QStringList& args)
 {
-  int len = -1;
+  int len = 0;
   bool speedwalk = false;
   bool reverse = false;
   QString badArg;
@@ -200,7 +210,7 @@ void ExploreDialog::do_HISTORY(const QStringList& args)
     bool isNumeric = false;
     int numeric = arg.toInt(&isNumeric);
     if (isNumeric) {
-      if (numeric <= 0 || len > 0) {
+      if (numeric <= 0 || len != 0) {
         badArg = arg;
         break;
       }
@@ -210,7 +220,7 @@ void ExploreDialog::do_HISTORY(const QStringList& args)
     } else if (QStringLiteral("REVERSE").startsWith(arg)) {
       reverse = true;
     } else if (arg == "*" || arg == "ALL") {
-      len = roomHistory.length();
+      len = -1;
     } else {
       badArg = arg;
       break;
@@ -221,89 +231,23 @@ void ExploreDialog::do_HISTORY(const QStringList& args)
     return;
   }
 
-  if (len < 1) {
-    if (speedwalk) {
-      len = roomHistory.length();
-    } else {
-      len = 10;
-    }
-  }
-
-  QList<QPair<int, QString>> path = roomHistory.mid(roomHistory.length() - len);
-  int prevRoom = -1;
-  if (speedwalk) {
-    for (int i = path.length() - 1; i >= 0; --i) {
-      if (path[i].second.isEmpty() || path[i].first < 0) {
-        prevRoom = path[i].first;
-        path = path.mid(i);
-        break;
-      }
-    }
-  }
-  if (path.length() < 1) {
-    setResponse(false, "No history to trace.");
-    return;
-  }
-  if (prevRoom < 0) {
-    prevRoom = path.first().first;
-  }
   QStringList messages;
-  if (reverse) {
-    QList<QPair<int, QString>> rev;
-    int rprev = path.back().first;
-    if (!speedwalk) {
-      rev << qMakePair(rprev, QString());
-    }
-    for (int i = path.length() - 2; i >= 0; --i) {
-      int roomId = path[i].first;
-      const MapRoom* room = map->room(rprev);
-      QString revDir = room->findExit(roomId);
-      if (revDir.isEmpty()) {
-        messages << QStringLiteral("Warning: cannot return to %1 from %2 (from %3)").arg(roomId).arg(rprev).arg(path[i].second);
-        rev << qMakePair(roomId, MapRoom::reverseDir(path[i].second));
-      } else {
-        rev << qMakePair(roomId, revDir);
-      }
-      rprev = roomId;
-    }
-    path = rev;
-  }
+  bool error = false;
   if (speedwalk) {
-    QList<QPair<QString, int>> dirs;
-    for (const auto& hist : path) {
-      QString dir = hist.second;
-      if (!dirs.isEmpty() && dirs.back().first == dir) {
-        dirs.back().second++;
-      } else {
-        dirs << qMakePair(dir, 1);
-      }
-      prevRoom = hist.first;
+    QString dirs = history.speedwalk(len, reverse, &messages);
+    if (dirs.length() > 1) {
+      messages << dirs;
+    } else {
+      error = true;
     }
-    QString msg = ".";
-    for (const auto& hist : dirs) {
-      if (hist.second > 1) {
-        msg += QString::number(hist.second);
-      }
-      if (hist.first.length() == 1) {
-        msg += hist.first;
-      } else {
-        msg += QStringLiteral("[%1]").arg(hist.first);
-      }
-    }
-    messages << msg.toLower();
   } else {
-    for (const auto& hist : path) {
-      QString dir = hist.second;
-      const MapRoom* room = map->room(hist.first);
-      if (dir.isEmpty()) {
-        messages << RoomView::formatRoomTitle(room);
-      } else {
-        messages << QStringLiteral("%1 to %2").arg(dir).arg(RoomView::formatRoomTitle(room));
-      }
-      prevRoom = hist.first;
-    }
+    messages = history.describe(len, reverse);
   }
-  setResponse(false, messages.join("\n"));
+  if (messages.isEmpty()) {
+    error = true;
+    messages << "No history to show";
+  }
+  setResponse(error, messages.join("\n"));
 }
 
 void ExploreDialog::do_REVERSE(const QStringList& args)
@@ -311,7 +255,24 @@ void ExploreDialog::do_REVERSE(const QStringList& args)
   do_HISTORY(QStringList(args) << "REVERSE");
 }
 
+void ExploreDialog::do_SPEED(const QStringList& args)
+{
+  do_HISTORY(QStringList(args) << "SPEED");
+}
+
 void ExploreDialog::do_RESET()
 {
-  roomHistory.clear();
+  history.reset();
+}
+
+void ExploreDialog::do_SIMPLIFY()
+{
+  int before = history.length();
+  history.simplify();
+  int after = history.length();
+  if (before == after) {
+    setResponse(true, "No backtracking in exploration history");
+  } else {
+    setResponse(false, QStringLiteral("Simplified history from %1 steps to %2 steps").arg(before).arg(after));
+  }
 }

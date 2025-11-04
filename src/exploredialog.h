@@ -2,6 +2,7 @@
 #define EXPLOREDIALOG_H
 
 #include <QDialog>
+#include "explorehistory.h"
 class MapManager;
 class RoomView;
 class QLineEdit;
@@ -35,17 +36,18 @@ private slots:
   void do_SEARCH(const QStringList&);
   void do_HISTORY(const QStringList&);
   void do_REVERSE(const QStringList&);
+  void do_SPEED(const QStringList&);
+  void do_SIMPLIFY();
   void do_RESET();
 
 private:
-  void addHistory(int roomId, const QString& movement);
   void handleCommand(const QString& command, const QStringList& args);
 
   MapManager* map;
   RoomView* room;
   QLineEdit* line;
   QPushButton* backButton;
-  QList<QPair<int, QString>> roomHistory;
+  ExploreHistory history;
 };
 
 #endif

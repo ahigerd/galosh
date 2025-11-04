@@ -42,6 +42,7 @@ RoomView::RoomView(QWidget* parent)
   layout->addWidget(roomDesc, 0, 0);
 
   responseMessage = new QTextBrowser(this);
+  responseMessage->setWordWrapMode(QTextOption::NoWrap);
   responseMessage->setVisible(false);
   layout->addWidget(responseMessage, 1, 0);
 
@@ -180,6 +181,6 @@ void RoomView::setResponseMessage(const QString& message, bool isError)
     responseMessage->setVisible(true);
     responseMessage->setText(message);
     static_cast<QGridLayout*>(layout())->setRowStretch(1, 1);
-    QTimer::singleShot(0, [this]{ responseMessage->verticalScrollBar()->setValue(responseMessage->verticalScrollBar()->maximum()); });
+    QTimer::singleShot(0, [this]{ responseMessage->verticalScrollBar()->setValue(0); });
   }
 }
