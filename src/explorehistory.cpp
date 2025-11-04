@@ -179,11 +179,37 @@ int ExploreHistory::back()
   return currentRoomId;
 }
 
-void ExploreHistory::simplify()
+void ExploreHistory::simplify(bool aggressive)
 {
   QSet<int> visited;
+  QMap<int, int> firstAvailable;
   QList<Step> simplified;
   for (const Step& step : steps) {
+    const MapRoom* room = map->room(step.dest);
+    if (room && aggressive) {
+      for (const MapExit& exit : room->exits) {
+        if (exit.dest > 0 && !firstAvailable.contains(exit.dest)) {
+          firstAvailable[exit.dest] = step.dest;
+        }
+      }
+      const MapRoom* shortcut = map->room(firstAvailable.value(step.dest, -1));
+      if (shortcut && shortcut->id != step.start && visited.contains(shortcut->id)) {
+        QString shortcutDir = shortcut->findExit(step.dest);
+        if (shortcutDir.isEmpty()) {
+          qWarning() << "XXX: impossible state detected";
+        }
+        for (auto iter = simplified.rbegin(); iter != simplified.rend(); iter++) {
+          visited.remove(iter->dest);
+          if (iter->start == shortcut->id) {
+            simplified.erase(iter.base(), simplified.end());
+            iter->dest = step.dest;
+            iter->dir = shortcutDir;
+            break;
+          }
+        }
+        continue;
+      }
+    }
     if (visited.contains(step.dest)) {
       for (auto iter = simplified.rbegin(); iter != simplified.rend(); iter++) {
         if (iter->dest == step.dest) {

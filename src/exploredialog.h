@@ -37,7 +37,7 @@ private slots:
   void do_HISTORY(const QStringList&);
   void do_REVERSE(const QStringList&);
   void do_SPEED(const QStringList&);
-  void do_SIMPLIFY();
+  void do_SIMPLIFY(const QStringList&);
   void do_RESET();
 
 private:

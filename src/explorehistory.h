@@ -25,7 +25,7 @@ public slots:
   void goTo(int roomId);
   int travel(const QString& dir, int dest = 0);
   int back();
-  void simplify();
+  void simplify(bool aggressive = false);
 
 private:
   QString getReverse(int from, int to, const QString& forward, bool* isGuess) const;

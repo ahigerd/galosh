@@ -198,7 +198,8 @@ void ExploreDialog::do_HELP()
   messages << "SEARCH\twords\tSearch for rooms with names or descriptions containing words";
   messages << "SEARCH\t-n words\tSearch for rooms with names containing words";
   messages << "RESET\t\tResets the exploration history";
-  messages << "SIMPLIFY\t\tRemoves backtracking from exploration history";
+  messages << "SIMPLIFY\t[aggr]\tRemoves backtracking from exploration history";
+  messages << "\t\tIf given any parameters, also looks for shortcuts";
   messages << "HISTORY\t\tDisplays the exploration history. Supported options:";
   messages << "\tnumber\tLimits the number of steps to show (default 10 for non-SPEED)";
   messages << "\tREVERSE\tShow the steps to travel the path in reverse";
@@ -296,13 +297,18 @@ void ExploreDialog::do_RESET()
   history.reset();
 }
 
-void ExploreDialog::do_SIMPLIFY()
+void ExploreDialog::do_SIMPLIFY(const QStringList& args)
 {
+  bool aggressive = args.length() > 0;
   int before = history.length();
-  history.simplify();
+  history.simplify(aggressive);
   int after = history.length();
   if (before == after) {
-    setResponse(true, "No backtracking in exploration history");
+    if (aggressive) {
+      setResponse(true, "No backtracking or shortcuts in exploration history");
+    } else {
+      setResponse(true, "No backtracking in exploration history");
+    }
   } else {
     setResponse(false, QStringLiteral("Simplified history from %1 steps to %2 steps").arg(before).arg(after));
   }
