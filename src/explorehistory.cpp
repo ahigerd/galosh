@@ -42,7 +42,6 @@ QString ExploreHistory::getReverse(int from, int to, const QString& forward, boo
     *isGuess = dir.isEmpty();
   }
   if (dir.isEmpty()) {
-    qDebug() << "getReverse" << from << to << forward << "no reverse";
     return MapRoom::reverseDir(forward);
   }
   return dir;
@@ -176,16 +175,8 @@ int ExploreHistory::back()
     return -1;
   }
   steps.takeLast();
-  return steps.last().dest;
-}
-
-void ExploreHistory::debug(const QList<Step>& path) const
-{
-  qDebug() << ">>>>";
-  for (const Step& step : path) {
-    qDebug() << step.start << step.dir << step.dest;
-  }
-  qDebug() << "<<<<";
+  currentRoomId = steps.last().dest;
+  return currentRoomId;
 }
 
 void ExploreHistory::simplify()
@@ -193,9 +184,7 @@ void ExploreHistory::simplify()
   QSet<int> visited;
   QList<Step> simplified;
   for (const Step& step : steps) {
-    qDebug() << "inspect" << step.start << step.dir << step.dest;
     if (visited.contains(step.dest)) {
-      debug(simplified);
       for (auto iter = simplified.rbegin(); iter != simplified.rend(); iter++) {
         if (iter->dest == step.dest) {
           simplified.erase(iter.base(), simplified.end());
@@ -203,11 +192,15 @@ void ExploreHistory::simplify()
         }
         visited.remove(iter->dest);
       }
-      debug(simplified);
     } else {
       visited << step.dest;
       simplified << step;
     }
   }
   steps = simplified;
+}
+
+const MapRoom* ExploreHistory::currentRoom() const
+{
+  return map->room(currentRoomId);
 }

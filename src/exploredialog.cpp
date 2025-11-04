@@ -1,6 +1,7 @@
 #include "exploredialog.h"
 #include "mapmanager.h"
 #include "roomview.h"
+#include "commandline.h"
 #include <QGridLayout>
 #include <QLineEdit>
 #include <QPushButton>
@@ -72,7 +73,37 @@ void ExploreDialog::roomUpdated(const QString& title, int id, const QString& mov
 
 void ExploreDialog::doCommand()
 {
-  QString dir = MapRoom::normalizeDir(line->text().simplified());
+  QString command = line->text().simplified();
+  if (command.startsWith(".")) {
+    QStringList dirs = CommandLine::parseSpeedwalk(command);
+    if (dirs.isEmpty()) {
+      setResponse(true);
+      return;
+    }
+    QStringList messages;
+    bool error = false;
+    QString lastRoom;
+    for (int i = 0; i < dirs.length(); i++) {
+      QString dir = MapRoom::normalizeDir(dirs[i]);
+      int dest = history.travel(dir);
+      if (dest < 0) {
+        error = true;
+        messages << QStringLiteral("Unable to travel %1 from this location").arg(dir);
+        if (i + 1 < dirs.length()) {
+          messages << QStringLiteral("Remaining steps: %1").arg(dirs.mid(i + 1).join(" "));
+        }
+        break;
+      }
+      lastRoom = RoomView::formatRoomTitle(history.currentRoom());
+      messages << QStringLiteral("%1 to %2").arg(dir).arg(lastRoom);
+    }
+    const MapRoom* room = history.currentRoom();
+    roomView()->setRoom(map, room ? room->id : -1);
+    setResponse(error, messages.join("\n"));
+    return;
+  }
+
+  QString dir = MapRoom::normalizeDir(command);
   if (dir.isEmpty()) {
     return;
   }

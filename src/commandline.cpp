@@ -43,6 +43,8 @@ QStringList CommandLine::parseSpeedwalk(const QString& dirs)
         count = 0;
       }
       count = count * 10 + (ch.cell() - '0');
+    } else if (ch == '.' || ch == ' ') {
+      // skip dots and spaces
     } else {
       if (count < 0) {
         count = 1;

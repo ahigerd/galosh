@@ -4,6 +4,7 @@
 #include <QObject>
 #include <QStringList>
 class MapManager;
+class MapRoom;
 
 class ExploreHistory : public QObject
 {
@@ -16,6 +17,8 @@ public:
 
   bool canGoBack() const;
   inline int length() const { return steps.length(); }
+
+  const MapRoom* currentRoom() const;
 
 public slots:
   void reset();
@@ -33,7 +36,6 @@ private:
     int dest;
     QString dir; // empty = reset / auto-move
   };
-  void debug(const QList<Step>& path) const;
   MapManager* map;
   QList<Step> steps;
   int currentRoomId;
