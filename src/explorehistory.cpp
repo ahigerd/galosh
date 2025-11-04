@@ -153,10 +153,10 @@ int ExploreHistory::travel(const QString& dir, int dest)
     const MapRoom* room = map->room(currentRoomId);
     if (room && room->exits.contains(dir)) {
       dest = room->exits.value(dir).dest;
-      if (dest <= 0) {
-        // can't travel to an unknown destination
-        return -1;
-      }
+    }
+    if (dest <= 0) {
+      // can't travel to an unknown destination
+      return -1;
     }
   }
   if (steps.length() && (dir.isEmpty() || dir == steps.last().dir)) {
