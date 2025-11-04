@@ -120,6 +120,7 @@ QString ExploreHistory::speedwalk(int length, bool reverse, QStringList* warning
     }
   }
 
+  // TODO: customizable speedwalk prefix
   QString msg = ".";
   for (const auto& hist : dirs) {
     if (hist.second > 1) {

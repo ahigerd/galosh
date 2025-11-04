@@ -6,8 +6,72 @@
 #include <QScrollBar>
 #include <QtDebug>
 
+static QRegularExpression nonWordChars("[^[:alnum:]_-]+", QRegularExpression::UseUnicodePropertiesOption);
+
+QStringList CommandLine::parseSpeedwalk(const QString& dirs)
+{
+  if (dirs.isEmpty()) {
+    // empty path
+    return QStringList();
+  }
+  if (dirs.back() >= '0' && dirs.back() <= '9') {
+    // invalid syntax
+    return QStringList();
+  }
+  QStringList path;
+  int count = -1;
+  bool bracket = false;
+  QString bracketed;
+  for (QChar ch : dirs) {
+    if (bracket) {
+      if (ch == ']') {
+        bracket = false;
+        while (count-- > 0) {
+          path << bracketed;
+        }
+        bracketed.clear();
+      } else {
+        bracketed += ch;
+      }
+    } else if (ch == '[') {
+      bracket = true;
+      if (count < 0) {
+        count = 1;
+      }
+    } else if (ch >= '0' && ch <= '9') {
+      if (count < 0) {
+        count = 0;
+      }
+      count = count * 10 + (ch.cell() - '0');
+    } else {
+      if (count < 0) {
+        count = 1;
+      }
+      while (count-- > 0) {
+        path << QString(ch);
+      }
+    }
+  }
+  if (bracket) {
+    // invalid syntax
+    return QStringList();
+  }
+  return path;
+}
+
+QStringList CommandLine::parseSlashCommand(const QString& command)
+{
+  QStringList tokens = command.simplified().split(' ');
+  if (tokens.isEmpty()) {
+    tokens << "";
+  } else {
+    tokens[0] = tokens[0].toUpper();
+  }
+  return tokens;
+}
+
 CommandLine::CommandLine(QWidget* parent)
-: QLineEdit(parent), historyLimit(30), historyIndex(-1)
+: QLineEdit(parent), historyLimit(30), historyIndex(-1), parsing(true)
 {
   completer = new QCompleter(&completionModel, this);
   completer->setCaseSensitivity(Qt::CaseInsensitive);
@@ -31,8 +95,7 @@ void CommandLine::setHistorySize(int size)
 
 void CommandLine::onLineReceived(const QString& line)
 {
-  static QRegularExpression wordChars("[^A-Za-z0-9_-]+");
-  QStringList words = QString(line).replace(wordChars, " ").split(' ');
+  QStringList words = QString(line).replace(nonWordChars, " ").split(' ');
   for (const QString& word : words) {
     QString lower = word.toLower();
     if (word.length() < 4 || knownWords.contains(lower)) {
@@ -51,16 +114,62 @@ void CommandLine::onReturnPressed()
     checkCompletion(0, true);
     return;
   }
-  QString line = text();
-  emit commandEntered(line, echoMode() == QLineEdit::Normal);
+  bool echo = (echoMode() == QLineEdit::Normal);
+  QString command = text();
+  if (isParsing()) {
+    if (command.startsWith('/') && command != "/" && !command.startsWith("//")) {
+      command = command.mid(1);
+      if (!command.startsWith('/')) {
+        QStringList args = parseSlashCommand(command);
+        QString slash = args.takeFirst();
+        emit slashCommand(slash, args);
+      }
+    } else if (command.startsWith('.') && command != ".") {
+      // TODO: customizable speedwalk prefix
+      QStringList dirs = parseSpeedwalk(command.mid(1));
+      if (dirs.isEmpty()) {
+        emit showError("Invalid speedwalk path");
+      } else {
+        emit speedwalk(dirs);
+      }
+    } else {
+      if (command.startsWith("//")) {
+        command = command.mid(1);
+      }
+      QStringList lines = command.split('|');
+      if (command.endsWith('\\')) {
+        lines.last() += '\\';
+      }
+      QString partial;
+      for (const QString& line : lines) {
+        partial += line;
+        if (partial.endsWith("\\\\")) {
+          partial.chop(1);
+        } else if (partial.endsWith('\\')) {
+          partial[partial.length() - 1] = '|';
+          continue;
+        }
+        emit commandEntered(partial, true);
+        onLineReceived(partial);
+        partial.clear();
+      }
+      if (!partial.isEmpty()) {
+        qDebug() << "XXX: internal parsing error";
+      }
+    }
+  } else {
+    emit commandEntered(command, echo);
+  }
   selectAll();
-  history.removeAll(line);
-  history.append(line);
+  history.removeAll(text());
+  if (echo) {
+    // don't store passwords in command history
+    history.append(text());
+  }
   historyIndex = -1;
   if (history.length() > historyLimit) {
     history.removeFirst();
   }
-  onLineReceived(line);
 }
 
 void CommandLine::keyPressEvent(QKeyEvent* event)
@@ -83,6 +192,11 @@ void CommandLine::keyPressEvent(QKeyEvent* event)
     }
     return;
   }
+  if (history.isEmpty()) {
+    historyIndex = -1;
+    selectAll();
+    return;
+  }
   if (((oldIndex == 0 && historyIndex == -1) ||
        (oldIndex == -1 && historyIndex == 0)) &&
       text() == history[history.size() - 1]) {
@@ -91,6 +205,7 @@ void CommandLine::keyPressEvent(QKeyEvent* event)
   }
   if (historyIndex < -1) {
     historyIndex = -1;
+    setText(pendingLine);
     selectAll();
     return;
   }
@@ -127,7 +242,8 @@ void CommandLine::checkCompletion(int move, bool completeNow)
   int pos = cursorPosition();
   int wordStart = 0;
   for (int i = pos - 1; i >= 0; --i) {
-    if (line[i] == ' ') {
+    QChar ch = line[i];
+    if (!ch.isLetterOrNumber() && ch != '_' && ch != '-') {
       wordStart = i + 1;
       break;
     }
@@ -174,4 +290,15 @@ void CommandLine::checkCompletion(int move, bool completeNow)
 bool CommandLine::completionVisible() const
 {
   return completer->popup() && completer->popup()->isVisible();
+}
+
+bool CommandLine::isParsing() const
+{
+  // Don't parse passwords
+  return parsing && echoMode() == QLineEdit::Normal;
+}
+
+void CommandLine::setParsing(bool on)
+{
+  parsing = on;
 }

@@ -58,7 +58,7 @@ GaloshWindow::GaloshWindow(QWidget* parent)
 
   QMenu* fileMenu = new QMenu("&File", mb);
   fileMenu->addAction("&Connect...", this, SLOT(openConnectDialog()));
-  fileMenu->addAction("&Disconnect...", term->socket(), SLOT(disconnectFromHost()));
+  fileMenu->addAction("&Disconnect", term->socket(), SLOT(disconnectFromHost()));
   fileMenu->addSeparator();
   fileMenu->addAction("E&xit", qApp, SLOT(quit()));
   mb->addMenu(fileMenu);
@@ -89,6 +89,7 @@ GaloshWindow::GaloshWindow(QWidget* parent)
   tb->setObjectName("toolbar");
   tb->addAction("Connect", this, SLOT(openConnectDialog()));
   tb->addAction("Disconnect", term->socket(), SLOT(disconnectFromHost()));
+  tb->addSeparator();
   tb->addAction("Triggers", [this]{ openProfileDialog(ProfileDialog::TriggersTab); });
   tb->addSeparator();
   msspButton = tb->addAction("MSSP", this, SLOT(openMsspDialog()));

@@ -79,6 +79,8 @@ GaloshTerm::GaloshTerm(QWidget* parent)
   QObject::connect(line, &CommandLine::commandEntered, [this](const QString&, bool) { screen->clearSelection(); });
   QObject::connect(line, SIGNAL(commandEntered(QString, bool)), this, SLOT(executeCommand(QString, bool)));
   QObject::connect(line, SIGNAL(commandEntered(QString, bool)), this, SIGNAL(commandEntered(QString, bool)));
+  QObject::connect(line, SIGNAL(showError(QString)), this, SLOT(showError(QString)));
+  QObject::connect(line, SIGNAL(slashCommand(QString, QStringList)), this, SLOT(slashCommand(QString, QStringList)));
   layout->addWidget(line, 0);
 
   line->setFocus();
@@ -91,26 +93,23 @@ GaloshTerm::GaloshTerm(QWidget* parent)
   QObject::connect(&refreshThrottle, SIGNAL(timeout()), this, SLOT(resizeAndScroll()));
 }
 
+void GaloshTerm::showError(const QString& message)
+{
+  writeColorLine("1;4;31", message.toUtf8());
+}
+
+void GaloshTerm::slashCommand(const QString& command, const QStringList& args)
+{
+  QString message = "/" + command + " " + args.join(" ");
+  writeColorLine("1;96", message.toUtf8());
+}
+
 void GaloshTerm::executeCommand(const QString& command, bool echo)
 {
-  QStringList lines = command.split('|');
-  if (command.endsWith('\\')) {
-    lines.last() += '\\';
-  }
-  QByteArray payload;
-  for (const QString& line : lines) {
-    payload += line.toUtf8();
-    if (payload.endsWith("\\\\")) {
-      payload.chop(1);
-    } else if (payload.endsWith('\\')) {
-      payload[payload.length() - 1] = '|';
-      continue;
-    }
-    writeColorLine("93", echo ? payload : QByteArray(command.length(), '*'));
-    if (tel->isConnected()) {
-      tel->write(payload + "\r\n");
-    }
-    payload.clear();
+  QByteArray payload = command.toUtf8();
+  writeColorLine("93", echo ? payload : QByteArray(command.length(), '*'));
+  if (tel->isConnected()) {
+    tel->write(payload + "\r\n");
   }
 }
 
@@ -171,7 +170,7 @@ void GaloshTerm::onSocketError(QAbstractSocket::SocketError err)
   }
   QByteArray name = QMetaEnum::fromType<QAbstractSocket::SocketError>().valueToKey(err);
   name = name.replace("Error", "");
-  QByteArray msg = "Error:";
+  QString msg = "Error:";
   int words = 1;
   for (char ch : name) {
     if (ch >= 'A' && ch <= 'Z') {
@@ -183,7 +182,7 @@ void GaloshTerm::onSocketError(QAbstractSocket::SocketError err)
   if (words < 3) {
     msg += " Error";
   }
-  writeColorLine("1;4;31", msg);
+  showError(msg);
 }
 
 void GaloshTerm::onReadyRead()

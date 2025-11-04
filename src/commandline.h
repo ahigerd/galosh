@@ -10,15 +10,24 @@ class CommandLine : public QLineEdit
 {
 Q_OBJECT
 public:
+  static QStringList parseSpeedwalk(const QString& dirs);
+  static QStringList parseSlashCommand(const QString& command);
+
   CommandLine(QWidget* parent = nullptr);
 
   inline int historySize() const { return historyLimit; }
   void setHistorySize(int size);
 
+  bool isParsing() const;
+
 signals:
   void commandEntered(const QString& command, bool echo);
+  void showError(const QString& message);
+  void slashCommand(const QString& command, const QStringList& args);
+  void speedwalk(const QStringList& steps);
 
 public slots:
+  void setParsing(bool on);
   void onLineReceived(const QString& line);
 
 private slots:
@@ -41,6 +50,7 @@ private:
   QSet<QString> knownWords;
   QStringListModel completionModel;
   QCompleter* completer;
+  bool parsing;
 };
 
 #endif

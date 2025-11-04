@@ -30,6 +30,8 @@ signals:
   void commandEntered(const QString& command, bool echo = true);
 
 public slots:
+  void showError(const QString& message);
+  void slashCommand(const QString& command, const QStringList& args);
   void executeCommand(const QString& command, bool echo = true);
 
 private slots:
