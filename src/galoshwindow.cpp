@@ -50,7 +50,7 @@ GaloshWindow::GaloshWindow(QWidget* parent)
   roomView = new RoomView(this);
   roomDock->setWidget(roomView);
   QObject::connect(roomView, SIGNAL(roomUpdated(QString, int)), this, SLOT(setLastRoom(QString, int)));
-  QObject::connect(roomView, SIGNAL(exploreRoom(int)), this, SLOT(exploreMap(int)));
+  QObject::connect(roomView, SIGNAL(exploreRoom(int, QString)), this, SLOT(exploreMap(int, QString)));
   addDockWidget(Qt::TopDockWidgetArea, roomDock);
 
   QMenuBar* mb = new QMenuBar(this);
@@ -347,14 +347,14 @@ void GaloshWindow::setLastRoom(const QString& title, int roomId)
   exploreAction->setEnabled(true);
 }
 
-void GaloshWindow::exploreMap(int roomId)
+void GaloshWindow::exploreMap(int roomId, const QString& movement)
 {
   if (explore) {
-    explore->roomView()->setRoom(&map, roomId);
+    explore->roomView()->setRoom(&map, roomId, movement);
     explore->refocus();
   } else {
-    explore = new ExploreDialog(&map, roomId, lastRoomId, this);
-    QObject::connect(explore, SIGNAL(exploreRoom(int)), this, SLOT(exploreMap(int)));
+    explore = new ExploreDialog(&map, roomId, lastRoomId, movement, this);
+    QObject::connect(explore, SIGNAL(exploreRoom(int, QString)), this, SLOT(exploreMap(int, QString)));
     explore->show();
   }
 }

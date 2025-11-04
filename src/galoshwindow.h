@@ -28,7 +28,7 @@ public slots:
   void openMsspDialog();
   void openConfigFolder();
   void openWebsite();
-  void exploreMap(int roomId = -1);
+  void exploreMap(int roomId = -1, const QString& movement = QString());
   void about();
 
 protected:

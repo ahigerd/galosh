@@ -20,7 +20,7 @@ static const QMap<QString, QString> dirAbbrev{
   { "DOWN", "D" },
 };
 
-static const QMap<QString, QString> reverseDir{
+static const QMap<QString, QString> reverseDirs{
   { "N", "S" },
   { "S", "N" },
   { "W", "E" },
@@ -40,8 +40,28 @@ static const QMap<QString, QString> reverseDir{
 
 QString MapRoom::normalizeDir(const QString& dir)
 {
-  QString norm = dir.trimmed().toUpper();
+  QString norm = dir.simplified().toUpper();
   return dirAbbrev.value(norm, norm);
+}
+
+QString MapRoom::reverseDir(const QString& dir)
+{
+  return reverseDirs.value(dir);
+}
+
+bool MapRoom::isDir(const QString& dir)
+{
+  return reverseDirs.contains(normalizeDir(dir));
+}
+
+QString MapRoom::findExit(int dest) const
+{
+  for (const QString& dir : exits.keys()) {
+    if (exits.value(dir).dest == dest) {
+      return dir;
+    }
+  }
+  return QString();
 }
 
 MapManager::MapManager(QObject* parent)
@@ -131,6 +151,15 @@ void MapManager::commandEntered(const QString& rawCommand, bool echo)
     return;
   }
   QStringList command = rawCommand.simplified().toUpper().split(' ');
+  if (command.length() > 1 && command.first() == "GOTO") {
+    qDebug() << "GOTO";
+    // TODO: reidentify room heuristics?
+    destinationRoom = autoRoomId++;
+    logRoomLegacy = true;
+    logRoomDescription = false;
+    logExits = false;
+    return;
+  }
   if (command.length() > 1) {
     if (command[0] != "GO" || command.length() > 2) {
       return;
@@ -145,7 +174,7 @@ void MapManager::commandEntered(const QString& rawCommand, bool echo)
   }
   // TODO: "enter" could have a second parameter
   // TODO: special exits
-  if (reverseDir.contains(dir) || isLook || dir == "ENTER" || dir == "LEAVE") {
+  if (MapRoom::isDir(dir) || isLook) {
     if (currentRoom >= 0 && (dir == "ENTER" || dir == "LEAVE") && rooms[currentRoom].exits.contains("SOMEWHERE")) {
       dir = "SOMEWHERE";
     }
@@ -184,7 +213,7 @@ void MapManager::processLine(const QString& line)
         // TODO: figure out if we're not where we think we are (description hashing?)
         if (currentRoom >= 0 && destinationRoom >= 0 && currentRoom != destinationRoom) {
           MapRoom* room = mutableRoom(destinationRoom);
-          QString back = reverseDir.value(destinationDir);
+          QString back = reverseDirs.value(destinationDir);
           if (!back.isEmpty() && room->exits.contains(back)) {
             if (room->exits[back].dest < 0) {
               room->exits[back].dest = currentRoom;
@@ -242,7 +271,7 @@ void MapManager::processLine(const QString& line)
       if (line.startsWith("Exits:")) {
         QStringList exits = line.mid(6).trimmed().split(' ');
         MapRoom& room = rooms[currentRoom];
-        QString back = reverseDir.value(destinationDir);
+        QString back = reverseDirs.value(destinationDir);
         for (QString exit : exits) {
           bool locked = exit.startsWith('[');
           if (locked) {

@@ -107,7 +107,9 @@ void GaloshTerm::executeCommand(const QString& command, bool echo)
       continue;
     }
     writeColorLine("93", echo ? payload : QByteArray(command.length(), '*'));
-    tel->write(payload + "\r\n");
+    if (tel->isConnected()) {
+      tel->write(payload + "\r\n");
+    }
     payload.clear();
   }
 }

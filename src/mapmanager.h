@@ -17,6 +17,8 @@ struct MapExit {
 
 struct MapRoom {
   static QString normalizeDir(const QString& dir);
+  static QString reverseDir(const QString& dir);
+  static bool isDir(const QString& dir);
 
   int id;
   QString name;
@@ -24,6 +26,8 @@ struct MapRoom {
   QString zone;
   QString roomType;
   QMap<QString, MapExit> exits;
+
+  QString findExit(int dest) const;
 };
 
 class MapManager : public QObject
