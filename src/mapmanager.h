@@ -3,8 +3,12 @@
 
 #include <QObject>
 #include <QList>
+#include <QSet>
 #include <QRegularExpression>
+#include <map>
+#include "mapzone.h"
 class QSettings;
+class MapManager;
 
 struct MapExit {
   QString name;
@@ -28,6 +32,7 @@ struct MapRoom {
   QMap<QString, MapExit> exits;
 
   QString findExit(int dest) const;
+  QSet<int> exitRooms() const;
 };
 
 class MapManager : public QObject
@@ -39,6 +44,9 @@ public:
   const MapRoom* room(int id);
   MapRoom* mutableRoom(int id);
   void saveRoom(MapRoom* room);
+
+  const MapZone* zone(const QString& name) const;
+  MapZone* mutableZone(const QString& name);
 
 signals:
   void currentRoomUpdated(MapManager* map, int roomId);
@@ -52,12 +60,16 @@ public slots:
   void commandEntered(const QString& command, bool echo);
 
 private:
+  friend class MapZone;
   void downloadMap(const QString& url);
   void updateRoom(const QVariantMap& info);
   void endRoomCapture();
 
   QSettings* mapFile;
   QMap<int, MapRoom> rooms;
+  std::map<QString, MapZone> zones;
+  QMap<QString, QSet<QString>> zoneConnections;
+  QMap<QString, QMap<QString, QMap<QString, int>>> zoneTransits;
   bool gmcpMode;
   bool logRoomLegacy;
   bool logRoomDescription;

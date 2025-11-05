@@ -35,8 +35,8 @@ SOURCES += src/galoshterm.cpp src/roomview.cpp src/commandline.cpp
 HEADERS += src/triggermanager.h   src/mapmanager.h   src/infomodel.h
 SOURCES += src/triggermanager.cpp src/mapmanager.cpp src/infomodel.cpp
 
-HEADERS += src/mudletimport.h   src/explorehistory.h
-SOURCES += src/mudletimport.cpp src/explorehistory.cpp
+HEADERS += src/mudletimport.h   src/explorehistory.h   src/mapzone.h
+SOURCES += src/mudletimport.cpp src/explorehistory.cpp src/mapzone.cpp
 
 # networking
 HEADERS += src/telnetsocket.h

@@ -1,4 +1,5 @@
 #include "mapmanager.h"
+#include "mapzone.h"
 #include "mudletimport.h"
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
@@ -64,6 +65,15 @@ QString MapRoom::findExit(int dest) const
   return QString();
 }
 
+QSet<int> MapRoom::exitRooms() const
+{
+  QSet<int> rooms;
+  for (const MapExit& exit : exits) {
+    rooms << exit.dest;
+  }
+  return rooms;
+}
+
 MapManager::MapManager(QObject* parent)
 : QObject(parent), mapFile(nullptr), gmcpMode(false), logRoomLegacy(false), logRoomDescription(false), logExits(false), roomDirty(false),
   autoRoomId(1), currentRoom(-1), destinationRoom(-1), previousRoom(-1)
@@ -97,6 +107,7 @@ void MapManager::loadMap(const QString& mapFileName)
 
   for (const QString& zone : mapFile->childGroups()) {
     mapFile->beginGroup(zone);
+    MapZone* zoneObj = mutableZone(zone);
     for (const QString& idStr : mapFile->childGroups()) {
       int id = idStr.toInt();
       if (!id) {
@@ -121,10 +132,16 @@ void MapManager::loadMap(const QString& mapFileName)
         room.exits[dir] = exit;
         mapFile->endGroup();
       }
+      zoneObj->addRoom(&room);
       mapFile->endGroup();
       mapFile->endGroup();
     }
     mapFile->endGroup();
+  }
+
+  // TODO: no need to do this until requested
+  for (auto iter : zones) {
+    zones.at(iter.first).computeTransits();
   }
 }
 
@@ -362,11 +379,13 @@ void MapManager::gmcpEvent(const QString& key, const QVariant& value)
 
 void MapManager::updateRoom(const QVariantMap& info)
 {
+  QString zoneName = info["zone"].toString();
+
   int roomId = info["id"].toInt();
   MapRoom& room = rooms[roomId];
   room.id = roomId;
   room.name = info["name"].toString();
-  room.zone = info["zone"].toString();
+  room.zone = zoneName;
   room.roomType = info["type"].toString();
 
   QVariantMap exits = info["Exits"].toMap();
@@ -384,6 +403,9 @@ void MapManager::updateRoom(const QVariantMap& info)
       exit.name = "door";
     }
   }
+
+  MapZone* zone = mutableZone(zoneName);
+  zone->addRoom(&room);
 
   if (mapFile) {
     saveRoom(&room);
@@ -406,6 +428,25 @@ MapRoom* MapManager::mutableRoom(int id)
   MapRoom* room = &rooms[id];
   room->id = id;
   return room;
+}
+
+const MapZone* MapManager::zone(const QString& name) const
+{
+  auto iter = zones.find(name);
+  if (iter != zones.end()) {
+    return &iter->second;
+  }
+  return nullptr;
+}
+
+MapZone* MapManager::mutableZone(const QString& name)
+{
+  auto iter = zones.find(name);
+  if (iter != zones.end()) {
+    return &iter->second;
+  }
+  auto [newIter, ok] = zones.try_emplace(name, this, name);
+  return &newIter->second;
 }
 
 void MapManager::endRoomCapture()

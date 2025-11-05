@@ -1,5 +1,6 @@
 #include "exploredialog.h"
 #include "mapmanager.h"
+#include "mapzone.h"
 #include "roomview.h"
 #include "commandline.h"
 #include <QGridLayout>
@@ -200,6 +201,7 @@ void ExploreDialog::do_HELP()
   messages << "RESET\t\tResets the exploration history";
   messages << "SIMPLIFY\t[aggr]\tRemoves backtracking from exploration history";
   messages << "\t\tIf given any parameters, also looks for shortcuts";
+  messages << "ROUTE\tid\tFinds a route from the current room to the specified room";
   messages << "HISTORY\t\tDisplays the exploration history. Supported options:";
   messages << "\tnumber\tLimits the number of steps to show (default 10 for non-SPEED)";
   messages << "\tREVERSE\tShow the steps to travel the path in reverse";
@@ -312,4 +314,50 @@ void ExploreDialog::do_SIMPLIFY(const QStringList& args)
   } else {
     setResponse(false, QStringLiteral("Simplified history from %1 steps to %2 steps").arg(before).arg(after));
   }
+}
+
+void ExploreDialog::do_ROUTE(const QStringList& args)
+{
+  if (args.size() != 1) {
+    setResponse(true, "Destination room ID required");
+    return;
+  }
+  if (!history.currentRoom()) {
+    setResponse(true, "Could not find current room");
+    return;
+  }
+  int endRoomId = args.first().toInt();
+  const MapRoom* room = map->room(endRoomId);
+  if (!room) {
+    setResponse(true, "Could not find destination room");
+    return;
+  }
+  if (room == history.currentRoom()) {
+    setResponse(true, "Start room and destination room are the same");
+    return;
+  }
+  int startRoomId = history.currentRoom()->id;
+  QList<int> route = MapZone::findWorldRoute(map, startRoomId, endRoomId);
+  if (route.isEmpty()) {
+    setResponse(true, QStringLiteral("Could not find route from %1 to %2").arg(startRoomId).arg(endRoomId));
+    return;
+  }
+  ExploreHistory path(map);
+  path.goTo(startRoomId);
+  for (int step : route) {
+    if (step == startRoomId) {
+      continue;
+    }
+    for (const QString& dir : path.currentRoom()->exits.keys()) {
+      if (path.currentRoom()->exits.value(dir).dest == step) {
+        path.travel(dir);
+        break;
+      }
+    }
+  }
+  QStringList warnings;
+  QStringList messages;
+  messages << path.speedwalk(-1, false, &warnings) << "";
+  messages += path.describe(-1);
+  setResponse(!warnings.isEmpty(), messages.join("\n"));
 }
