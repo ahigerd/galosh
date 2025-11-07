@@ -222,12 +222,33 @@ void ExploreDialog::do_GOTO(const QStringList& args)
   }
 }
 
-void ExploreDialog::do_ZONE(const QStringList&)
+void ExploreDialog::do_ZONE(const QStringList& args)
 {
-}
-
-void ExploreDialog::do_FIND(const QStringList&)
-{
+  QStringList messages;
+  if (args.isEmpty()) {
+    messages = map->zoneNames();
+  } else {
+    QString zoneName = args.join(' ');
+    const MapZone* zone = map->searchForZone(zoneName);
+    if (!zone) {
+      setResponse(true, "Unknown zone: " + zoneName);
+      return;
+    }
+    messages << zone->name;
+    int minRoom = 0, maxRoom = 0, numRooms = zone->roomIds.size();
+    for (int roomId : zone->roomIds) {
+      if (!minRoom || roomId < minRoom) {
+        minRoom = roomId;
+      }
+      if (!maxRoom || roomId > maxRoom) {
+        maxRoom = roomId;
+      }
+    }
+    messages << QStringLiteral("%1 mapped rooms (%2 - %3)").arg(numRooms).arg(minRoom).arg(maxRoom);
+    messages << "" << "Connected zones:";
+    messages += zone->exits.keys();
+  }
+  setResponse(false, messages.join("\n"));
 }
 
 void ExploreDialog::do_SEARCH(const QStringList&)

@@ -45,8 +45,10 @@ public:
   MapRoom* mutableRoom(int id);
   void saveRoom(MapRoom* room);
 
+  QStringList zoneNames() const;
   const MapZone* zone(const QString& name) const;
   MapZone* mutableZone(const QString& name);
+  const MapZone* searchForZone(const QString& name) const;
 
 signals:
   void currentRoomUpdated(MapManager* map, int roomId);

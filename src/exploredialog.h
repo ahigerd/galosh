@@ -31,8 +31,8 @@ private slots:
   void do_BACK();
   void do_HELP();
   void do_GOTO(const QStringList&);
+  inline void do_ZONES() { return do_ZONE({}); }
   void do_ZONE(const QStringList&);
-  void do_FIND(const QStringList&);
   void do_SEARCH(const QStringList&);
   void do_HISTORY(const QStringList&);
   void do_REVERSE(const QStringList&);

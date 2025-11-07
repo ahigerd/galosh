@@ -430,6 +430,15 @@ MapRoom* MapManager::mutableRoom(int id)
   return room;
 }
 
+QStringList MapManager::zoneNames() const
+{
+  QStringList names;
+  for (const auto& iter : zones) {
+    names << iter.second.name;
+  }
+  return names;
+}
+
 const MapZone* MapManager::zone(const QString& name) const
 {
   auto iter = zones.find(name);
@@ -447,6 +456,23 @@ MapZone* MapManager::mutableZone(const QString& name)
   }
   auto [newIter, ok] = zones.try_emplace(name, this, name);
   return &newIter->second;
+}
+
+const MapZone* MapManager::searchForZone(const QString& name) const
+{
+  const MapZone* zone = nullptr;
+  QString bestMatch;
+  QString match = name.simplified().replace(" ", "").toUpper();
+  for (const auto& iter : zones) {
+    QString check = iter.first.simplified().replace(" ", "").toUpper();
+    if (check.startsWith(match)) {
+      if (bestMatch.isEmpty() || check.length() < bestMatch.length()) {
+        bestMatch = iter.first;
+        zone = &iter.second;
+      }
+    }
+  }
+  return zone;
 }
 
 void MapManager::endRoomCapture()
