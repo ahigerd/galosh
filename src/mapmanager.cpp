@@ -430,6 +430,46 @@ MapRoom* MapManager::mutableRoom(int id)
   return room;
 }
 
+QList<const MapRoom*> MapManager::searchForRooms(const QStringList& args, bool namesOnly, const QString& zone) const
+{
+  if (args.isEmpty()) {
+    return {};
+  }
+  QList<const MapRoom*> filtered;
+  QRegularExpression re(args.first(), QRegularExpression::CaseInsensitiveOption);
+  QString matchZone;
+  if (!zone.isEmpty()) {
+    const MapZone* zoneObj = searchForZone(zone);
+    if (!zoneObj) {
+      return {};
+    }
+    matchZone = zoneObj->name;
+  }
+  for (const MapRoom& room : rooms) {
+    if (!matchZone.isEmpty() && room.zone != matchZone) {
+      continue;
+    }
+    if (re.match(room.name).hasMatch()) {
+      filtered << &room;
+    } else if (!namesOnly && re.match(room.description).hasMatch()) {
+      filtered << &room;
+    }
+  }
+  for (const QString& arg : args.mid(1)) {
+    re.setPattern(arg);
+    QList<const MapRoom*> nextRound;
+    for (const MapRoom* room : filtered) {
+      if (re.match(room->name).hasMatch()) {
+        nextRound << room;
+      } else if (!namesOnly && re.match(room->description).hasMatch()) {
+        nextRound << room;
+      }
+    }
+    filtered = nextRound;
+  }
+  return filtered;
+}
+
 QStringList MapManager::zoneNames() const
 {
   QStringList names;

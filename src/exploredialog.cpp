@@ -198,6 +198,7 @@ void ExploreDialog::do_HELP()
   messages << "ZONE\tname\tShow information about a zone";
   messages << "SEARCH\twords\tSearch for rooms with names or descriptions containing words";
   messages << "SEARCH\t-n words\tSearch for rooms with names containing words";
+  messages << "\t\tAdd '-z \"zone\"' to search within a single zone";
   messages << "RESET\t\tResets the exploration history";
   messages << "SIMPLIFY\t[aggr]\tRemoves backtracking from exploration history";
   messages << "\t\tIf given any parameters, also looks for shortcuts";
@@ -251,8 +252,51 @@ void ExploreDialog::do_ZONE(const QStringList& args)
   setResponse(false, messages.join("\n"));
 }
 
-void ExploreDialog::do_SEARCH(const QStringList&)
+void ExploreDialog::do_SEARCH(const QStringList& args)
 {
+  if (args.isEmpty()) {
+    setResponse(true, "Search terms required");
+    return;
+  }
+  QStringList searchTerms;
+  QString searchZone;
+  bool namesOnly = false;
+  bool quotedZoneName = false;
+  for (int i = 0; i < args.length(); i++) {
+    if (quotedZoneName) {
+      searchZone += " ";
+      searchZone += args[i];
+      if (searchZone.endsWith('"')) {
+        quotedZoneName = false;
+        searchZone = searchZone.mid(1, searchZone.length() - 2);
+      }
+    } else if (args[i] == "-N") {
+      namesOnly = true;
+    } else if (args[i] == "-Z") {
+      if (i == args.length() - 1) {
+        setResponse(true, "-z requires a zone name");
+        return;
+      }
+      searchZone = args[++i];
+      quotedZoneName = searchZone.startsWith('"');
+    } else {
+      searchTerms << args[i];
+    }
+  }
+  if (quotedZoneName) {
+    setResponse(true, "Missing closing quote after zone name");
+    return;
+  }
+  QList<const MapRoom*> results = map->searchForRooms(searchTerms, namesOnly, searchZone);
+  if (results.isEmpty()) {
+    setResponse(true, "No search results");
+    return;
+  }
+  QStringList messages;
+  for (const MapRoom* room : results) {
+    messages << QStringLiteral("[%1] %2 (%3)").arg(room->id).arg(room->name).arg(room->zone);
+  }
+  setResponse(false, messages.join("\n"));
 }
 
 void ExploreDialog::do_HISTORY(const QStringList& args)

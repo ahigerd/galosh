@@ -43,6 +43,7 @@ public:
 
   const MapRoom* room(int id);
   MapRoom* mutableRoom(int id);
+  QList<const MapRoom*> searchForRooms(const QStringList& args, bool namesOnly, const QString& zone = QString()) const;
   void saveRoom(MapRoom* room);
 
   QStringList zoneNames() const;
