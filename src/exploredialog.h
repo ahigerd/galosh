@@ -5,7 +5,7 @@
 #include "explorehistory.h"
 class MapManager;
 class RoomView;
-class QLineEdit;
+class CommandLine;
 class QPushButton;
 
 class ExploreDialog : public QDialog
@@ -46,7 +46,7 @@ private:
 
   MapManager* map;
   RoomView* room;
-  QLineEdit* line;
+  CommandLine* line;
   QPushButton* backButton;
   ExploreHistory history;
 };

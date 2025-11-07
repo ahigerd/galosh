@@ -29,7 +29,8 @@ ExploreDialog::ExploreDialog(MapManager* map, int roomId, int lastRoomId, const 
   room->layout()->setContentsMargins(0, 0, 0, 0);
   layout->addWidget(room, 0, 0, 1, 2);
 
-  line = new QLineEdit(this);
+  line = new CommandLine(this);
+  line->setParsing(false); // we'll handle the parsing here
   layout->addWidget(line, 1, 0);
 
   backButton = new QPushButton("&Back", this);
