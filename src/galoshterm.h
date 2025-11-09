@@ -25,13 +25,16 @@ public:
 
   inline TelnetSocket* socket() { return tel; }
 
+  void writeColorLine(const QByteArray& colorCode, const QByteArray& message);
+
 signals:
   void lineReceived(const QString& line);
   void commandEntered(const QString& command, bool echo = true);
+  void slashCommand(const QString& command, const QStringList& args);
+  void speedwalk(const QStringList& steps);
 
 public slots:
   void showError(const QString& message);
-  void slashCommand(const QString& command, const QStringList& args);
   void executeCommand(const QString& command, bool echo = true);
 
 private slots:
@@ -42,10 +45,9 @@ private slots:
   void onReadyRead();
   void scheduleResizeAndScroll(bool scroll);
   void resizeAndScroll();
+  void onSlashCommand(const QString& command, const QStringList& args);
 
 private:
-  void writeColorLine(const QByteArray& colorCode, const QByteArray& message);
-
   QTimer refreshThrottle;
   Konsole::Vt102Emulation vt102;
   Konsole::TerminalDisplay* term;

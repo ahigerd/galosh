@@ -29,6 +29,7 @@ GaloshWindow::GaloshWindow(QWidget* parent)
   setCorner(Qt::BottomRightCorner, Qt::RightDockWidgetArea);
 
   term = new GaloshTerm(this);
+  QObject::connect(term, SIGNAL(slashCommand(QString, QStringList)), this, SLOT(slashCommand(QString, QStringList)));
   setCentralWidget(term);
 
   infoModel = new InfoModel(this);
@@ -91,6 +92,7 @@ GaloshWindow::GaloshWindow(QWidget* parent)
   tb->addAction("Disconnect", term->socket(), SLOT(disconnectFromHost()));
   tb->addSeparator();
   tb->addAction("Triggers", [this]{ openProfileDialog(ProfileDialog::TriggersTab); });
+  tb->addAction("Map", [this]{ exploreMap(); });
   tb->addSeparator();
   msspButton = tb->addAction("MSSP", this, SLOT(openMsspDialog()));
   addToolBar(tb);
@@ -107,8 +109,10 @@ GaloshWindow::GaloshWindow(QWidget* parent)
   fixGeometry = true;
 
   QObject::connect(term, SIGNAL(lineReceived(QString)), &map, SLOT(processLine(QString)));
+  QObject::connect(term, SIGNAL(lineReceived(QString)), &itemDB, SLOT(processLine(QString)));
   QObject::connect(term, SIGNAL(lineReceived(QString)), &triggers, SLOT(processLine(QString)), Qt::QueuedConnection);
   QObject::connect(term, SIGNAL(commandEntered(QString, bool)), &map, SLOT(commandEntered(QString, bool)), Qt::QueuedConnection);
+  QObject::connect(term, SIGNAL(speedwalk(QStringList)), this, SLOT(speedwalk(QStringList)));
 
   QObject::connect(term->socket(), SIGNAL(connected()), this, SLOT(updateStatus()));
   QObject::connect(term->socket(), SIGNAL(disconnected()), this, SLOT(updateStatus()));
@@ -227,6 +231,7 @@ void GaloshWindow::connectToProfile(const QString& path, bool online)
   QSettings settings(path, QSettings::IniFormat);
   settings.beginGroup("Profile");
   map.loadProfile(path);
+  itemDB.loadProfile(path);
   if (online) {
     QString command = settings.value("commandLine").toString();
     if (command.isEmpty()) {
@@ -338,6 +343,17 @@ void GaloshWindow::openMsspDialog()
   (new MsspView(term->socket(), this))->open();
 }
 
+void GaloshWindow::speedwalk(const QStringList& steps)
+{
+  if (!speedPath.isEmpty()) {
+    term->showError("Another speedwalk is in progress.");
+    return;
+  }
+  term->writeColorLine("93", "Starting speedwalk...");
+  speedPath = steps;
+  term->executeCommand(speedPath.takeFirst());
+}
+
 void GaloshWindow::setLastRoom(const QString& title, int roomId)
 {
   roomDock->setWindowTitle(title);
@@ -346,6 +362,17 @@ void GaloshWindow::setLastRoom(const QString& title, int roomId)
   settings.value("lastRoom", roomId);
   lastRoomId = roomId;
   exploreAction->setEnabled(true);
+  if (!speedPath.isEmpty()) {
+    QString dir = speedPath.takeFirst();
+    if (dir == "done") {
+      term->writeColorLine("93", "Speedwalk complete.");
+      return;
+    }
+    term->executeCommand(dir);
+    if (speedPath.isEmpty()) {
+      speedPath << "done";
+    }
+  }
 }
 
 void GaloshWindow::exploreMap(int roomId, const QString& movement)
@@ -357,5 +384,54 @@ void GaloshWindow::exploreMap(int roomId, const QString& movement)
     explore = new ExploreDialog(&map, roomId, lastRoomId, movement, this);
     QObject::connect(explore, SIGNAL(exploreRoom(int, QString)), this, SLOT(exploreMap(int, QString)));
     explore->show();
+  }
+}
+
+void GaloshWindow::slashCommand(const QString& command, const QStringList& args)
+{
+  Q_UNUSED(args);
+  if (command == "MAP" || command == "EXPLORE") {
+    exploreMap();
+  } else if (command == "DISCONNECT" || command == "DC") {
+    term->socket()->disconnectFromHost();
+  } else if (command == "ID" || command == "IDENTIFY" || command == "ITEM") {
+    QList<int> matches;
+    if (args.count() == 1) {
+      bool ok = false;
+      int index = args[0].toInt(&ok);
+      if (ok && index > 0) {
+        QString name = itemDB.itemName(index);
+        if (!name.isEmpty()) {
+          matches << index;
+        }
+      }
+    }
+    if (matches.isEmpty()) {
+      matches = itemDB.searchForName(args);
+    }
+    if (matches.length() > 1) {
+      if (matches.length() > 50) {
+        term->writeColorLine("96", QStringLiteral("Found %1 possible matches, showing the first 50:").arg(matches.length()).toUtf8());
+      } else {
+        term->writeColorLine("96", QStringLiteral("Found %1 possible matches:").arg(matches.length()).toUtf8());
+      }
+      for (int match : matches.mid(0, 50)) {
+        term->writeColorLine("96", QStringLiteral("[%1] %2").arg(match).arg(itemDB.itemName(match)).toUtf8());
+      }
+    } else if (matches.isEmpty()) {
+      term->writeColorLine("96", "No matching items found.");
+    } else {
+      term->writeColorLine("96", itemDB.itemStats(itemDB.itemName(matches[0])).replace("\n", "\r\n").toUtf8());
+    }
+    term->writeColorLine("96", "");
+  } else if (command == ".") {
+    if (speedPath.isEmpty()) {
+      term->showError("No speedwalk to abort.");
+    } else {
+      speedPath.clear();
+      term->writeColorLine("93", "Speedwalk aborted.");
+    }
+  } else {
+    term->showError("Unknown slash command: /" + command);
   }
 }

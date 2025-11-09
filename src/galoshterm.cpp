@@ -80,7 +80,8 @@ GaloshTerm::GaloshTerm(QWidget* parent)
   QObject::connect(line, SIGNAL(commandEntered(QString, bool)), this, SLOT(executeCommand(QString, bool)));
   QObject::connect(line, SIGNAL(commandEntered(QString, bool)), this, SIGNAL(commandEntered(QString, bool)));
   QObject::connect(line, SIGNAL(showError(QString)), this, SLOT(showError(QString)));
-  QObject::connect(line, SIGNAL(slashCommand(QString, QStringList)), this, SLOT(slashCommand(QString, QStringList)));
+  QObject::connect(line, SIGNAL(slashCommand(QString, QStringList)), this, SLOT(onSlashCommand(QString, QStringList)));
+  QObject::connect(line, SIGNAL(speedwalk(QStringList)), this, SIGNAL(speedwalk(QStringList)));
   layout->addWidget(line, 0);
 
   line->setFocus();
@@ -98,10 +99,11 @@ void GaloshTerm::showError(const QString& message)
   writeColorLine("1;4;31", message.toUtf8());
 }
 
-void GaloshTerm::slashCommand(const QString& command, const QStringList& args)
+void GaloshTerm::onSlashCommand(const QString& command, const QStringList& args)
 {
   QString message = "/" + command + " " + args.join(" ");
   writeColorLine("1;96", message.toUtf8());
+  emit slashCommand(command, args);
 }
 
 void GaloshTerm::executeCommand(const QString& command, bool echo)

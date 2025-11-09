@@ -6,6 +6,7 @@
 #include <QTimer>
 #include "triggermanager.h"
 #include "mapmanager.h"
+#include "itemdatabase.h"
 #include "profiledialog.h"
 class QLabel;
 class QTreeView;
@@ -45,6 +46,8 @@ private slots:
   void gmcpEvent(const QString& key, const QVariant& value);
   void setLastRoom(const QString& title, int roomId);
   void updateGeometry(bool queue = false);
+  void slashCommand(const QString& command, const QStringList& args);
+  void speedwalk(const QStringList& steps);
   void toggleRoomDock(bool checked);
   void toggleInfoDock(bool checked);
 
@@ -55,6 +58,7 @@ private:
   QString currentProfile;
   TriggerManager triggers;
   MapManager map;
+  ItemDatabase itemDB;
   GaloshTerm* term;
   QAction* exploreAction;
   QDockWidget* infoDock;
@@ -68,6 +72,7 @@ private:
   QAction* msspMenu;
   QLabel* sbStatus;
   QPointer<ExploreDialog> explore;
+  QStringList speedPath;
   int lastRoomId;
   bool fixGeometry;
   bool geometryReady;

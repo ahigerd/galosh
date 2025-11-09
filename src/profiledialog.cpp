@@ -170,6 +170,7 @@ void ProfileDialog::loadProfiles()
     if (settings.status() == QSettings::NoError) {
       settings.beginGroup("Profile");
       QStandardItem* item = new QStandardItem();
+      item->setFlags(Qt::ItemIsSelectable | Qt::ItemIsEnabled);
       item->setData(settings.value("name", "[invalid profile]"), Qt::DisplayRole);
       item->setData(path, Qt::UserRole);
       profileList->appendRow(item);

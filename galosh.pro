@@ -38,6 +38,9 @@ SOURCES += src/triggermanager.cpp src/mapmanager.cpp src/infomodel.cpp
 HEADERS += src/mudletimport.h   src/explorehistory.h   src/mapzone.h
 SOURCES += src/mudletimport.cpp src/explorehistory.cpp src/mapzone.cpp
 
+HEADERS += src/itemdatabase.h
+SOURCES += src/itemdatabase.cpp
+
 # networking
 HEADERS += src/telnetsocket.h
 SOURCES += src/telnetsocket.cpp
