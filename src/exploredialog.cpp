@@ -3,6 +3,12 @@
 #include "mapzone.h"
 #include "roomview.h"
 #include "commandline.h"
+#include "commands/slotcommand.h"
+#include "commands/mapsearchcommand.h"
+#include "commands/maphistorycommand.h"
+#include "commands/routecommand.h"
+#include "commands/simplifycommand.h"
+#include "commands/zonecommand.h"
 #include <QGridLayout>
 #include <QLineEdit>
 #include <QPushButton>
@@ -45,7 +51,7 @@ ExploreDialog::ExploreDialog(MapManager* map, int roomId, int lastRoomId, const 
 
   QObject::connect(room, SIGNAL(roomUpdated(QString, int, QString)), this, SLOT(roomUpdated(QString, int, QString)));
   QObject::connect(room, SIGNAL(exploreRoom(int, QString)), this, SIGNAL(exploreRoom(int, QString)));
-  QObject::connect(backButton, SIGNAL(clicked()), this, SLOT(do_BACK()));
+  QObject::connect(backButton, SIGNAL(clicked()), this, SLOT(goBack()));
   QObject::connect(line, SIGNAL(returnPressed()), this, SLOT(doCommand()));
 
   const MapRoom* room = nullptr;
@@ -64,6 +70,17 @@ ExploreDialog::ExploreDialog(MapManager* map, int roomId, int lastRoomId, const 
   }
 
   line->setFocus();
+
+  addCommand(new MapSearchCommand(map));
+  addCommand(new ZoneCommand(map));
+  addCommand(new MapHistoryCommand("HISTORY", &history));
+  addCommand(new MapHistoryCommand("REVERSE", &history));
+  addCommand(new MapHistoryCommand("SPEED", &history));
+  addCommand(new RouteCommand(map, &history));
+  addCommand(new SimplifyCommand(&history));
+  addCommand(new SlotCommand("BACK", this, SLOT(goBack()), "Returns to the previous room"));
+  addCommand(new SlotCommand("GOTO", this, SLOT(goToRoom(QString)), "Teleports to a room by numeric ID"));
+  addCommand(new SlotCommand("RESET", &history, SLOT(reset()), "Clears the exploration history"));
 }
 
 void ExploreDialog::roomUpdated(const QString& title, int id, const QString& movement)
@@ -75,73 +92,79 @@ void ExploreDialog::roomUpdated(const QString& title, int id, const QString& mov
 
 void ExploreDialog::doCommand()
 {
-  QString command = line->text().simplified();
-  if (command.startsWith(".")) {
-    QStringList dirs = CommandLine::parseSpeedwalk(command);
-    if (dirs.isEmpty()) {
-      setResponse(true);
-      return;
-    }
-    QStringList messages;
-    bool error = false;
-    QString lastRoom;
-    for (int i = 0; i < dirs.length(); i++) {
-      QString dir = MapRoom::normalizeDir(dirs[i]);
-      int dest = history.travel(dir);
-      if (dest < 0) {
-        error = true;
-        messages << QStringLiteral("Unable to travel %1 from this location").arg(dir);
-        if (i + 1 < dirs.length()) {
-          messages << QStringLiteral("Remaining steps: %1").arg(dirs.mid(i + 1).join(" "));
-        }
-        break;
-      }
-      lastRoom = RoomView::formatRoomTitle(history.currentRoom());
-      messages << QStringLiteral("%1 to %2").arg(dir).arg(lastRoom);
-    }
-    const MapRoom* room = history.currentRoom();
-    roomView()->setRoom(map, room ? room->id : -1);
-    setResponse(error, messages.join("\n"));
-    return;
-  }
-
-  QString dir = MapRoom::normalizeDir(command);
-  if (dir.isEmpty()) {
-    return;
-  }
-
+  responseLines.clear();
+  responseError = false;
+  expectResponse = true;
   clearResponse();
-  if (MapRoom::isDir(dir)) {
-    int dest = history.travel(dir);
-    if (dest < 0) {
-      setResponse(true);
-    } else {
-      emit exploreRoom(dest, dir);
-    }
-  } else {
-    QStringList args = dir.split(' ');
-    QString command = args.takeFirst();
-    handleCommand(command, args);
+  QString command = line->text();
+  if (command.startsWith("/")) {
+    // politely ignore slashes
+    command.remove(0, 1);
+  }
+  handleCommand(command);
+  if (expectResponse) {
+    setResponse(responseError, responseLines.join("\n"));
   }
   line->selectAll();
 }
 
-void ExploreDialog::handleCommand(const QString& command, const QStringList& args)
+void ExploreDialog::handleSpeedwalk(const QStringList& dirs)
 {
-  QByteArray slot = QStringLiteral("do_%1").arg(command).toUtf8();
-  if (metaObject()->indexOfSlot((slot + "(QStringList)").constData()) >= 0) {
-    if (!QMetaObject::invokeMethod(this, slot.constData(), Q_ARG(QStringList, args))) {
-      setResponse(true, QStringLiteral("Unknown error running command: %1").arg(command));
-    }
-  } else if (metaObject()->indexOfSlot((slot + "()").constData()) >= 0) {
-    if (args.length()) {
-      setResponse(true, QStringLiteral("%1 does not accept any parameters").arg(command));
-    } else if (!QMetaObject::invokeMethod(this, slot.constData())) {
-      setResponse(true, QStringLiteral("Unknown error running command: %1").arg(command));
-    }
-  } else {
-    setResponse(true, QStringLiteral("Unknown command: %1").arg(command));
+  if (dirs.isEmpty()) {
+    setResponse(true);
+    return;
   }
+  QStringList messages;
+  bool error = false;
+  QString lastRoom;
+  for (int i = 0; i < dirs.length(); i++) {
+    QString dir = MapRoom::normalizeDir(dirs[i]);
+    int dest = history.travel(dir);
+    if (dest < 0) {
+      error = true;
+      messages << QStringLiteral("Unable to travel %1 from this location").arg(dir);
+      if (i + 1 < dirs.length()) {
+        messages << QStringLiteral("Remaining steps: %1").arg(dirs.mid(i + 1).join(" "));
+      }
+      break;
+    }
+    lastRoom = RoomView::formatRoomTitle(history.currentRoom());
+    messages << QStringLiteral("%1 to %2").arg(dir).arg(lastRoom);
+  }
+  const MapRoom* room = history.currentRoom();
+  roomView()->setRoom(map, room ? room->id : -1);
+  setResponse(error, messages.join("\n"));
+}
+
+bool ExploreDialog::commandFilter(const QString& command, const QStringList& args)
+{
+  if (command.startsWith(".")) {
+    handleSpeedwalk(CommandLine::parseSpeedwalk(command + args.join("")));
+    return true;
+  }
+
+  QString dir = MapRoom::normalizeDir(command);
+  if (MapRoom::isDir(dir)) {
+    int dest = history.travel(dir);
+    if (dest < 0) {
+      responseError = true;
+    } else {
+      emit exploreRoom(dest, dir);
+    }
+    return true;
+  }
+
+  return false;
+}
+
+void ExploreDialog::showCommandMessage(TextCommand* command, const QString& message, bool isError)
+{
+  if (command && isError) {
+    responseLines << QString("%1: %2").arg(command->name(), message);
+  } else {
+    responseLines << message;
+  }
+  responseError = responseError || isError;
 }
 
 void ExploreDialog::refocus()
@@ -155,6 +178,7 @@ void ExploreDialog::refocus()
 
 void ExploreDialog::setResponse(bool isError, const QString& message)
 {
+  expectResponse = false;
   QPalette p = palette();
   if (isError) {
     p.setColor(QPalette::Base, QColor(255, 128, 128));
@@ -173,7 +197,7 @@ void ExploreDialog::clearResponse()
   room->setResponseMessage("", false);
 }
 
-void ExploreDialog::do_BACK()
+void ExploreDialog::goBack()
 {
   if (!history.canGoBack()) {
     setResponse(true, "No room to go back to.");
@@ -189,241 +213,11 @@ void ExploreDialog::do_BACK()
   clearResponse();
 }
 
-void ExploreDialog::do_HELP()
+void ExploreDialog::goToRoom(const QString& id)
 {
-  QStringList messages;
-  messages << "HELP\t\tShow this message";
-  messages << "BACK\t\tReturn to the previous room";
-  messages << "GOTO\tid\tTeleport to a room by ID";
-  messages << "ZONE\t\tList known zones";
-  messages << "ZONE\tname\tShow information about a zone";
-  messages << "SEARCH\twords\tSearch for rooms with names or descriptions containing words";
-  messages << "SEARCH\t-n words\tSearch for rooms with names containing words";
-  messages << "\t\tAdd '-z \"zone\"' to search within a single zone";
-  messages << "RESET\t\tResets the exploration history";
-  messages << "SIMPLIFY\t[aggr]\tRemoves backtracking from exploration history";
-  messages << "\t\tIf given any parameters, also looks for shortcuts";
-  messages << "ROUTE\tid\tFinds a route from the current room to the specified room";
-  messages << "HISTORY\t\tDisplays the exploration history. Supported options:";
-  messages << "\tnumber\tLimits the number of steps to show (default 10 for non-SPEED)";
-  messages << "\tREVERSE\tShow the steps to travel the path in reverse";
-  messages << "\tSPEED\tShow the steps in speedwalking syntax";
-  messages << "\tALL\tShows the full history (default for SPEED)";
-  messages << "\t*\tShortcut for ALL";
-  messages << "REVERSE\t\tShortcut for HISTORY REVERSE";
-  messages << "SPEED\t\tShortcut for HISTORY SPEED";
-  setResponse(false, messages.join("\n"));
-}
-
-void ExploreDialog::do_GOTO(const QStringList& args)
-{
-  // TODO: flesh out
-  if (args.length() == 1) {
-    int roomId = args[0].toInt();
-    emit exploreRoom(roomId, QString());
+  int roomId = id.toInt();
+  if (roomId <= 0) {
+    setResponse(true, "Invalid room ID: " + id);
   }
-}
-
-void ExploreDialog::do_ZONE(const QStringList& args)
-{
-  QStringList messages;
-  if (args.isEmpty()) {
-    messages = map->zoneNames();
-  } else {
-    QString zoneName = args.join(' ');
-    const MapZone* zone = map->searchForZone(zoneName);
-    if (!zone) {
-      setResponse(true, "Unknown zone: " + zoneName);
-      return;
-    }
-    messages << zone->name;
-    int minRoom = 0, maxRoom = 0, numRooms = zone->roomIds.size();
-    for (int roomId : zone->roomIds) {
-      if (!minRoom || roomId < minRoom) {
-        minRoom = roomId;
-      }
-      if (!maxRoom || roomId > maxRoom) {
-        maxRoom = roomId;
-      }
-    }
-    messages << QStringLiteral("%1 mapped rooms (%2 - %3)").arg(numRooms).arg(minRoom).arg(maxRoom);
-    messages << "" << "Connected zones:";
-    messages += zone->exits.keys();
-  }
-  setResponse(false, messages.join("\n"));
-}
-
-void ExploreDialog::do_SEARCH(const QStringList& args)
-{
-  if (args.isEmpty()) {
-    setResponse(true, "Search terms required");
-    return;
-  }
-  QStringList searchTerms;
-  QString searchZone;
-  bool namesOnly = false;
-  bool quotedZoneName = false;
-  for (int i = 0; i < args.length(); i++) {
-    if (quotedZoneName) {
-      searchZone += " ";
-      searchZone += args[i];
-      if (searchZone.endsWith('"')) {
-        quotedZoneName = false;
-        searchZone = searchZone.mid(1, searchZone.length() - 2);
-      }
-    } else if (args[i] == "-N") {
-      namesOnly = true;
-    } else if (args[i] == "-Z") {
-      if (i == args.length() - 1) {
-        setResponse(true, "-z requires a zone name");
-        return;
-      }
-      searchZone = args[++i];
-      quotedZoneName = searchZone.startsWith('"');
-    } else {
-      searchTerms << args[i];
-    }
-  }
-  if (quotedZoneName) {
-    setResponse(true, "Missing closing quote after zone name");
-    return;
-  }
-  QList<const MapRoom*> results = map->searchForRooms(searchTerms, namesOnly, searchZone);
-  if (results.isEmpty()) {
-    setResponse(true, "No search results");
-    return;
-  }
-  QStringList messages;
-  for (const MapRoom* room : results) {
-    messages << QStringLiteral("[%1] %2 (%3)").arg(room->id).arg(room->name).arg(room->zone);
-  }
-  setResponse(false, messages.join("\n"));
-}
-
-void ExploreDialog::do_HISTORY(const QStringList& args)
-{
-  int len = 0;
-  bool speedwalk = false;
-  bool reverse = false;
-  QString badArg;
-  for (const QString& arg : args) {
-    bool isNumeric = false;
-    int numeric = arg.toInt(&isNumeric);
-    if (isNumeric) {
-      if (numeric <= 0 || len != 0) {
-        badArg = arg;
-        break;
-      }
-      len = numeric;
-    } else if (QStringLiteral("SPEED").startsWith(arg)) {
-      speedwalk = true;
-    } else if (QStringLiteral("REVERSE").startsWith(arg)) {
-      reverse = true;
-    } else if (arg == "*" || arg == "ALL") {
-      len = -1;
-    } else {
-      badArg = arg;
-      break;
-    }
-  }
-  if (!badArg.isEmpty()) {
-    setResponse(true, QStringLiteral("Could not understand \"%1\".").arg(badArg));
-    return;
-  }
-
-  QStringList messages;
-  bool error = false;
-  if (speedwalk) {
-    QString dirs = history.speedwalk(len, reverse, &messages);
-    if (dirs.length() > 1) {
-      messages << dirs;
-    } else {
-      error = true;
-    }
-  } else {
-    messages = history.describe(len, reverse);
-  }
-  if (messages.isEmpty()) {
-    error = true;
-    messages << "No history to show";
-  }
-  setResponse(error, messages.join("\n"));
-}
-
-void ExploreDialog::do_REVERSE(const QStringList& args)
-{
-  do_HISTORY(QStringList(args) << "REVERSE");
-}
-
-void ExploreDialog::do_SPEED(const QStringList& args)
-{
-  do_HISTORY(QStringList(args) << "SPEED");
-}
-
-void ExploreDialog::do_RESET()
-{
-  history.reset();
-}
-
-void ExploreDialog::do_SIMPLIFY(const QStringList& args)
-{
-  bool aggressive = args.length() > 0;
-  int before = history.length();
-  history.simplify(aggressive);
-  int after = history.length();
-  if (before == after) {
-    if (aggressive) {
-      setResponse(true, "No backtracking or shortcuts in exploration history");
-    } else {
-      setResponse(true, "No backtracking in exploration history");
-    }
-  } else {
-    setResponse(false, QStringLiteral("Simplified history from %1 steps to %2 steps").arg(before).arg(after));
-  }
-}
-
-void ExploreDialog::do_ROUTE(const QStringList& args)
-{
-  if (args.size() != 1) {
-    setResponse(true, "Destination room ID required");
-    return;
-  }
-  if (!history.currentRoom()) {
-    setResponse(true, "Could not find current room");
-    return;
-  }
-  int endRoomId = args.first().toInt();
-  const MapRoom* room = map->room(endRoomId);
-  if (!room) {
-    setResponse(true, "Could not find destination room");
-    return;
-  }
-  if (room == history.currentRoom()) {
-    setResponse(true, "Start room and destination room are the same");
-    return;
-  }
-  int startRoomId = history.currentRoom()->id;
-  QList<int> route = MapZone::findWorldRoute(map, startRoomId, endRoomId);
-  if (route.isEmpty()) {
-    setResponse(true, QStringLiteral("Could not find route from %1 to %2").arg(startRoomId).arg(endRoomId));
-    return;
-  }
-  ExploreHistory path(map);
-  path.goTo(startRoomId);
-  for (int step : route) {
-    if (step == startRoomId) {
-      continue;
-    }
-    for (const QString& dir : path.currentRoom()->exits.keys()) {
-      if (path.currentRoom()->exits.value(dir).dest == step) {
-        path.travel(dir);
-        break;
-      }
-    }
-  }
-  QStringList warnings;
-  QStringList messages;
-  messages << path.speedwalk(-1, false, &warnings) << "";
-  messages += path.describe(-1);
-  setResponse(!warnings.isEmpty(), messages.join("\n"));
+  emit exploreRoom(roomId, QString());
 }

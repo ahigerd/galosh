@@ -36,5 +36,25 @@ void HelpCommand::handleInvoke(const QStringList& args, const KWArgs&)
     showError("Unknown command: " + name);
     return;
   }
+  QString intro = cmd->name();
+  if (cmd->keywords().length() > 1) {
+    if (cmd->keywords().length() > 2) {
+      intro += " (aliases: ";
+    } else {
+      intro += " (alias: ";
+    }
+    bool first = true;
+    for (const QString& alias : cmd->keywords()) {
+      if (alias != cmd->name()) {
+        if (first) {
+          first = false;
+        } else {
+          intro += ", ";
+        }
+        intro += alias;
+      }
+    }
+  }
+
   showMessage(cmd->helpMessage(false));
 }

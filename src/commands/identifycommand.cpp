@@ -15,9 +15,9 @@ QString IdentifyCommand::helpMessage(bool brief) const
   }
   return
     "Searches the item database for an item by name or index number.\n\n"
+    "Words may be regular expressions.\n"
     "Multiple words can be provided. All provided words must be found to match an item.\n"
     "Words connected by a - must be found in order in an item's name.\n"
-    "Words may be regular expressions.\n"
     "If multiple matching items are found, a list of index numbers and item names will be displayed.";
 }
 

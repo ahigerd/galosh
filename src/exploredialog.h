@@ -2,13 +2,14 @@
 #define GALOSH_EXPLOREDIALOG_H
 
 #include <QDialog>
+#include "commands/textcommandprocessor.h"
 #include "explorehistory.h"
 class MapManager;
 class RoomView;
 class CommandLine;
 class QPushButton;
 
-class ExploreDialog : public QDialog
+class ExploreDialog : public QDialog, public TextCommandProcessor
 {
 Q_OBJECT
 public:
@@ -28,27 +29,25 @@ private slots:
   void setResponse(bool isError = false, const QString& message = QString());
   void clearResponse();
 
-  void do_BACK();
-  void do_HELP();
-  void do_GOTO(const QStringList&);
-  inline void do_ZONES() { return do_ZONE({}); }
-  void do_ZONE(const QStringList&);
-  void do_SEARCH(const QStringList&);
-  void do_HISTORY(const QStringList&);
-  void do_REVERSE(const QStringList&);
-  void do_SPEED(const QStringList&);
-  void do_SIMPLIFY(const QStringList&);
-  void do_ROUTE(const QStringList&);
-  void do_RESET();
+  void goBack();
+  void goToRoom(const QString& id);
+
+protected:
+  virtual void showCommandMessage(TextCommand* command, const QString& message, bool isError) override;
+  virtual bool commandFilter(const QString& command, const QStringList& args) override;
 
 private:
-  void handleCommand(const QString& command, const QStringList& args);
+  //void handleCommand(const QString& command, const QStringList& args);
+  void handleSpeedwalk(const QStringList& dirs);
 
   MapManager* map;
   RoomView* room;
   CommandLine* line;
   QPushButton* backButton;
   ExploreHistory history;
+  QStringList responseLines;
+  bool responseError;
+  bool expectResponse;
 };
 
 #endif

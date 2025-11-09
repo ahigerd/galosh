@@ -64,7 +64,7 @@ void TextCommand::invoke(const QStringList& args)
     showError("unexpected arguments");
     return;
   }
-  handleInvoke(args, kwargs);
+  handleInvoke(positional, kwargs);
 }
 
 void TextCommand::showMessage(const QString& message)
