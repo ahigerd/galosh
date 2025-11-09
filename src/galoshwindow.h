@@ -4,6 +4,7 @@
 #include <QMainWindow>
 #include <QPointer>
 #include <QTimer>
+#include "commands/textcommandprocessor.h"
 #include "triggermanager.h"
 #include "mapmanager.h"
 #include "itemdatabase.h"
@@ -15,7 +16,7 @@ class InfoModel;
 class RoomView;
 class ExploreDialog;
 
-class GaloshWindow : public QMainWindow
+class GaloshWindow : public QMainWindow, public TextCommandProcessor
 {
 Q_OBJECT
 public:
@@ -46,10 +47,14 @@ private slots:
   void gmcpEvent(const QString& key, const QVariant& value);
   void setLastRoom(const QString& title, int roomId);
   void updateGeometry(bool queue = false);
-  void slashCommand(const QString& command, const QStringList& args);
+#ifdef Q_MOC_RUN
+  void handleCommand(const QString& command, const QStringList& args);
+#endif
   void speedwalk(const QStringList& steps);
   void toggleRoomDock(bool checked);
   void toggleInfoDock(bool checked);
+  void abortSpeedwalk();
+  void showCommandMessage(TextCommand* command, const QString& message, bool isError) override;
 
 private:
   bool msspAvailable() const;

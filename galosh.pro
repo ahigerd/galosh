@@ -47,4 +47,5 @@ SOURCES += src/telnetsocket.cpp
 
 SOURCES += src/main.cpp
 
+include(src/commands/commands.pri)
 include(src/qtermwidget/qtermwidget.pri)

@@ -1,5 +1,5 @@
-#ifndef MAPZONE_H
-#define MAPZONE_H
+#ifndef GALOSH_MAPZONE_H
+#define GALOSH_MAPZONE_H
 
 #include <QString>
 #include <QList>

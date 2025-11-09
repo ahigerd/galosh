@@ -1,5 +1,5 @@
-#ifndef ITEMDATABASE_H
-#define ITEMDATABASE_H
+#ifndef GALOSH_ITEMDATABASE_H
+#define GALOSH_ITEMDATABASE_H
 
 #include <QAbstractListModel>
 #include <QMap>

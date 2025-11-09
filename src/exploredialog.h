@@ -1,5 +1,5 @@
-#ifndef EXPLOREDIALOG_H
-#define EXPLOREDIALOG_H
+#ifndef GALOSH_EXPLOREDIALOG_H
+#define GALOSH_EXPLOREDIALOG_H
 
 #include <QDialog>
 #include "explorehistory.h"

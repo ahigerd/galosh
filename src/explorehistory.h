@@ -1,5 +1,5 @@
-#ifndef EXPLOREHISTORY_H
-#define EXPLOREHISTORY_H
+#ifndef GALOSH_EXPLOREHISTORY_H
+#define GALOSH_EXPLOREHISTORY_H
 
 #include <QObject>
 #include <QStringList>

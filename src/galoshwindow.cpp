@@ -5,6 +5,9 @@
 #include "roomview.h"
 #include "msspview.h"
 #include "exploredialog.h"
+#include "commands/textcommand.h"
+#include "commands/identifycommand.h"
+#include "commands/slotcommand.h"
 #include <QDesktopServices>
 #include <QApplication>
 #include <QMessageBox>
@@ -29,7 +32,7 @@ GaloshWindow::GaloshWindow(QWidget* parent)
   setCorner(Qt::BottomRightCorner, Qt::RightDockWidgetArea);
 
   term = new GaloshTerm(this);
-  QObject::connect(term, SIGNAL(slashCommand(QString, QStringList)), this, SLOT(slashCommand(QString, QStringList)));
+  QObject::connect(term, SIGNAL(slashCommand(QString, QStringList)), this, SLOT(handleCommand(QString, QStringList)));
   setCentralWidget(term);
 
   infoModel = new InfoModel(this);
@@ -138,6 +141,11 @@ GaloshWindow::GaloshWindow(QWidget* parent)
   QObject::connect(infoView->header(), &QHeaderView::sectionResized, [this](int, int, int){ updateGeometry(true); });
 
   updateStatus();
+
+  addCommand(new IdentifyCommand(&itemDB));
+  addCommand(new SlotCommand(".", this, SLOT(abortSpeedwalk()), "Aborts a speedwalk path in progress"));
+  addCommand(new SlotCommand("DC", term->socket(), SLOT(disconnectFromHost()), "Disconnects from the game"))->addKeyword("DISCONNECT");
+  addCommand(new SlotCommand("EXPLORE", this, SLOT(exploreMap()), "Opens the map exploration window"))->addKeyword("MAP");
 }
 
 void GaloshWindow::showEvent(QShowEvent* event)
@@ -349,7 +357,7 @@ void GaloshWindow::speedwalk(const QStringList& steps)
     term->showError("Another speedwalk is in progress.");
     return;
   }
-  term->writeColorLine("93", "Starting speedwalk...");
+  term->writeColorLine("96", "Starting speedwalk...");
   speedPath = steps;
   term->executeCommand(speedPath.takeFirst());
 }
@@ -387,51 +395,33 @@ void GaloshWindow::exploreMap(int roomId, const QString& movement)
   }
 }
 
+/*
 void GaloshWindow::slashCommand(const QString& command, const QStringList& args)
 {
-  Q_UNUSED(args);
-  if (command == "MAP" || command == "EXPLORE") {
-    exploreMap();
-  } else if (command == "DISCONNECT" || command == "DC") {
-    term->socket()->disconnectFromHost();
-  } else if (command == "ID" || command == "IDENTIFY" || command == "ITEM") {
-    QList<int> matches;
-    if (args.count() == 1) {
-      bool ok = false;
-      int index = args[0].toInt(&ok);
-      if (ok && index > 0) {
-        QString name = itemDB.itemName(index);
-        if (!name.isEmpty()) {
-          matches << index;
-        }
-      }
-    }
-    if (matches.isEmpty()) {
-      matches = itemDB.searchForName(args);
-    }
-    if (matches.length() > 1) {
-      if (matches.length() > 50) {
-        term->writeColorLine("96", QStringLiteral("Found %1 possible matches, showing the first 50:").arg(matches.length()).toUtf8());
-      } else {
-        term->writeColorLine("96", QStringLiteral("Found %1 possible matches:").arg(matches.length()).toUtf8());
-      }
-      for (int match : matches.mid(0, 50)) {
-        term->writeColorLine("96", QStringLiteral("[%1] %2").arg(match).arg(itemDB.itemName(match)).toUtf8());
-      }
-    } else if (matches.isEmpty()) {
-      term->writeColorLine("96", "No matching items found.");
+  handleCommand(command, args);
+}
+*/
+
+void GaloshWindow::abortSpeedwalk()
+{
+  if (speedPath.isEmpty()) {
+    term->showError("No speedwalk to abort.");
+  } else {
+    speedPath.clear();
+    term->writeColorLine("96", "Speedwalk aborted.");
+  }
+}
+
+void GaloshWindow::showCommandMessage(TextCommand* command, const QString& message, bool isError)
+{
+  QString formatted = QString(message).replace("\n", "\r\n").replace("\r\r", "\r");
+  if (isError) {
+    if (command) {
+      term->showError(command->name() + ": " + formatted);
     } else {
-      term->writeColorLine("96", itemDB.itemStats(itemDB.itemName(matches[0])).replace("\n", "\r\n").toUtf8());
-    }
-    term->writeColorLine("96", "");
-  } else if (command == ".") {
-    if (speedPath.isEmpty()) {
-      term->showError("No speedwalk to abort.");
-    } else {
-      speedPath.clear();
-      term->writeColorLine("93", "Speedwalk aborted.");
+      term->showError(formatted);
     }
   } else {
-    term->showError("Unknown slash command: /" + command);
+    term->writeColorLine("96", formatted.toUtf8());
   }
 }
