@@ -1,12 +1,27 @@
 #include "mapmanager.h"
 #include "mapzone.h"
+#include "mapsearch.h"
 #include "mudletimport.h"
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
 #include <QSettings>
 #include <QDir>
 #include <QStandardPaths>
+#include <time.h>
 #include <QtDebug>
+
+template <typename T>
+static void benchmark(const QString& label, T fn)
+{
+  timespec startTime, endTime;
+  clock_gettime(CLOCK_MONOTONIC, &startTime);
+
+  fn();
+
+  clock_gettime(CLOCK_MONOTONIC, &endTime);
+  uint64_t elapsed = (endTime.tv_sec - startTime.tv_sec) * 1e9 + (endTime.tv_nsec - startTime.tv_nsec);
+  qDebug() << label << (elapsed / 1000.0 / 1000.0) << "ms";
+}
 
 static const QMap<QString, QString> dirAbbrev{
   { "NORTH", "N" },
@@ -92,7 +107,10 @@ void MapManager::loadProfile(const QString& profile)
     QDir dir = QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation);
     mapFileName = dir.absoluteFilePath(mapFileName + ".galosh_map");
   }
-  loadMap(mapFileName);
+  benchmark("load", [this, mapFileName]{ loadMap(mapFileName); });
+  MapSearch ms(this);
+  benchmark("precompute", [&]{ ms.precompute(); });
+  benchmark("cliqueRoute", [&]{ ms.findCliqueRoute(3009, 55214); });
 }
 
 void MapManager::loadMap(const QString& mapFileName)
@@ -106,8 +124,9 @@ void MapManager::loadMap(const QString& mapFileName)
   autoRoomId = mapFile->value("autoID", 1).toInt();
 
   for (const QString& zone : mapFile->childGroups()) {
+    QString zoneName = zone == "-" ? "" : zone;
     mapFile->beginGroup(zone);
-    MapZone* zoneObj = mutableZone(zone);
+    MapZone* zoneObj = mutableZone(zoneName);
     for (const QString& idStr : mapFile->childGroups()) {
       int id = idStr.toInt();
       if (!id) {
@@ -115,10 +134,10 @@ void MapManager::loadMap(const QString& mapFileName)
         continue;
       }
       mapFile->beginGroup(idStr);
-      MapRoom& room = *mutableRoom(id);
-      room.zone = zone == "-" ? "" : zone;
-      room.name = mapFile->value("name").toString();
-      room.description = mapFile->value("description").toString();
+      MapRoom* room = mutableRoom(id);
+      room->zone = zoneName;
+      room->name = mapFile->value("name").toString();
+      room->description = mapFile->value("description").toString();
       mapFile->beginGroup("exit");
       for (const QString& dir : mapFile->childGroups()) {
         mapFile->beginGroup(dir);
@@ -129,14 +148,22 @@ void MapManager::loadMap(const QString& mapFileName)
         exit.lockable = mapFile->value("lock").toBool();
         exit.open = false;
         exit.locked = exit.lockable;
-        room.exits[dir] = exit;
+        room->exits[dir] = exit;
         mapFile->endGroup();
       }
-      zoneObj->addRoom(&room);
+      zoneObj->addRoom(room);
       mapFile->endGroup();
       mapFile->endGroup();
     }
     mapFile->endGroup();
+  }
+
+  for (const MapRoom& room : rooms) {
+    for (const MapExit& exit : room.exits) {
+      if (rooms.contains(exit.dest)) {
+        rooms[exit.dest].entrances << room.id;
+      }
+    }
   }
 
   // TODO: no need to do this until requested

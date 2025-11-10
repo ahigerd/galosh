@@ -306,6 +306,7 @@ QList<int> MapZone::findWorldRoute(MapManager* map, int startRoomId, int endRoom
       qDebug() << "XXX: pickRoute returned room with invalid exits";
       return {};
     }
+    qDebug() << from << to << step.last() << pathStart;
     path += step;
     from = to;
   }
@@ -314,6 +315,7 @@ QList<int> MapZone::findWorldRoute(MapManager* map, int startRoomId, int endRoom
     auto step = endZone->pickRoute(pathStart, { endRoomId }, {});
     path += step;
   }
+  qDebug() << path;
 
   if (!path.endsWith(endRoomId)) {
     qDebug() << "XXX: Routing failed";
