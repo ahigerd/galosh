@@ -124,6 +124,15 @@ MapSearch::Clique* MapSearch::findClique(const QString& zoneName, int roomId) co
   return nullptr;
 }
 
+MapSearch::Clique* MapSearch::findClique(int roomId) const
+{
+  const MapRoom* room = map->room(roomId);
+  if (!room) {
+    return nullptr;
+  }
+  return findClique(room->zone, roomId);
+}
+
 QMap<int, int> MapSearch::getCosts(const MapSearch::Clique* clique, int startRoomId, int endRoomId) const
 {
   QMap<int, int> costs;
@@ -170,7 +179,7 @@ QMap<int, int> MapSearch::getCosts(const MapSearch::Clique* clique, int startRoo
   return costs;
 }
 
-QList<int> MapSearch::findRouteByCost(int startRoomId, int endRoomId, const QMap<int, int>& costs, int maxCost) const
+QList<int> MapSearch::findRouteInClique(int startRoomId, int endRoomId, const QMap<int, int>& costs, int maxCost) const
 {
   if (startRoomId == endRoomId) {
     return { endRoomId };
@@ -191,7 +200,7 @@ QList<int> MapSearch::findRouteByCost(int startRoomId, int endRoomId, const QMap
     if (nextRoomId == startRoomId || costs.value(nextRoomId, maxCost) >= maxCost) {
       continue;
     }
-    QList<int> route = findRouteByCost(startRoomId, nextRoomId, costs, costs[nextRoomId]);
+    QList<int> route = findRouteInClique(startRoomId, nextRoomId, costs, costs[nextRoomId]);
     if (route.isEmpty()) {
       continue;
     }
@@ -202,7 +211,7 @@ QList<int> MapSearch::findRouteByCost(int startRoomId, int endRoomId, const QMap
   if (bestRoute.isEmpty()) {
     return {};
   }
-  bestRoute.insert(0, startRoomId);
+  bestRoute << endRoomId;
   return bestRoute;
 }
 
@@ -224,7 +233,7 @@ void MapSearch::fillRoutes(MapSearch::Clique* clique, int startRoomId)
       continue;
     }
     Q_ASSERT(costs.contains(endRoomId));
-    clique->routes[key] = findRouteByCost(startRoomId, endRoomId, costs);
+    clique->routes[key] = findRouteInClique(startRoomId, endRoomId, costs);
   }
 }
 
@@ -235,16 +244,27 @@ QStringList debug(const QList<const MapSearch::Clique*>& path)
   return rv;
 }
 
-QList<const MapSearch::Clique*> MapSearch::findCliqueRoute(int startRoomId, int endRoomId) const
+QList<const MapSearch::Clique*> MapSearch::findCliqueRoute(int startRoomId, int endRoomId, const QStringList& avoidZones) const
 {
   const MapZone* startZone = map->zone(map->room(startRoomId)->zone);
   const MapZone* endZone = map->zone(map->room(endRoomId)->zone);
   qDebug() << startZone->name << endZone->name;
   const Clique* fromClique = findClique(startZone->name, startRoomId);
   const Clique* toClique = findClique(endZone->name, endRoomId);
-  auto [path, cost] = findCliqueRoute(fromClique, toClique, {});
+  auto [path, cost] = findCliqueRoute(fromClique, toClique, collectCliques(avoidZones));
   qDebug() << debug(path) << cost;
   return path;
+}
+
+QList<const MapSearch::Clique*> MapSearch::collectCliques(const QStringList& zones) const
+{
+  QList<const Clique*> result;
+  for (const QString& zone : zones) {
+    for (Clique* clique : cliques.value(zone)) {
+      result << clique;
+    }
+  }
+  return result;
 }
 
 QPair<QList<const MapSearch::Clique*>, int> MapSearch::findCliqueRoute(const MapSearch::Clique* fromClique, const MapSearch::Clique* toClique, QList<const MapSearch::Clique*> avoid) const
@@ -313,4 +333,91 @@ QPair<QList<const MapSearch::Clique*>, int> MapSearch::findCliqueRoute(const Map
     return { {}, -1 };
   }
   return { bestPath, bestCost };
+}
+
+QList<int> MapSearch::findRoute(int startRoomId, int endRoomId, const QStringList& avoidZones) const
+{
+  const Clique* startClique = findClique(startRoomId);
+  const Clique* endClique = findClique(endRoomId);
+  if (!startClique || !endClique) {
+    return {};
+  }
+
+  if (startClique == endClique) {
+    QMap<int, int> costs = getCosts(startClique, startRoomId, endRoomId);
+    return findRouteInClique(startRoomId, endRoomId, costs);
+  }
+
+  QList<const Clique*> avoidCliques = collectCliques(avoidZones);
+  auto [cliqueRoute, cost] = findCliqueRoute(startClique, endClique, avoidCliques);
+  if (cliqueRoute.isEmpty()) {
+    return {};
+  }
+  cliqueRoute.insert(0, startClique);
+  Q_ASSERT(cliqueRoute.last() == endClique);
+
+  QList<CliqueStep> steps;
+  for (int i = 0; i < cliqueRoute.length() - 1; i++) {
+    const Clique* clique = cliqueRoute[i];
+    QSet<int> outRooms, nextRooms;
+    for (const CliqueExit& exit : clique->exits) {
+      if (exit.toClique == cliqueRoute[i + 1]) {
+        outRooms << exit.fromRoomId;
+        nextRooms << exit.toRoomId;
+      }
+    }
+    steps << CliqueStep{ clique, outRooms, nextRooms };
+  }
+  steps << CliqueStep{ cliqueRoute.last(), { endRoomId }, {} };
+
+  return findRoute(steps, 0, startRoomId);
+}
+
+QList<int> MapSearch::findRoute(const QList<MapSearch::CliqueStep>& steps, int index, int startRoomId) const
+{
+  const auto& step = steps[index];
+  QMap<int, int> costs;
+  if (index == 0) {
+    costs = getCosts(step.clique, startRoomId);
+  } else if (index == steps.length() - 1) {
+    for (int endRoomId : step.endRoomIds) {
+      costs = getCosts(step.clique, startRoomId, endRoomId);
+      break;
+    }
+  }
+  QList<int> bestRoute, stepRoute;
+  for (int endRoomId : step.endRoomIds) {
+    if (index == 0 || index == steps.length() - 1) {
+      stepRoute = findRouteInClique(startRoomId, endRoomId, costs);
+    } else {
+      stepRoute = step.clique->routes[qMakePair(startRoomId, endRoomId)];
+    }
+    if (stepRoute.isEmpty()) {
+      continue;
+    }
+    if (step.nextRoomIds.isEmpty()) {
+      return stepRoute;
+    }
+    const MapRoom* endRoom = map->room(endRoomId);
+    QList<int> bestNext;
+    for (const MapExit& exit : endRoom->exits) {
+      if (step.nextRoomIds.contains(exit.dest)) {
+        QList<int> nextRoute = findRoute(steps, index + 1, exit.dest);
+        if (nextRoute.isEmpty()) {
+          continue;
+        }
+        if (bestNext.isEmpty() || bestNext.length() > nextRoute.length()) {
+          bestNext = nextRoute;
+        }
+      }
+    }
+    if (bestNext.isEmpty()) {
+      continue;
+    }
+    Q_ASSERT(!bestNext.isEmpty());
+    if (bestRoute.isEmpty() || stepRoute.length() + bestNext.length() < bestRoute.length()) {
+      bestRoute = stepRoute + bestNext;
+    }
+  }
+  return bestRoute;
 }

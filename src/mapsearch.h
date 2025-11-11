@@ -32,7 +32,8 @@ public:
 
   void reset();
   void precompute();
-  QList<const MapSearch::Clique*> findCliqueRoute(int startRoomId, int endRoomId) const;
+  QList<const MapSearch::Clique*> findCliqueRoute(int startRoomId, int endRoomId, const QStringList& avoidZones = {}) const;
+  QList<int> findRoute(int startRoomId, int endRoomId, const QStringList& avoidZones = {}) const;
 
 private:
   void getCliquesForZone(const MapZone* zone);
@@ -40,10 +41,19 @@ private:
   void resolveExits(Clique* clique);
   void fillRoutes(Clique* clique, int startRoomId);
   QMap<int, int> getCosts(const Clique* clique, int startRoomId, int endRoomId = -1) const;
-  QList<int> findRouteByCost(int startRoomId, int endRoomId, const QMap<int, int>& costs, int maxCost = 0) const;
+  QList<int> findRouteInClique(int startRoomId, int endRoomId, const QMap<int, int>& costs, int maxCost = 0) const;
   Clique* newClique(const MapZone* parent);
   Clique* findClique(const QString& zoneName, int roomId) const;
+  Clique* findClique(int roomId) const;
+  QList<const Clique*> collectCliques(const QStringList& zones) const;
   QPair<QList<const MapSearch::Clique*>, int> findCliqueRoute(const Clique* fromClique, const Clique* toClique, QList<const Clique*> avoid) const;
+
+  struct CliqueStep {
+    const Clique* clique;
+    QSet<int> endRoomIds;
+    QSet<int> nextRoomIds;
+  };
+  QList<int> findRoute(const QList<CliqueStep>& steps, int index, int startRoomId) const;
 
   MapManager* map;
   std::list<Clique> cliqueStore;

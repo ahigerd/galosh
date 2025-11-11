@@ -110,7 +110,11 @@ void MapManager::loadProfile(const QString& profile)
   benchmark("load", [this, mapFileName]{ loadMap(mapFileName); });
   MapSearch ms(this);
   benchmark("precompute", [&]{ ms.precompute(); });
-  benchmark("cliqueRoute", [&]{ ms.findCliqueRoute(3009, 55214); });
+  //benchmark("cliqueRoute", [&]{ ms.findCliqueRoute(3009, 55214); });
+  //benchmark("cliqueRoute", [&]{ ms.findCliqueRoute(3009, 55214, { "Mielikki Farmlands (Newbie)" }); });
+  //benchmark("route", [&]{ ms.findRoute(3009, 55214); });
+  benchmark("route", [&]{ qDebug() << ms.findRoute(3009, 55214).length(); });
+  benchmark("route2", [&]{ qDebug() << ms.findRoute(3009, 55214, { "Mielikki Farmlands (Newbie)" }).length(); });
 }
 
 void MapManager::loadMap(const QString& mapFileName)
