@@ -10,39 +10,45 @@ class MapRoom;
 
 using ZoneID = QString;
 
+struct MapExit {
+  QString name;
+  int dest = -1;
+  bool door = false;
+  bool open = false;
+  bool locked = false;
+  bool lockable = false;
+};
+
+struct MapRoom {
+  static QString normalizeDir(const QString& dir);
+  static QString reverseDir(const QString& dir);
+  static bool isDir(const QString& dir);
+
+  int id;
+  QString name;
+  QString description;
+  QString zone;
+  QString roomType;
+  QMap<QString, MapExit> exits;
+  QSet<int> entrances;
+
+  QString findExit(int dest) const;
+  QSet<int> exitRooms() const;
+};
+
 class MapZone
 {
 private:
   MapManager* map;
 
 public:
-  using StartRoom = int;
-  using DestRoom = int;
-
   MapZone(MapManager* map, const QString& name);
 
   ZoneID name;
   QSet<int> roomIds;
   QMap<ZoneID, QSet<int>> exits;
-  QMap<DestRoom, QMap<StartRoom, int>> costToExit;
 
   void addRoom(const MapRoom* room);
-  void computeCostsToExits(bool reset = false);
-  void computeTransits(bool reset = false);
-
-  QList<int> findRoute(int startRoomId, int endRoomId);
-  QList<int> findRoute(int startRoomId, int endRoomId) const;
-
-  QPair<QList<ZoneID>, int> findZoneRoute(const ZoneID& dest, QList<ZoneID> avoid = {}) const;
-
-  static QList<int> findWorldRoute(MapManager* map, int startRoomId, int endRoomId, const QList<ZoneID>& avoid = {});
-
-private:
-  QMap<StartRoom, int> getCostsToRoom(int endRoomId, QSet<int>& blocked) const;
-  QList<int> findRouteByCost(int startRoomId, int endRoomId, const QMap<int, int>& costs) const;
-  QList<int> pickRoute(const QSet<int>& startRoomIds, const QSet<int>& endRoomIds, const QSet<int>& nextRoomIds) const;
-
-  QSet<int> blockedRooms;
 };
 
 #endif

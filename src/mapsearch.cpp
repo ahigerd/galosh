@@ -3,6 +3,19 @@
 #include "mapzone.h"
 #include <QtDebug>
 
+template <typename T>
+static void benchmark(const QString& label, T fn)
+{
+  timespec startTime, endTime;
+  clock_gettime(CLOCK_MONOTONIC, &startTime);
+
+  fn();
+
+  clock_gettime(CLOCK_MONOTONIC, &endTime);
+  uint64_t elapsed = (endTime.tv_sec - startTime.tv_sec) * 1e9 + (endTime.tv_nsec - startTime.tv_nsec);
+  qDebug() << label << (elapsed / 1000.0 / 1000.0) << "ms";
+}
+
 MapSearch::MapSearch(MapManager* map)
 : map(map)
 {
@@ -246,13 +259,9 @@ QStringList debug(const QList<const MapSearch::Clique*>& path)
 
 QList<const MapSearch::Clique*> MapSearch::findCliqueRoute(int startRoomId, int endRoomId, const QStringList& avoidZones) const
 {
-  const MapZone* startZone = map->zone(map->room(startRoomId)->zone);
-  const MapZone* endZone = map->zone(map->room(endRoomId)->zone);
-  qDebug() << startZone->name << endZone->name;
-  const Clique* fromClique = findClique(startZone->name, startRoomId);
-  const Clique* toClique = findClique(endZone->name, endRoomId);
+  const Clique* fromClique = findClique(startRoomId);
+  const Clique* toClique = findClique(endRoomId);
   auto [path, cost] = findCliqueRoute(fromClique, toClique, collectCliques(avoidZones));
-  qDebug() << debug(path) << cost;
   return path;
 }
 
@@ -305,22 +314,24 @@ QPair<QList<const MapSearch::Clique*>, int> MapSearch::findCliqueRoute(const Map
       continue;
     }
     auto [path, cost] = findCliqueRoute(next, toClique, avoid);
-    if (cost <= 0 || path.length() < 2) {
+    if (cost <= 0 || path.length() < 1) {
       // cost == 0 would imply a direct connection
       // but that should have been caught by transits
       continue;
     }
-    const Clique* through = path[0];
-    const Clique* transitTo = path[1];
+    const Clique* transitTo = path[0];
     int transitCost = 0;
-    for (const CliqueExit& throughExit : through->exits) {
-      if (throughExit.toClique == transitTo) {
-        QPair<int, int> key(exit.toRoomId, throughExit.fromRoomId);
-        int thisTransitCost = through->routes.value(key).length();
+    for (const CliqueExit& nextExit : next->exits) {
+      if (nextExit.toClique == transitTo) {
+        QPair<int, int> key(exit.toRoomId, nextExit.fromRoomId);
+        int thisTransitCost = next->routes.value(key).length();
         if (thisTransitCost > 0 && (!transitCost || thisTransitCost < transitCost)) {
           transitCost = thisTransitCost;
         }
       }
+    }
+    if (!transitCost) {
+      continue;
     }
     cost += transitCost;
     if (!bestCost || cost < bestCost) {

@@ -34,7 +34,7 @@ void RouteCommand::handleInvoke(const QStringList& args, const KWArgs&)
     return;
   }
   int startRoomId = history->currentRoom()->id;
-  QList<int> route = MapZone::findWorldRoute(map, startRoomId, endRoomId);
+  QList<int> route = map->search()->findRoute(startRoomId, endRoomId);
   if (route.isEmpty()) {
     showError(QStringLiteral("Could not find route from %1 to %2").arg(startRoomId).arg(endRoomId));
     return;

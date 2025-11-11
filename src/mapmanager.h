@@ -5,36 +5,11 @@
 #include <QList>
 #include <QSet>
 #include <QRegularExpression>
+#include <memory>
 #include <map>
 #include "mapzone.h"
+#include "mapsearch.h"
 class QSettings;
-class MapManager;
-
-struct MapExit {
-  QString name;
-  int dest = -1;
-  bool door = false;
-  bool open = false;
-  bool locked = false;
-  bool lockable = false;
-};
-
-struct MapRoom {
-  static QString normalizeDir(const QString& dir);
-  static QString reverseDir(const QString& dir);
-  static bool isDir(const QString& dir);
-
-  int id;
-  QString name;
-  QString description;
-  QString zone;
-  QString roomType;
-  QMap<QString, MapExit> exits;
-  QSet<int> entrances;
-
-  QString findExit(int dest) const;
-  QSet<int> exitRooms() const;
-};
 
 class MapManager : public QObject
 {
@@ -51,6 +26,8 @@ public:
   const MapZone* zone(const QString& name) const;
   MapZone* mutableZone(const QString& name);
   const MapZone* searchForZone(const QString& name) const;
+
+  MapSearch* search();
 
 signals:
   void currentRoomUpdated(MapManager* map, int roomId);
@@ -86,6 +63,8 @@ private:
   int destinationRoom;
   int previousRoom;
   QString destinationDir;
+
+  std::unique_ptr<MapSearch> mapSearch;
 };
 
 #endif

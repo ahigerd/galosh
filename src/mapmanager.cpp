@@ -1,6 +1,4 @@
 #include "mapmanager.h"
-#include "mapzone.h"
-#include "mapsearch.h"
 #include "mudletimport.h"
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
@@ -9,85 +7,6 @@
 #include <QStandardPaths>
 #include <time.h>
 #include <QtDebug>
-
-template <typename T>
-static void benchmark(const QString& label, T fn)
-{
-  timespec startTime, endTime;
-  clock_gettime(CLOCK_MONOTONIC, &startTime);
-
-  fn();
-
-  clock_gettime(CLOCK_MONOTONIC, &endTime);
-  uint64_t elapsed = (endTime.tv_sec - startTime.tv_sec) * 1e9 + (endTime.tv_nsec - startTime.tv_nsec);
-  qDebug() << label << (elapsed / 1000.0 / 1000.0) << "ms";
-}
-
-static const QMap<QString, QString> dirAbbrev{
-  { "NORTH", "N" },
-  { "WEST", "W" },
-  { "SOUTH", "S" },
-  { "EAST", "E" },
-  { "NORTHWEST", "NW" },
-  { "SOUTHWEST", "SW" },
-  { "NORTHEAST", "NE" },
-  { "SOUTHEAST", "SE" },
-  { "UP", "U" },
-  { "DOWN", "D" },
-};
-
-static const QMap<QString, QString> reverseDirs{
-  { "N", "S" },
-  { "S", "N" },
-  { "W", "E" },
-  { "E", "W" },
-  { "NW", "SE" },
-  { "SE", "NW" },
-  { "NE", "SW" },
-  { "SW", "NE" },
-  { "IN", "OUT" },
-  { "OUT", "IN" },
-  { "U", "D" },
-  { "D", "U" },
-  { "ENTER", "LEAVE" },
-  { "LEAVE", "ENTER" },
-  { "SOMEWHERE", "SOMEWHERE" },
-};
-
-QString MapRoom::normalizeDir(const QString& dir)
-{
-  QString norm = dir.simplified().toUpper();
-  return dirAbbrev.value(norm, norm);
-}
-
-QString MapRoom::reverseDir(const QString& dir)
-{
-  return reverseDirs.value(dir);
-}
-
-bool MapRoom::isDir(const QString& dir)
-{
-  return reverseDirs.contains(normalizeDir(dir));
-}
-
-QString MapRoom::findExit(int dest) const
-{
-  for (const QString& dir : exits.keys()) {
-    if (exits.value(dir).dest == dest) {
-      return dir;
-    }
-  }
-  return QString();
-}
-
-QSet<int> MapRoom::exitRooms() const
-{
-  QSet<int> rooms;
-  for (const MapExit& exit : exits) {
-    rooms << exit.dest;
-  }
-  return rooms;
-}
 
 MapManager::MapManager(QObject* parent)
 : QObject(parent), mapFile(nullptr), gmcpMode(false), logRoomLegacy(false), logRoomDescription(false), logExits(false), roomDirty(false),
@@ -107,14 +26,7 @@ void MapManager::loadProfile(const QString& profile)
     QDir dir = QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation);
     mapFileName = dir.absoluteFilePath(mapFileName + ".galosh_map");
   }
-  benchmark("load", [this, mapFileName]{ loadMap(mapFileName); });
-  MapSearch ms(this);
-  benchmark("precompute", [&]{ ms.precompute(); });
-  //benchmark("cliqueRoute", [&]{ ms.findCliqueRoute(3009, 55214); });
-  //benchmark("cliqueRoute", [&]{ ms.findCliqueRoute(3009, 55214, { "Mielikki Farmlands (Newbie)" }); });
-  //benchmark("route", [&]{ ms.findRoute(3009, 55214); });
-  benchmark("route", [&]{ qDebug() << ms.findRoute(3009, 55214).length(); });
-  benchmark("route2", [&]{ qDebug() << ms.findRoute(3009, 55214, { "Mielikki Farmlands (Newbie)" }).length(); });
+  loadMap(mapFileName);
 }
 
 void MapManager::loadMap(const QString& mapFileName)
@@ -123,6 +35,7 @@ void MapManager::loadMap(const QString& mapFileName)
     mapFile->deleteLater();
   }
   mapFile = new QSettings(mapFileName, QSettings::IniFormat, this);
+  mapSearch.reset();
   rooms.clear();
   endRoomCapture();
   autoRoomId = mapFile->value("autoID", 1).toInt();
@@ -170,10 +83,12 @@ void MapManager::loadMap(const QString& mapFileName)
     }
   }
 
+  /*
   // TODO: no need to do this until requested
   for (auto iter : zones) {
     zones.at(iter.first).computeTransits();
   }
+  */
 }
 
 void MapManager::promptWaiting()
@@ -261,7 +176,7 @@ void MapManager::processLine(const QString& line)
         // TODO: figure out if we're not where we think we are (description hashing?)
         if (currentRoom >= 0 && destinationRoom >= 0 && currentRoom != destinationRoom) {
           MapRoom* room = mutableRoom(destinationRoom);
-          QString back = reverseDirs.value(destinationDir);
+          QString back = MapRoom::reverseDir(destinationDir);
           if (!back.isEmpty() && room->exits.contains(back)) {
             if (room->exits[back].dest < 0) {
               room->exits[back].dest = currentRoom;
@@ -319,7 +234,7 @@ void MapManager::processLine(const QString& line)
       if (line.startsWith("Exits:")) {
         QStringList exits = line.mid(6).trimmed().split(' ');
         MapRoom& room = rooms[currentRoom];
-        QString back = reverseDirs.value(destinationDir);
+        QString back = MapRoom::reverseDir(destinationDir);
         for (QString exit : exits) {
           bool locked = exit.startsWith('[');
           if (locked) {
@@ -603,6 +518,18 @@ void MapManager::saveRoom(MapRoom* room)
   mapFile->endGroup();
   mapFile->endGroup();
   mapFile->endGroup();
+}
+
+
+MapSearch* MapManager::search()
+{
+  MapSearch* s = mapSearch.get();
+  if (!s) {
+    s = new MapSearch(this);
+    s->precompute();
+    mapSearch.reset(s);
+  }
+  return s;
 }
 
 class MapDownloader : public QObject
