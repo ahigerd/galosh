@@ -5,19 +5,20 @@
 RouteCommand::RouteCommand(MapManager* map, ExploreHistory* history)
 : TextCommand("ROUTE"), map(map), history(history)
 {
+  supportedKwargs["-q"] = false;
 }
 
 QString RouteCommand::helpMessage(bool brief) const
 {
   if (brief) {
-    return "List known zones, or show information about a zone";
+    return "Calculates the path to a specified room";
   }
-  return
-    "If used without parameters, lists all known zones.\n"
-    "If used with a zone name, shows information about that zone.";
+  // TODO: better docs
+  return "Calculates the path to a specified room.\n"
+    "Add '-q' to show only the speedwalking path.";
 }
 
-void RouteCommand::handleInvoke(const QStringList& args, const KWArgs&)
+void RouteCommand::handleInvoke(const QStringList& args, const KWArgs& kwargs)
 {
   if (!history->currentRoom()) {
     showError("Could not find current room");
@@ -54,8 +55,16 @@ void RouteCommand::handleInvoke(const QStringList& args, const KWArgs&)
   }
   QStringList warnings;
   QStringList messages;
-  messages << path.speedwalk(-1, false, &warnings) << "";
-  messages += path.describe(-1);
+  messages << path.speedwalk(-1, false, &warnings);
+  if (kwargs.contains("-q")) {
+    if (!warnings.isEmpty()) {
+      messages << "";
+      messages += warnings;
+    }
+  } else {
+    messages << "";
+    messages += path.describe(-1);
+  }
   if (warnings.isEmpty()) {
     showMessage(messages.join("\n"));
   } else {

@@ -8,6 +8,7 @@
 #include "commands/textcommand.h"
 #include "commands/identifycommand.h"
 #include "commands/slotcommand.h"
+#include "commands/routecommand.h"
 #include <QDesktopServices>
 #include <QApplication>
 #include <QMessageBox>
@@ -24,7 +25,7 @@
 #include <QtDebug>
 
 GaloshWindow::GaloshWindow(QWidget* parent)
-: QMainWindow(parent), explore(nullptr), lastRoomId(-1), geometryReady(false)
+: QMainWindow(parent), exploreHistory(&map), explore(nullptr), lastRoomId(-1), geometryReady(false)
 {
   setCorner(Qt::TopLeftCorner, Qt::LeftDockWidgetArea);
   setCorner(Qt::BottomLeftCorner, Qt::LeftDockWidgetArea);
@@ -143,6 +144,7 @@ GaloshWindow::GaloshWindow(QWidget* parent)
   updateStatus();
 
   addCommand(new IdentifyCommand(&itemDB));
+  addCommand(new RouteCommand(&map, &exploreHistory));
   addCommand(new SlotCommand(".", this, SLOT(abortSpeedwalk()), "Aborts a speedwalk path in progress"));
   addCommand(new SlotCommand("DC", term->socket(), SLOT(disconnectFromHost()), "Disconnects from the game"))->addKeyword("DISCONNECT");
   addCommand(new SlotCommand("EXPLORE", this, SLOT(exploreMap()), "Opens the map exploration window"))->addKeyword("MAP");
@@ -239,6 +241,7 @@ void GaloshWindow::connectToProfile(const QString& path, bool online)
   QSettings settings(path, QSettings::IniFormat);
   settings.beginGroup("Profile");
   map.loadProfile(path);
+  exploreHistory.reset();
   itemDB.loadProfile(path);
   if (online) {
     QString command = settings.value("commandLine").toString();
@@ -369,6 +372,7 @@ void GaloshWindow::setLastRoom(const QString& title, int roomId)
   settings.beginGroup("Profile");
   settings.value("lastRoom", roomId);
   lastRoomId = roomId;
+  exploreHistory.goTo(roomId);
   exploreAction->setEnabled(true);
   if (!speedPath.isEmpty()) {
     QString dir = speedPath.takeFirst();

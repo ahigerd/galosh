@@ -9,6 +9,7 @@
 #include "mapmanager.h"
 #include "itemdatabase.h"
 #include "profiledialog.h"
+#include "explorehistory.h"
 class QLabel;
 class QTreeView;
 class GaloshTerm;
@@ -63,6 +64,7 @@ private:
   QString currentProfile;
   TriggerManager triggers;
   MapManager map;
+  ExploreHistory exploreHistory;
   ItemDatabase itemDB;
   GaloshTerm* term;
   QAction* exploreAction;
