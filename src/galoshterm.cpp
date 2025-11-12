@@ -11,6 +11,7 @@
 #include <QKeyEvent>
 #include <QMetaEnum>
 #include <QFontDatabase>
+#include <QFontMetrics>
 #include <QVBoxLayout>
 #include <QScrollBar>
 #include <QShortcut>
@@ -49,8 +50,8 @@ GaloshTerm::GaloshTerm(QWidget* parent)
   term->setTerminalSizeHint(true);
   term->setTripleClickMode(TerminalDisplay::SelectWholeLine);
   term->setTerminalSizeStartup(true);
-  term->setVTFont(QFontDatabase::systemFont(QFontDatabase::FixedFont));
   term->setKeyboardCursorShape(Emulation::KeyboardCursorShape::NoCursor);
+  setTermFont(QFontDatabase::systemFont(QFontDatabase::FixedFont));
 
   setColorScheme(ColorSchemes::scheme("Galosh Green"));
 
@@ -223,6 +224,12 @@ void GaloshTerm::resizeAndScroll()
 
 void GaloshTerm::setTermFont(const QFont& font)
 {
+  QFont bold = font;
+  bold.setBold(true);
+  QFontMetrics fm(font);
+  QFontMetrics fmb(bold);
+
+  term->setBoldIntense(fm.boundingRect("mmm").width() == fmb.boundingRect("mmm").width());
   term->setVTFont(font);
 }
 

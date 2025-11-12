@@ -1,6 +1,7 @@
 #include "colorschemes.h"
 #include <QButtonGroup>
 #include <QFontDatabase>
+#include <QFontMetrics>
 #include <QSettings>
 #include <QHBoxLayout>
 #include <QGridLayout>
@@ -19,6 +20,42 @@
 #include <QPixmap>
 #include <QIcon>
 #include <QtDebug>
+
+static const char* previewLabels[20] = {
+  "Foreground",
+  "Background",
+  "&0",
+  "&1",
+  "&2",
+  "&3",
+  "&4",
+  "&5",
+  "&6",
+  "&7",
+  "Bright FG",
+  "Bright BG",
+  "&L",
+  "&R",
+  "&G",
+  "&Y",
+  "&B",
+  "&M",
+  "&C",
+  "&W",
+};
+
+static const char* colorLabels[10] = {
+  "Foreground",
+  "Background",
+  "Black",
+  "Red",
+  "Green",
+  "Yellow",
+  "Blue",
+  "Magenta",
+  "Cyan",
+  "White",
+};
 
 static ColorScheme generateScheme(const QString& name, quint8 l0, quint8 h0, quint8 l1, quint8 h1, int yellow = -1)
 {
@@ -98,15 +135,21 @@ static ColorScheme makeMono(const QString& name, ColorScheme::Role fg)
     if (fg == !ColorScheme::White) {
       c = c.darker();
     }
-    scheme[role] = QColor::fromHsv(base.hue(), base.saturation(), c.value());
+    if (role == ColorScheme::White || role == !ColorScheme::White || role == !ColorScheme::Black) {
+      scheme[role] = QColor::fromHsv(base.hue(), base.saturation(), c.value());
+    } else if (role < ColorScheme::Intense) {
+      scheme[role] = QColor::fromHsv(base.hue(), base.saturation(), c.value() * 0.75);
+    } else if (role >= ColorScheme::RedIntense) {
+      scheme[role] = QColor::fromHsv(base.hue(), base.saturation(), c.value() - 40);
+    }
   }
   if (fg == !ColorScheme::White) {
     scheme[ColorScheme::Foreground] = QColor(32, 32, 32);
     scheme[ColorScheme::Background] = QColor(255, 255, 255);
     scheme[!ColorScheme::Foreground] = QColor(0, 0, 0);
   } else {
-    scheme[ColorScheme::Foreground] = QColor::fromHsv(base.hue(), base.saturation(), 255);
     scheme[ColorScheme::Background] = QColor::fromHsv(base.hue(), base.saturation(), 32);
+    scheme[!ColorScheme::Background] = scheme[!ColorScheme::Black];
     scheme[!ColorScheme::Foreground] = QColor::fromHsv(base.hue(), qMin(255, int(base.saturation() * 1.25)), 255);
   }
   return scheme;
@@ -179,42 +222,6 @@ static ColorScheme defaultSchemes[] = {
   toggleDark(makeCGA("CGA Light Mode", ColorScheme::White)),
   toggleDark(makeEGA("EGA Light Mode", ColorScheme::White)),
   toggleDark(makeLinux("Linux Light Mode", ColorScheme::White)),
-};
-
-static const char* previewLabels[20] = {
-  "Foreground",
-  "Background",
-  "&0",
-  "&1",
-  "&2",
-  "&3",
-  "&4",
-  "&5",
-  "&6",
-  "&7",
-  "Bright FG",
-  "Bright BG",
-  "&L",
-  "&R",
-  "&G",
-  "&Y",
-  "&B",
-  "&M",
-  "&C",
-  "&W",
-};
-
-static const char* colorLabels[10] = {
-  "Foreground",
-  "Background",
-  "Black",
-  "Red",
-  "Green",
-  "Yellow",
-  "Blue",
-  "Magenta",
-  "Cyan",
-  "White",
 };
 
 ColorSchemes::ColorSchemes(const QString& selected, QWidget* parent)
@@ -305,6 +312,13 @@ ColorSchemes::ColorSchemes(QWidget* parent)
   y = 0;
   QFont boldFont = defaultFont;
   boldFont.setBold(true);
+
+  QFontMetrics fm(defaultFont);
+  QFontMetrics fmb(boldFont);
+  if (fm.boundingRect("mmm").width() != fmb.boundingRect("mmm").width()) {
+    boldFont = defaultFont;
+  }
+
   for (int c = 0; c < 20; c++) {
     QLabel* p = new QLabel(previewLabels[c], fPreviews);
     p->setMargin(3);
