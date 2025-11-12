@@ -27,7 +27,7 @@ public:
 
   TelnetSocket(QObject* parent = nullptr);
 
-  void connectCommand(const QString& command);
+  void connectCommand(const QString& command, bool darkBackground = true);
   void connectToHost(const QString& host, quint16 port);
   void setHost(const QString& host, quint16 port);
   bool isConnected() const;

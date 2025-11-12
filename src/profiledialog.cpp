@@ -1,5 +1,6 @@
 #include "profiledialog.h"
 #include "triggertab.h"
+#include "appearancetab.h"
 #include "msspview.h"
 #include "telnetsocket.h"
 #include <QMessageBox>
@@ -27,7 +28,7 @@
 static const char* defaultLoginPrompt = "By what name do you wish to be known?";
 static const char* defaultPasswordPrompt = "Password:";
 
-static QFrame* horizontalLine(QWidget* parent)
+QFrame* ProfileDialog::horizontalLine(QWidget* parent)
 {
   QFrame* line = new QFrame(parent);
   line->setFrameStyle(QFrame::HLine | QFrame::Plain);
@@ -72,6 +73,7 @@ ProfileDialog::ProfileDialog(bool forConnection, QWidget* parent)
   QFormLayout* lServer = new QFormLayout(tServer);
   tabs->addTab(tServer, "&Server");
   tabs->addTab(tTriggers = new TriggerTab(tabs), "&Triggers");
+  tabs->addTab(tAppearance = new AppearanceTab(tabs), "&Appearance");
 
   lServer->addRow("Profile &name:", profileName = new QLineEdit(tServer));
   lServer->addRow(horizontalLine(tServer));
@@ -140,6 +142,7 @@ ProfileDialog::ProfileDialog(bool forConnection, QWidget* parent)
     }
   }
   QObject::connect(tTriggers, SIGNAL(markDirty()), this, SLOT(markDirty()));
+  QObject::connect(tAppearance, SIGNAL(markDirty()), this, SLOT(markDirty()));
 
   QSettings settings;
   restoreGeometry(settings.value("profiles").toByteArray());
@@ -280,6 +283,7 @@ bool ProfileDialog::save()
   } else {
     item->setData(profileName->text().trimmed(), Qt::DisplayRole);
     tTriggers->save(path);
+    tAppearance->save(path);
   }
   emit profileUpdated(path);
   return true;
@@ -379,6 +383,7 @@ bool ProfileDialog::loadProfile(const QString& path)
   toggleServerOrProgram();
 
   tTriggers->load(path);
+  tAppearance->load(path);
   return true;
 }
 

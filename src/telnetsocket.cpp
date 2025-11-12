@@ -62,7 +62,7 @@ quint16 TelnetSocket::port() const
   return connectedPort;
 }
 
-void TelnetSocket::connectCommand(const QString& command)
+void TelnetSocket::connectCommand(const QString& command, bool darkBackground)
 {
   QStringList args = QProcess::splitCommand(command);
   if (args.isEmpty()) {
@@ -73,7 +73,11 @@ void TelnetSocket::connectCommand(const QString& command)
 
   QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
   env.insert("TERM", "xterm-256color");
-  env.insert("COLORFGBG", "12;0");
+  if (darkBackground) {
+    env.insert("COLORFGBG", "15;0");
+  } else {
+    env.insert("COLORFGBG", "0;15");
+  }
 #ifdef Q_OS_WIN
   QProcess* p = new QProcess(this);
   program = p;

@@ -11,6 +11,7 @@
 #include "commands/routecommand.h"
 #include <QDesktopServices>
 #include <QApplication>
+#include <QFontDatabase>
 #include <QMessageBox>
 #include <QSettings>
 #include <QDockWidget>
@@ -94,6 +95,7 @@ GaloshWindow::GaloshWindow(QWidget* parent)
   tb->setObjectName("toolbar");
   tb->addAction("Connect", this, SLOT(openConnectDialog()));
   tb->addAction("Disconnect", term->socket(), SLOT(disconnectFromHost()));
+  tb->addAction("Profiles", this, SLOT(openProfileDialog()));
   tb->addSeparator();
   tb->addAction("Triggers", [this]{ openProfileDialog(ProfileDialog::TriggersTab); });
   tb->addAction("Map", [this]{ exploreMap(); });
@@ -238,11 +240,14 @@ void GaloshWindow::connectToProfile(const QString& path, bool online)
 {
   currentProfile = path;
   reloadProfile(path);
+
   QSettings settings(path, QSettings::IniFormat);
+
   settings.beginGroup("Profile");
   map.loadProfile(path);
   exploreHistory.reset();
   itemDB.loadProfile(path);
+
   if (online) {
     QString command = settings.value("commandLine").toString();
     if (command.isEmpty()) {
@@ -262,9 +267,22 @@ void GaloshWindow::reloadProfile(const QString& path)
     return;
   }
   triggers.loadProfile(path);
+
+  QSettings globalSettings;
   QSettings settings(path, QSettings::IniFormat);
+
   settings.beginGroup("Profile");
   setWindowTitle(settings.value("name").toString());
+  settings.endGroup();
+
+  settings.beginGroup("Appearance");
+  QString colors = settings.value("colors", ColorSchemes::defaultScheme()).toString();
+  term->setColorScheme(ColorSchemes::scheme(colors));
+  if (globalSettings.value("Defaults/fontGlobal").toBool() || !settings.contains("font")) {
+    term->setTermFont(globalSettings.value("Defaults/font", QFontDatabase::systemFont(QFontDatabase::FixedFont)).value<QFont>());
+  } else {
+    term->setTermFont(settings.value("font").value<QFont>());
+  }
 }
 
 void GaloshWindow::moveEvent(QMoveEvent*)

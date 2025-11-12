@@ -4,6 +4,7 @@
 #include <QWidget>
 #include <QAbstractSocket>
 #include "Vt102Emulation.h"
+#include "colorschemes.h"
 class QScrollBar;
 class QTimer;
 class CommandLine;
@@ -34,6 +35,8 @@ signals:
   void speedwalk(const QStringList& steps);
 
 public slots:
+  void setTermFont(const QFont& font);
+  void setColorScheme(const ColorScheme& scheme);
   void showError(const QString& message);
   void executeCommand(const QString& command, bool echo = true);
 
@@ -56,6 +59,7 @@ private:
   CommandLine* line;
   QScrollBar* scrollBar;
   bool pendingScroll;
+  bool darkBackground;
 };
 
 #endif

@@ -2,6 +2,7 @@
 #include "telnetsocket.h"
 #include "infomodel.h"
 #include "commandline.h"
+#include "colorschemes.h"
 #include "TerminalDisplay.h"
 #include "ScreenWindow.h"
 #include "Vt102Emulation.h"
@@ -51,17 +52,7 @@ GaloshTerm::GaloshTerm(QWidget* parent)
   term->setVTFont(QFontDatabase::systemFont(QFontDatabase::FixedFont));
   term->setKeyboardCursorShape(Emulation::KeyboardCursorShape::NoCursor);
 
-  // TODO: user-configurable
-  QVector<ColorEntry> colors(TABLE_COLORS, ColorEntry());
-  const ColorEntry* defaultTable = term->colorTable();
-  for (int i = 0; i < TABLE_COLORS; i++) {
-    colors[i] = defaultTable[i];
-  }
-  colors[0].color = QColor(24, 240, 24);
-  colors[10].color = QColor(128, 255, 192);
-  colors[1].color = QColor(32, 32, 32);
-  colors[11].color = QColor(192, 255, 224);
-  term->setColorTable(colors.constData());
+  setColorScheme(ColorSchemes::scheme("Galosh Green"));
 
   hLayout->addWidget(term, 1);
   new QShortcut(QKeySequence::Copy, term, SLOT(copyClipboard()), nullptr, Qt::WidgetWithChildrenShortcut);
@@ -228,4 +219,28 @@ void GaloshTerm::resizeAndScroll()
     term->scrollToEnd();
     pendingScroll = false;
   }
+}
+
+void GaloshTerm::setTermFont(const QFont& font)
+{
+  term->setVTFont(font);
+}
+
+void GaloshTerm::setColorScheme(const ColorScheme& scheme)
+{
+  term->setColorTable(scheme.colors);
+  darkBackground = scheme.isDarkBackground;
+  /*
+  // TODO: user-configurable
+  QVector<ColorEntry> colors(TABLE_COLORS, ColorEntry());
+  const ColorEntry* defaultTable = term->colorTable();
+  for (int i = 0; i < TABLE_COLORS; i++) {
+    colors[i] = defaultTable[i];
+  }
+  colors[0].color = QColor(24, 240, 24);
+  colors[10].color = QColor(128, 255, 192);
+  colors[1].color = QColor(32, 32, 32);
+  colors[11].color = QColor(192, 255, 224);
+  term->setColorTable(colors.constData());
+  */
 }

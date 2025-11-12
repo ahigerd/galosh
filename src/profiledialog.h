@@ -8,9 +8,11 @@ class QListView;
 class QLineEdit;
 class QRadioButton;
 class QLabel;
+class QFrame;
 class QStandardItemModel;
 class QDialogButtonBox;
 class TriggerTab;
+class AppearanceTab;
 
 class ProfileDialog : public QDialog
 {
@@ -20,6 +22,8 @@ public:
     ServerTab,
     TriggersTab,
   };
+
+  static QFrame* horizontalLine(QWidget* parent = nullptr);
 
   ProfileDialog(bool forConnection, QWidget* parent = nullptr);
   ProfileDialog(ProfileDialog::Tab openTab, QWidget* parent = nullptr);
@@ -67,6 +71,7 @@ private:
   QLineEdit* loginPrompt;
   QLineEdit* passwordPrompt;
   TriggerTab* tTriggers;
+  AppearanceTab* tAppearance;
   QDialogButtonBox* buttons;
   bool emitConnect;
   bool dirty;
