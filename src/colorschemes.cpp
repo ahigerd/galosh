@@ -215,13 +215,14 @@ static ColorScheme defaultSchemes[] = {
   makeCGA("CGA White", ColorScheme::White),
   makeEGA("EGA White", ColorScheme::White),
   makeLinux("Linux White", ColorScheme::White),
-  makeMono("Mono White", !ColorScheme::White),
+  makeMono("Mono White", ColorScheme::White),
   makeBlue(makeCGA("CGA Blueprint", ColorScheme::White)),
   makeBlue(makeEGA("EGA Blueprint", ColorScheme::White)),
   makeBlue(makeLinux("Linux Blueprint", ColorScheme::White)),
   toggleDark(makeCGA("CGA Light Mode", ColorScheme::White)),
   toggleDark(makeEGA("EGA Light Mode", ColorScheme::White)),
   toggleDark(makeLinux("Linux Light Mode", ColorScheme::White)),
+  makeMono("Mono Light Mode", !ColorScheme::White),
 };
 
 ColorSchemes::ColorSchemes(const QString& selected, QWidget* parent)
