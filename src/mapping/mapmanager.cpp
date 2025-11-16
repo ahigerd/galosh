@@ -1,5 +1,6 @@
 #include "mapmanager.h"
 #include "mudletimport.h"
+#include "mapviewer.h"
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
 #include <QSettings>
@@ -27,6 +28,17 @@ void MapManager::loadProfile(const QString& profile)
     mapFileName = dir.absoluteFilePath(mapFileName + ".galosh_map");
   }
   loadMap(mapFileName);
+
+  MapViewer* v = new MapViewer(this);
+  v->show();
+  /*
+  MapLayout layout(this);
+  layout.loadZone(zone("Mielikki"));
+  layout.loadZone(zone("The Temple of Chaos"));
+  for (auto iter : zones) {
+    //layout.loadZone(&iter.second);
+  }
+  */
 }
 
 void MapManager::loadMap(const QString& mapFileName)

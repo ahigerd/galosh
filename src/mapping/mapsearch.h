@@ -32,7 +32,8 @@ public:
 
   void reset();
   void precompute();
-  QList<const MapSearch::Clique*> findCliqueRoute(int startRoomId, int endRoomId, const QStringList& avoidZones = {}) const;
+  QList<const Clique*> cliquesForZone(const MapZone* zone) const;
+  QList<const Clique*> findCliqueRoute(int startRoomId, int endRoomId, const QStringList& avoidZones = {}) const;
   QList<int> findRoute(int startRoomId, int endRoomId, const QStringList& avoidZones = {}) const;
 
 private:
@@ -58,6 +59,7 @@ private:
   MapManager* map;
   std::list<Clique> cliqueStore;
   QMap<QString, QList<Clique*>> cliques;
+  QSet<int> pendingRoomIds;
 };
 
 #endif

@@ -1,20 +1,8 @@
 #include "mapsearch.h"
 #include "mapmanager.h"
 #include "mapzone.h"
+#include "algorithms.h"
 #include <QtDebug>
-
-template <typename T>
-static void benchmark(const QString& label, T fn)
-{
-  timespec startTime, endTime;
-  clock_gettime(CLOCK_MONOTONIC, &startTime);
-
-  fn();
-
-  clock_gettime(CLOCK_MONOTONIC, &endTime);
-  uint64_t elapsed = (endTime.tv_sec - startTime.tv_sec) * 1e9 + (endTime.tv_nsec - startTime.tv_nsec);
-  qDebug() << label << (elapsed / 1000.0 / 1000.0) << "ms";
-}
 
 MapSearch::MapSearch(MapManager* map)
 : map(map)
@@ -52,30 +40,24 @@ MapSearch::Clique* MapSearch::newClique(const MapZone* parent)
 
 void MapSearch::getCliquesForZone(const MapZone* zone)
 {
-  QList<Clique*>& zoneCliques = cliques[zone->name];
-
   QSet<int> allExits;
   for (const QSet<int>& exitGroup : zone->exits) {
     allExits += exitGroup;
   }
 
+  pendingRoomIds = zone->roomIds;
+
   for (int exit : allExits) {
-    bool done = false;
-    for (Clique* clique : zoneCliques) {
-      if (clique->roomIds.contains(exit)) {
-        done = true;
-        break;
-      }
-    }
-    if (done) {
-      // exit is already part of a clique
+    if (!pendingRoomIds.contains(exit)) {
+      // already part of a clique
       continue;
     }
     Clique* clique = newClique(zone);
+    pendingRoomIds.remove(exit);
     clique->roomIds << exit;
     crawlClique(clique, exit);
   }
-  for (int roomId : zone->roomIds) {
+  for (int roomId : pendingRoomIds) {
     if (!findClique(zone->name, roomId)) {
       Clique* clique = newClique(zone);
       clique->roomIds << roomId;
@@ -84,9 +66,22 @@ void MapSearch::getCliquesForZone(const MapZone* zone)
   }
 }
 
+QList<const MapSearch::Clique*> MapSearch::cliquesForZone(const MapZone* zone) const
+{
+  QList<const Clique*> result;
+  for (Clique* clique : cliques.value(zone->name)) {
+    result << clique;
+  }
+  return result;
+}
+
 void MapSearch::crawlClique(Clique* clique, int roomId)
 {
   const MapRoom* room = map->room(roomId);
+  if (!room) {
+    // invalid room
+    return;
+  }
   for (int exit : room->exitRooms()) {
     const MapRoom* dest = map->room(exit);
     if (!dest) {
@@ -97,11 +92,42 @@ void MapSearch::crawlClique(Clique* clique, int roomId)
         continue;
       }
       clique->roomIds << exit;
+      pendingRoomIds.remove(exit);
       crawlClique(clique, exit);
     } else if (Clique* destClique = findClique(dest->zone, exit)) {
       clique->exits << CliqueExit{ roomId, destClique, exit };
     } else {
       clique->unresolvedExits << roomId;
+    }
+  }
+  // Check for rooms that connect to this clique that we missed
+  // (perhaps because of one-way connections)
+  bool extended = true;
+  while (extended) {
+    extended = false;
+    // Iterate over a copy
+    for (int roomId : QSet<int>(pendingRoomIds)) {
+      if (!pendingRoomIds.contains(roomId)) {
+        // removed by a recursive call
+        continue;
+      }
+      const MapRoom* room = map->room(roomId);
+      if (!room) {
+        continue;
+      }
+      for (const MapExit& exit : room->exits) {
+        if (clique->roomIds.contains(exit.dest)) {
+          continue;
+        }
+        const MapRoom* dest = map->room(exit.dest);
+        if (!dest || dest->zone != clique->zone->name) {
+          continue;
+        }
+        extended = true;
+        clique->roomIds << exit.dest;
+        pendingRoomIds.remove(exit.dest);
+        crawlClique(clique, exit.dest);
+      }
     }
   }
 }
@@ -172,6 +198,9 @@ QMap<int, int> MapSearch::getCosts(const MapSearch::Clique* clique, int startRoo
   int round = 2;
   while (!frontier.isEmpty()) {
     for (const MapRoom* room : frontier) {
+      if (!room) {
+        continue;
+      }
       for (const MapExit& exit : room->exits) {
         if (costs.contains(exit.dest) || !clique->roomIds.contains(exit.dest)) {
           continue;
@@ -188,7 +217,6 @@ QMap<int, int> MapSearch::getCosts(const MapSearch::Clique* clique, int startRoo
     nextFrontier.clear();
     round++;
   }
-  qWarning() << "XXX: clique is not a clique in getCosts()" << destsRemaining << clique->zone->name;
   return costs;
 }
 
@@ -245,16 +273,12 @@ void MapSearch::fillRoutes(MapSearch::Clique* clique, int startRoomId)
     if (clique->routes.contains(key)) {
       continue;
     }
-    Q_ASSERT(costs.contains(endRoomId));
+    if (!costs.contains(endRoomId)) {
+      // Can't get there from here -- perhaps one-way connection
+      continue;
+    }
     clique->routes[key] = findRouteInClique(startRoomId, endRoomId, costs);
   }
-}
-
-QStringList debug(const QList<const MapSearch::Clique*>& path)
-{
-  QStringList rv;
-  for (auto c : path) rv << c->zone->name;
-  return rv;
 }
 
 QList<const MapSearch::Clique*> MapSearch::findCliqueRoute(int startRoomId, int endRoomId, const QStringList& avoidZones) const
@@ -368,8 +392,7 @@ QList<int> MapSearch::findRoute(int startRoomId, int endRoomId, const QStringLis
   Q_ASSERT(cliqueRoute.last() == endClique);
 
   QList<CliqueStep> steps;
-  for (int i = 0; i < cliqueRoute.length() - 1; i++) {
-    const Clique* clique = cliqueRoute[i];
+  for (auto [ i, clique ] : enumerate(cliqueRoute)) {
     QSet<int> outRooms, nextRooms;
     for (const CliqueExit& exit : clique->exits) {
       if (exit.toClique == cliqueRoute[i + 1]) {

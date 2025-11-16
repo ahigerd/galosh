@@ -2,7 +2,7 @@ TEMPLATE = app
 QT = core gui widgets network
 CONFIG += debug
 CONFIG -= debug_and_release release
-INCLUDEPATH += src/ src/qtermwidget
+INCLUDEPATH += src/ src/qtermwidget src/mapping
 OBJECTS_DIR = .build
 MOC_DIR = .build
 RCC_DIR = .build
@@ -35,20 +35,16 @@ HEADERS += src/triggertab.h   src/appearancetab.h
 SOURCES += src/triggertab.cpp src/appearancetab.cpp
 
 # models
-HEADERS += src/triggermanager.h   src/mapmanager.h   src/infomodel.h
-SOURCES += src/triggermanager.cpp src/mapmanager.cpp src/infomodel.cpp
-
-HEADERS += src/mudletimport.h   src/explorehistory.h   src/mapzone.h
-SOURCES += src/mudletimport.cpp src/explorehistory.cpp src/mapzone.cpp
-
-HEADERS += src/itemdatabase.h   src/mapsearch.h
-SOURCES += src/itemdatabase.cpp src/mapsearch.cpp
+HEADERS += src/triggermanager.h   src/infomodel.h   src/itemdatabase.h
+SOURCES += src/triggermanager.cpp src/infomodel.cpp src/itemdatabase.cpp
 
 # networking
 HEADERS += src/telnetsocket.h
 SOURCES += src/telnetsocket.cpp
 
+HEADERS += src/algorithms.h
 SOURCES += src/main.cpp
 
+include(src/mapping/mapping.pri)
 include(src/commands/commands.pri)
 include(src/qtermwidget/qtermwidget.pri)
