@@ -21,8 +21,8 @@ static const QMap<QString, QPointF> dirVectors = {
   { "SE", QPointF(1, 1) },
   { "SW", QPointF(-1, 1) },
   { "NW", QPointF(-1, -1) },
-  { "U", QPointF(-0.5, -0.5) },
-  { "D", QPointF(0.5, 0.5) },
+  { "U", QPointF(-1, -1) },
+  { "D", QPointF(1, 1) },
 };
 
 static const QMap<QString, QPointF> oneWayOffset = {
@@ -193,11 +193,13 @@ void MapLayout::loadClique(const MapSearch::Clique* clique, int roomId)
     QPointF pos = coords.value(roomId);
     int dest = room->exits[dir].dest;
     if (dir == "U" || dir == "D") {
-      continue;
       const MapRoom* destRoom = map->room(dest);
+      if (!destRoom) {
+        continue;
+      }
       if (destRoom->exits.size() > 1 || destRoom->exits.value(MapRoom::reverseDir(dir)).dest != roomId) {
         // TODO: layers
-        continue;
+        //continue;
       }
     }
     if (!clique->roomIds.contains(dest)) {
@@ -243,7 +245,7 @@ double MapLayout::tension(int roomId, const QMap<int, QPointF>& substitutions) c
   for (auto [ dir, exit ] : cpairs(room->exits)) {
     if (dir == "U" || dir == "D") {
       // up/down exits don't contribute to tension right now
-      continue;
+      //continue;
     }
     if (!coords.contains(exit.dest)) {
       continue;
@@ -256,8 +258,12 @@ double MapLayout::tension(int roomId, const QMap<int, QPointF>& substitutions) c
     }
     QPointF step = startPoint + dirVectors[dir] * 0.25;
     QPointF revStep = endPoint + dirVectors[reverse] * 0.25;
-    double dx = step.x() - revStep.x();
+    double dx = step.x() - revStep.x() + 0.2;
     double dy = step.y() - revStep.y();
+    if (dir == "U" || dir == "D") {
+      dy -= dx;
+      dx *= 1.5;
+    }
     double tension = std::sqrt((dx * dx) + (dy * dy));
     if (tension <= 1) {
       tension = 0;
@@ -265,8 +271,8 @@ double MapLayout::tension(int roomId, const QMap<int, QPointF>& substitutions) c
     if (step.x() != revStep.x() && step.y() != revStep.y()) {
       // nonlinearity introduces a lot of extra tension
       // but past a certain point it stops being relevant
-      if (tension > 4) {
-        tension = 80 + 2 * std::sqrt(tension - 4);
+      if (tension > 3) {
+        tension = 60 + 2 * std::sqrt(tension - 3);
       } else {
         tension *= 20.0;
       }
@@ -325,9 +331,6 @@ void MapLayout::relattice()
   for (auto [ roomId, startPoint ] : pairs(coords)) {
     const MapRoom* room = map->room(roomId);
     for (auto [ dir, exit ] : cpairs(room->exits)) {
-      if (dir == "U" || dir == "D") {
-        continue;
-      }
       int destId = exit.dest;
       if (!coords.contains(destId)) {
         continue;
@@ -441,11 +444,9 @@ void MapLayout::relax()
       }
     }
   } while (rerun);
-  QMap<int, QSet<QPair<int, int>>> history;
   do {
     rerun = false;
     for (auto [ roomId, startPoint ] : pairs(coords)) {
-      //history[roomId] << pointToPair(startPoint);
       if (!tension(roomId)) {
         continue;
       }
@@ -454,13 +455,14 @@ void MapLayout::relax()
       static const QPointF offsetSteps[] = {
         { -1, 0 }, { 1, 0 }, { 0, -1 }, { 0, 1 },
         { -2, 0 }, { 2, 0 }, { 0, -2 }, { 0, 2 },
+        { 1, 1 }, { -1, -1 },
       };
       QPointF bestPoint = startPoint;
       double bestTension = initial;
       for (const QPointF& offset : offsetSteps) {
         QPointF pt = startPoint + offset;
         auto pair = pointToPair(pt);
-        if (coordsRev.contains(pair) || history.value(roomId).contains(pair)) {
+        if (coordsRev.contains(pair)) {
           continue;
         }
         auto pp = pathPoints.value(pair);
@@ -551,6 +553,10 @@ void MapLayout::render(QPainter* painter, const QRectF& rawViewport) const
         } else {
           painter->setPen(QPen(Qt::black, 0));
         }
+        if (nonlinear) {
+          nl = (nl + 1) % nlColors.size();
+          painter->setPen(QPen(nlColors[nl], 0));
+        }
         if (oneWay) {
           QPointF slope = -normalized(dirVectors[revDir]);
           QPointF perp = QPointF(-slope.y(), slope.x()) * 0.5;
@@ -571,8 +577,6 @@ void MapLayout::render(QPainter* painter, const QRectF& rawViewport) const
           }
           QPainterPath path(start);
           path.cubicTo(c1, c2, end);
-          nl = (nl + 1) % nlColors.size();
-          painter->setPen(QPen(nlColors[nl], 0));
           painter->setBrush(Qt::transparent);
           painter->drawPath(path);
         } else {
