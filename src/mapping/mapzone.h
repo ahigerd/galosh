@@ -32,6 +32,7 @@ struct MapRoom {
   QMap<QString, MapExit> exits;
   QSet<int> entrances;
 
+  bool hasExitTo(int dest) const;
   QString findExit(int dest) const;
   QSet<int> exitRooms() const;
 };

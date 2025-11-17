@@ -1,5 +1,6 @@
 #include "mapzone.h"
 #include "mapmanager.h"
+#include "algorithms.h"
 #include <QtDebug>
 
 static const QMap<QString, QString> dirAbbrev{
@@ -49,10 +50,20 @@ bool MapRoom::isDir(const QString& dir)
   return reverseDirs.contains(normalizeDir(dir));
 }
 
+bool MapRoom::hasExitTo(int dest) const
+{
+  for (const MapExit& exit : exits) {
+    if (exit.dest == dest) {
+      return true;
+    }
+  }
+  return false;
+}
+
 QString MapRoom::findExit(int dest) const
 {
-  for (const QString& dir : exits.keys()) {
-    if (exits.value(dir).dest == dest) {
+  for (auto [ dir, exit ] : cpairs(exits)) {
+    if (exit.dest == dest) {
       return dir;
     }
   }

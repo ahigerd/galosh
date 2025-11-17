@@ -27,8 +27,12 @@ public:
 
 private:
   void loadClique(const MapSearch::Clique* clique, int roomId);
+  void relattice();
   void relax();
   void calculateBoundingBox();
+
+  double tension(int roomId, const QMap<int, QPointF>& substitutions = {}) const;
+  double tension(const QMap<int, QPointF>& substitutions = {}) const;
 
   struct CliqueData {
     QMap<int, QPointF> coords;
@@ -39,6 +43,7 @@ private:
   QRectF boundingBox;
   QMap<int, QPointF> coords;
   QHash<QPair<int, int>, int> coordsRev;
+  QMap<QPair<int, int>, QSet<int>> pathPoints;
   QList<CliqueData> cliques;
   QMap<int, QColor> colors;
   MapManager* map;

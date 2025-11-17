@@ -44,7 +44,11 @@ QList<QColor> initNonlinearColors()
 {
   QList<QColor> colors;
   for (int i = 0; i < 17; i++) {
-    colors << QColor::fromHsl((i * 1080 / 17) % 360, 255, 160);
+    QColor c = QColor::fromHsl((i * 1080 / 17) % 360, 255, 160);
+    while (qGray(c.rgb()) < 140) {
+      c = c.lighter();
+    }
+    colors << c;
   }
   return colors;
 }
@@ -231,130 +235,258 @@ void MapLayout::calculateBoundingBox()
   }
 }
 
+double MapLayout::tension(int roomId, const QMap<int, QPointF>& substitutions) const
+{
+  double total = 0;
+  QPointF startPoint = substitutions.value(roomId, coords[roomId]);
+  const MapRoom* room = map->room(roomId);
+  for (auto [ dir, exit ] : cpairs(room->exits)) {
+    if (dir == "U" || dir == "D") {
+      // up/down exits don't contribute to tension right now
+      continue;
+    }
+    if (!coords.contains(exit.dest)) {
+      continue;
+    }
+    const MapRoom* dest = map->room(exit.dest);
+    QPointF endPoint = substitutions.value(exit.dest, coords[exit.dest]);
+    QString reverse = dest->findExit(roomId);
+    if (reverse.isEmpty()) {
+      reverse = MapRoom::reverseDir(dir);
+    }
+    QPointF step = startPoint + dirVectors[dir] * 0.25;
+    QPointF revStep = endPoint + dirVectors[reverse] * 0.25;
+    double dx = step.x() - revStep.x();
+    double dy = step.y() - revStep.y();
+    double tension = std::sqrt((dx * dx) + (dy * dy));
+    if (tension <= 1) {
+      tension = 0;
+    }
+    if (step.x() != revStep.x() && step.y() != revStep.y()) {
+      // nonlinearity introduces a lot of extra tension
+      // but past a certain point it stops being relevant
+      if (tension > 4) {
+        tension = 80 + 2 * std::sqrt(tension - 4);
+      } else {
+        tension *= 20.0;
+      }
+    }
+    total += tension;
+  }
+  return total;
+}
+
+double MapLayout::tension(const QMap<int, QPointF>& substitutions) const
+{
+  double total = 0;
+  for (int roomId : keys(coords)) {
+    total += tension(roomId, substitutions);
+  }
+  return total;
+}
+
+void MapLayout::relattice()
+{
+  // Find X and Y values that are in use
+  QSet<double> xValues, yValues;
+  for (const QPointF& pt : coords) {
+    xValues << pt.x();
+    yValues << pt.y();
+  }
+  // Sort the coordinates
+  int i = 1;
+  QList<double> xSort(xValues.begin(), xValues.end()), ySort(yValues.begin(), yValues.end());
+  std::sort(xSort.begin(), xSort.end());
+  std::sort(ySort.begin(), ySort.end());
+  // Create a translation map from the old coordinates to the new ones
+  QMap<double, double> xMap, yMap;
+  for (double x : xSort) {
+    xMap[x] = i;
+    i++;
+  }
+  i = 1;
+  for (double y : ySort) {
+    yMap[y] = i;
+    i++;
+  }
+  // Move every node to the new coordinate system
+  coordsRev.clear();
+  for (int index : coords.keys()) {
+    QPointF pt = coords[index];
+    pt = QPointF(xMap[pt.x()], yMap[pt.y()]);
+    coords[index] = pt;
+    if (coordsRev.contains(pointToPair(pt))) {
+      qDebug() << "XXX: conflict" << index << coordsRev[pointToPair(pt)];
+    }
+    coordsRev[pointToPair(pt)] = index;
+  }
+  // Mark lattice points that are occupied by a path
+  pathPoints.clear();
+  for (auto [ roomId, startPoint ] : pairs(coords)) {
+    const MapRoom* room = map->room(roomId);
+    for (auto [ dir, exit ] : cpairs(room->exits)) {
+      if (dir == "U" || dir == "D") {
+        continue;
+      }
+      int destId = exit.dest;
+      if (!coords.contains(destId)) {
+        continue;
+      }
+      QPointF vec = dirVectors[dir];
+      QPointF endPoint = coords[destId];
+      int dx = endPoint.x() - startPoint.x();
+      int dy = endPoint.y() - startPoint.y();
+      if ((dx < 0) != (vec.x() < 0) || (dy < 0) != (vec.y() < 0)) {
+        continue;
+      }
+      QPair<int, int> pp(startPoint.x() * 1024, startPoint.y() * 1024);
+      if (dy == 0 && (dx < -1 || dx > 1)) {
+        auto [minX, maxX] = in_order<int>(startPoint.x(), endPoint.x());
+        for (int x = minX + 1; x <= maxX - 1; x++) {
+          pp.first = x * 1024;
+          pathPoints[pp] << roomId;
+          pathPoints[pp] << destId;
+        }
+      } else if (dx == 0 && (dy < -1 || dy > 1)) {
+        auto [minY, maxY] = in_order<int>(startPoint.y(), endPoint.y());
+        for (int y = minY + 1; y <= maxY - 1; y++) {
+          pp.second = y * 1024;
+          pathPoints[pp] << roomId;
+          pathPoints[pp] << destId;
+        }
+      }
+    }
+  }
+}
+
 void MapLayout::relax()
 {
   bool rerun;
   do {
     rerun = false;
-    // Find X and Y values that are in use
-    QSet<double> xValues, yValues;
-    for (const QPointF& pt : coords) {
-      xValues << pt.x();
-      yValues << pt.y();
-    }
-    // Sort the coordinates
-    int i = 1;
-    QList<double> xSort(xValues.begin(), xValues.end()), ySort(yValues.begin(), yValues.end());
-    std::sort(xSort.begin(), xSort.end());
-    std::sort(ySort.begin(), ySort.end());
-    // Create a translation map from the old coordinates to the new ones
-    QMap<double, double> xMap, yMap;
-    for (double x : xSort) {
-      xMap[x] = i;
-      i++;
-    }
-    i = 1;
-    for (double y : ySort) {
-      yMap[y] = i;
-      i++;
-    }
-    // Move every node to the new coordinate system
-    coordsRev.clear();
-    for (int index : coords.keys()) {
-      QPointF pt = coords[index];
-      pt = QPointF(xMap[pt.x()], yMap[pt.y()]);
-      coords[index] = pt;
-      if (coordsRev.contains(pointToPair(pt))) {
-        qDebug() << "XXX: conflict" << index << coordsRev[pointToPair(pt)];
-      }
-      coordsRev[pointToPair(pt)] = index;
-    }
+    relattice();
     // Check for lines that cross other rooms
-    for (auto [ roomId, startPoint ] : pairs(coords)) {
-      const MapRoom* room = map->room(roomId);
-      for (auto [ dir, exit ] : pairs(room->exits)) {
-        int destId = exit.dest;
-        if (!coords.contains(destId)) {
-          continue;
-        }
-        QPointF vec = dirVectors[dir];
-        QPointF endPoint = coords[destId];
-        int dx = endPoint.x() - startPoint.x();
-        int dy = endPoint.y() - startPoint.y();
-        if ((dx < 0) != (vec.x() < 0) || (dy < 0) != (vec.y() < 0)) {
-          continue;
-        }
-        if (dy == 0 && (dx < -1 || dx > 1)) {
-          auto [minX, maxX] = in_order<int>(startPoint.x(), endPoint.x());
-          for (int x = minX + 1; x <= maxX - 1; x++) {
-            QPointF pt(x, startPoint.y());
-            auto pair = pointToPair(pt);
-            int moveRoomId = coordsRev.value(pair, -1);
-            if (moveRoomId > 0) {
-              const MapRoom* moveRoom = map->room(moveRoomId);
-              int northId = moveRoom->exits["N"].dest, southId = moveRoom->exits["S"].dest;
-              double northDist = 0, southDist = 0;
-              if (northId > 0 && coords.contains(northId)) {
-                northDist = startPoint.y() - coords[northId].y();
-              }
-              if (southId > 0 && coords.contains(southId)) {
-                southDist = coords[southId].y() - startPoint.y();
-              }
-              if (!northDist && !southDist) {
-                southDist = 1;
-              }
-              QPointF newPt = pt;
-              if (northDist > southDist) {
-                newPt.ry() -= 0.25;
-              } else {
-                newPt.ry() += 0.25;
-              }
-              coordsRev.remove(pair);
-              coords[moveRoomId] = newPt;
-              coordsRev[pointToPair(newPt)] = moveRoomId;
-              rerun = true;
-            }
-          }
-        } else if (dx == 0 && (dy < -1 || dy > 1)) {
-          auto [minY, maxY] = in_order<int>(startPoint.y(), endPoint.y());
-          for (int y = minY + 1; y <= maxY - 1; y++) {
-            QPointF pt(startPoint.x(), y);
-            auto pair = pointToPair(pt);
-            int moveRoomId = coordsRev.value(pair, -1);
-            if (moveRoomId > 0) {
-              const MapRoom* moveRoom = map->room(moveRoomId);
-              int westId = moveRoom->exits["W"].dest, eastId = moveRoom->exits["E"].dest;
-              double westDist = 0, eastDist = 0;
-              if (westId > 0 && coords.contains(westId)) {
-                westDist = startPoint.x() - coords[westId].x();
-              }
-              if (eastId > 0 && coords.contains(eastId)) {
-                eastDist = coords[eastId].x() - startPoint.x();
-              }
-              if (!westDist && !eastDist) {
-                eastDist = 1;
-              }
-              QPointF newPt = pt;
-              if (westDist > eastDist) {
-                newPt.rx() -= 0.25;
-              } else {
-                newPt.rx() += 0.25;
-              }
-              coordsRev.remove(pair);
-              coords[moveRoomId] = newPt;
-              coordsRev[pointToPair(newPt)] = moveRoomId;
-              rerun = true;
-            }
-          }
-        }
+    for (auto [ moveRoomId, movePoint ] : pairs(coords)) {
+      auto pair = pointToPair(movePoint);
+      auto pp = pathPoints.value(pair);
+      if (pp.isEmpty()) {
+        continue;
       }
-      if (rerun) {
-        break;
+      const MapRoom* moveRoom = map->room(moveRoomId);
+      // moveRoomId lies on the path between the rooms in pp
+      for (int fromId : pp) {
+        const MapRoom* fromRoom = map->room(fromId);
+        for (const MapExit& exit : fromRoom->exits) {
+          if (exit.dest == fromId || !pp.contains(exit.dest)) {
+            continue;
+          }
+          if (exit.dest < fromId) {
+            const MapRoom* toRoom = map->room(exit.dest);
+            if (toRoom->hasExitTo(fromId)) {
+              // Already checked this connection
+              continue;
+            }
+          }
+          // not a self-connection, and the other room is also connected to the same path segment
+          QPointF startPoint = coords.value(fromId);
+          QPointF endPoint = coords.value(exit.dest);
+          if (startPoint.y() == endPoint.y()) {
+            // Should the room move closer to its north neighbor or its south neighbor?
+            int northId = moveRoom->exits["N"].dest, southId = moveRoom->exits["S"].dest;
+            double northDist = 0, southDist = 0;
+            if (northId > 0 && coords.contains(northId)) {
+              northDist = startPoint.y() - coords[northId].y();
+            }
+            if (southId > 0 && coords.contains(southId)) {
+              southDist = coords[southId].y() - startPoint.y();
+            }
+            if (!northDist && !southDist) {
+              southDist = 1;
+            }
+            QPointF newPt = movePoint;
+            if (northDist > southDist) {
+              newPt.ry() -= 0.25;
+            } else {
+              newPt.ry() += 0.25;
+            }
+            coordsRev.remove(pair);
+            coords[moveRoomId] = newPt;
+            coordsRev[pointToPair(newPt)] = moveRoomId;
+            rerun = true;
+          } else if (startPoint.x() == endPoint.x()) {
+            // Should the room move closer to its west neighbor or its east neighbor?
+            int westId = moveRoom->exits["W"].dest, eastId = moveRoom->exits["E"].dest;
+            double westDist = 0, eastDist = 0;
+            if (westId > 0 && coords.contains(westId)) {
+              westDist = startPoint.x() - coords[westId].x();
+            }
+            if (eastId > 0 && coords.contains(eastId)) {
+              eastDist = coords[eastId].x() - startPoint.x();
+            }
+            if (!westDist && !eastDist) {
+              eastDist = 1;
+            }
+            QPointF newPt = movePoint;
+            if (westDist > eastDist) {
+              newPt.rx() -= 0.25;
+            } else {
+              newPt.rx() += 0.25;
+            }
+            coordsRev.remove(pair);
+            coords[moveRoomId] = newPt;
+            coordsRev[pointToPair(newPt)] = moveRoomId;
+            rerun = true;
+          }
+        }
       }
     }
   } while (rerun);
-  for (auto [ roomId, startPoint ] : pairs(coords)) {
-  }
+  QMap<int, QSet<QPair<int, int>>> history;
+  do {
+    rerun = false;
+    for (auto [ roomId, startPoint ] : pairs(coords)) {
+      //history[roomId] << pointToPair(startPoint);
+      if (!tension(roomId)) {
+        continue;
+      }
+      double initial = tension();
+      QMap<int, QPointF> substitutions;
+      static const QPointF offsetSteps[] = {
+        { -1, 0 }, { 1, 0 }, { 0, -1 }, { 0, 1 },
+        { -2, 0 }, { 2, 0 }, { 0, -2 }, { 0, 2 },
+      };
+      QPointF bestPoint = startPoint;
+      double bestTension = initial;
+      for (const QPointF& offset : offsetSteps) {
+        QPointF pt = startPoint + offset;
+        auto pair = pointToPair(pt);
+        if (coordsRev.contains(pair) || history.value(roomId).contains(pair)) {
+          continue;
+        }
+        auto pp = pathPoints.value(pair);
+        if (pp.size() == 2 ? !pp.contains(roomId) : pp.size() > 2) {
+          continue;
+        }
+        substitutions[roomId] = pt;
+        double t = tension(substitutions);
+        if (t == bestTension && (offset.x() < 0 || offset.y() < 0)) {
+          bestTension = t;
+          bestPoint = pt;
+        } else if (t < bestTension || (t == bestTension && (offset.x() < 0 || offset.y() < 0))) {
+          bestTension = t;
+          bestPoint = pt;
+        }
+      }
+      if (bestTension < initial || (bestTension == initial && bestPoint != startPoint)) {
+        coordsRev.remove(pointToPair(startPoint));
+        coords[roomId] = bestPoint;
+        coordsRev[pointToPair(bestPoint)] = roomId;
+        rerun = true;
+        break;
+      }
+    }
+    relattice();
+  } while (rerun);
   calculateBoundingBox();
 }
 
@@ -409,8 +541,6 @@ void MapLayout::render(QPainter* painter, const QRectF& rawViewport) const
         QPointF end = coords.value(dest) * COORD_SCALE + revExitOffset;
         if (normalized(exitOffset) != normalized(end - start)) {
           nonlinear = true;
-          painter->setPen(QPen(nlColors[nl], 0));
-          nl = (nl + 1) % nlColors.size();
           if (start.y() < end.y() || (start.y() == end.y() && start.x() < end.x())) {
             start -= oneWayOffset.value(dir) * ROOM_SIZE;
             end += oneWayOffset.value(revDir) * ROOM_SIZE;
@@ -441,6 +571,8 @@ void MapLayout::render(QPainter* painter, const QRectF& rawViewport) const
           }
           QPainterPath path(start);
           path.cubicTo(c1, c2, end);
+          nl = (nl + 1) % nlColors.size();
+          painter->setPen(QPen(nlColors[nl], 0));
           painter->setBrush(Qt::transparent);
           painter->drawPath(path);
         } else {

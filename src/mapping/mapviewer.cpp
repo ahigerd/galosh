@@ -84,6 +84,7 @@ MapViewer::MapViewer(MapManager* map, QWidget* parent)
     }
     zone->addItem(name);
   }
+  loadZone("The Temple of Chaos");
 
   setViewportMargins(0, header->sizeHint().height(), 0, 0);
   setWidgetResizable(false);

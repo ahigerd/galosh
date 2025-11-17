@@ -2,6 +2,7 @@
 #define GALOSH_ALGORITHMS_H
 
 #include <QString>
+#include <QPoint>
 #include <utility>
 #include <time.h>
 
@@ -14,6 +15,7 @@ std::pair<T, T> in_order(T a, T b)
     return { b, a };
   }
 }
+
 
 template <typename T>
 class QtAssociativeIterable
@@ -37,10 +39,40 @@ QtAssociativeIterable<typename T::key_value_iterator> pairs(T& container)
 }
 
 template <typename T>
-QtAssociativeIterable<typename T::const_key_value_iterator> pairs(const T& container)
+void pairs(const T& container)
+{
+  static_assert(false, "use cpairs for const iterator");
+}
+
+template <typename T>
+QtAssociativeIterable<typename T::const_key_value_iterator> cpairs(const T& container)
 {
   return QtAssociativeIterable(container.constKeyValueBegin(), container.constKeyValueEnd());
 }
+
+
+template <typename T>
+class QtKeyIterable
+{
+public:
+  QtKeyIterable(T begin, T end) : _begin(begin), _end(end) {}
+  QtKeyIterable(const QtKeyIterable&) = default;
+  QtKeyIterable(QtKeyIterable&&) = default;
+
+  inline T begin() { return _begin; }
+  inline T end() { return _end; }
+
+private:
+  T _begin, _end;
+};
+
+// Qt's key iterators are always const
+template <typename T>
+QtKeyIterable<typename T::key_iterator> keys(const T& container)
+{
+  return QtKeyIterable(container.keyBegin(), container.keyEnd());
+}
+
 
 template <typename ITER, typename ENUM = int>
 class EnumeratingIterator
@@ -96,6 +128,7 @@ EnumeratingIterable<typename T::iterator> enumerate(const T& container)
   return EnumeratingIterable<typename T::const_iterator, ENUM>(container.begin(), container.end());
 }
 
+
 template <typename T>
 void benchmark(const QString& label, T fn)
 {
@@ -107,6 +140,13 @@ void benchmark(const QString& label, T fn)
   clock_gettime(CLOCK_MONOTONIC, &endTime);
   uint64_t elapsed = (endTime.tv_sec - startTime.tv_sec) * 1e9 + (endTime.tv_nsec - startTime.tv_nsec);
   qDebug("%s: %f ms", qPrintable(label), elapsed / 1000.0 / 1000.0);
+}
+
+
+template <typename T>
+inline T signum(T val)
+{
+  return (val < 0 ? -1 : (val > 0 ? 1 : 0));
 }
 
 #endif
