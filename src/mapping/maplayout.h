@@ -31,6 +31,7 @@ private:
   void relax();
   void calculateBoundingBox();
 
+  double tension(int roomId, int destRoomId, const QString& dir, const QMap<int, QPointF>& substitutions = {}) const;
   double tension(int roomId, const QMap<int, QPointF>& substitutions = {}) const;
   double tension(const QMap<int, QPointF>& substitutions = {}) const;
 
@@ -44,6 +45,7 @@ private:
   QMap<int, QPointF> coords;
   QHash<QPair<int, int>, int> coordsRev;
   QMap<QPair<int, int>, QSet<int>> pathPoints;
+  QMap<int, QSet<int>> oneWayExits;
   QList<CliqueData> cliques;
   QMap<int, QColor> colors;
   MapManager* map;

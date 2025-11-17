@@ -118,7 +118,24 @@ void MapLayout::loadZone(const MapZone* zone)
     search->precompute();
   }
 
+  oneWayExits.clear();
   for (const MapSearch::Clique* clique : search->cliquesForZone(zone)) {
+    for (int roomId : clique->roomIds) {
+      const MapRoom* room = map->room(roomId);
+      if (!room) {
+        continue;
+      }
+      for (const MapExit& exit : room->exits) {
+        if (!clique->roomIds.contains(exit.dest)) {
+          continue;
+        }
+        const MapRoom* dest = map->room(exit.dest);
+        if (dest && !dest->hasExitTo(roomId)) {
+          oneWayExits[exit.dest] << roomId;
+        }
+      }
+    }
+
     coords.clear();
     coordsRev.clear();
     boundingBox = QRectF();
@@ -164,26 +181,6 @@ void MapLayout::loadZone(const MapZone* zone)
   boundingBox = QRectF(boundingBox.topLeft() * COORD_SCALE, boundingBox.bottomRight() * COORD_SCALE);
 
   title = zone->name;
-
-  /*
-  static QTabWidget* tabs = new QTabWidget;
-  tabs->show();
-
-  QRectF viewport(boundingBox.topLeft() * RENDER_SCALE * COORD_SCALE, boundingBox.bottomRight() * RENDER_SCALE * COORD_SCALE);
-  QImage img(viewport.size().toSize(), QImage::Format_RGB32);
-  img.fill(0xFF808080);
-  {
-    QPainter p(&img);
-    p.translate(-viewport.topLeft());
-    p.scale(RENDER_SCALE, RENDER_SCALE);
-    render(&p, viewport);
-  }
-  QScrollArea* sa = new QScrollArea;
-  QLabel* l = new QLabel(sa);
-  l->setPixmap(QPixmap::fromImage(img));
-  sa->setWidget(l);
-  tabs->addTab(sa, title);
-  */
 }
 
 void MapLayout::loadClique(const MapSearch::Clique* clique, int roomId)
@@ -237,47 +234,65 @@ void MapLayout::calculateBoundingBox()
   }
 }
 
+double MapLayout::tension(int roomId, int destRoomId, const QString& dir, const QMap<int, QPointF>& substitutions) const
+{
+  if (!coords.contains(destRoomId)) {
+    return -1;
+  }
+  const MapRoom* dest = map->room(destRoomId);
+  QPointF startPoint = substitutions.value(roomId, coords[roomId]);
+  QPointF endPoint = substitutions.value(destRoomId, coords[destRoomId]);
+  QString reverse = dest->findExit(roomId);
+  if (reverse.isEmpty()) {
+    reverse = MapRoom::reverseDir(dir);
+  }
+  QPointF step = startPoint + dirVectors[dir] * 0.25;
+  QPointF revStep = endPoint + dirVectors[reverse] * 0.25;
+  double dx = step.x() - revStep.x();
+  double dy = step.y() - revStep.y();
+  bool diagonal = (dir == "U" || dir == "D");
+  if (diagonal && dx >= -2 && dx <= 2) {
+    dy -= dx;
+    dx *= 0.5;
+  }
+  double tension = std::sqrt((dx * dx) + (dy * dy));
+  if (tension <= 1) {
+    return 0;
+  }
+  if (step.x() != revStep.x() && step.y() != revStep.y()) {
+    // nonlinearity introduces a lot of extra tension
+    // but past a certain point it stops being relevant
+    if (tension > 15) {
+      tension = 0;
+    } else if (tension > 3) {
+      tension = 60 + 2 * std::sqrt(tension - 3);
+    } else {
+      tension *= 20.0;
+    }
+    tension += 5;
+  }
+  return tension;
+}
+
 double MapLayout::tension(int roomId, const QMap<int, QPointF>& substitutions) const
 {
   double total = 0;
-  QPointF startPoint = substitutions.value(roomId, coords[roomId]);
   const MapRoom* room = map->room(roomId);
   for (auto [ dir, exit ] : cpairs(room->exits)) {
-    if (dir == "U" || dir == "D") {
-      // up/down exits don't contribute to tension right now
-      //continue;
+    int t = tension(roomId, exit.dest, dir, substitutions);
+    if (t > 0) {
+      total += t;
     }
-    if (!coords.contains(exit.dest)) {
+  }
+  for (int sourceRoomId : oneWayExits.value(roomId)) {
+    const MapRoom* source = map->room(sourceRoomId);
+    if (!source) {
       continue;
     }
-    const MapRoom* dest = map->room(exit.dest);
-    QPointF endPoint = substitutions.value(exit.dest, coords[exit.dest]);
-    QString reverse = dest->findExit(roomId);
-    if (reverse.isEmpty()) {
-      reverse = MapRoom::reverseDir(dir);
+    int t = tension(roomId, sourceRoomId, MapRoom::reverseDir(source->findExit(roomId)), substitutions);
+    if (t > 0) {
+      total += t;
     }
-    QPointF step = startPoint + dirVectors[dir] * 0.25;
-    QPointF revStep = endPoint + dirVectors[reverse] * 0.25;
-    double dx = step.x() - revStep.x() + 0.2;
-    double dy = step.y() - revStep.y();
-    if (dir == "U" || dir == "D") {
-      dy -= dx;
-      dx *= 1.5;
-    }
-    double tension = std::sqrt((dx * dx) + (dy * dy));
-    if (tension <= 1) {
-      tension = 0;
-    }
-    if (step.x() != revStep.x() && step.y() != revStep.y()) {
-      // nonlinearity introduces a lot of extra tension
-      // but past a certain point it stops being relevant
-      if (tension > 3) {
-        tension = 60 + 2 * std::sqrt(tension - 3);
-      } else {
-        tension *= 20.0;
-      }
-    }
-    total += tension;
   }
   return total;
 }
@@ -365,6 +380,7 @@ void MapLayout::relattice()
 void MapLayout::relax()
 {
   bool rerun;
+  int maxIter = 500;
   do {
     rerun = false;
     relattice();
@@ -443,14 +459,15 @@ void MapLayout::relax()
         }
       }
     }
-  } while (rerun);
+  } while (rerun && --maxIter > 0);
+  maxIter = 500;
   do {
     rerun = false;
     for (auto [ roomId, startPoint ] : pairs(coords)) {
-      if (!tension(roomId)) {
+      double initial = tension(roomId);
+      if (!initial) {
         continue;
       }
-      double initial = tension();
       QMap<int, QPointF> substitutions;
       static const QPointF offsetSteps[] = {
         { -1, 0 }, { 1, 0 }, { 0, -1 }, { 0, 1 },
@@ -470,7 +487,7 @@ void MapLayout::relax()
           continue;
         }
         substitutions[roomId] = pt;
-        double t = tension(substitutions);
+        double t = tension(roomId, substitutions);
         if (t == bestTension && (offset.x() < 0 || offset.y() < 0)) {
           bestTension = t;
           bestPoint = pt;
@@ -488,7 +505,7 @@ void MapLayout::relax()
       }
     }
     relattice();
-  } while (rerun);
+  } while (rerun && --maxIter > 0);
   calculateBoundingBox();
 }
 
