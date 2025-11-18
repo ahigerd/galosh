@@ -5,6 +5,7 @@
 #include <QHash>
 #include <QRectF>
 #include <QPointF>
+#include <QPolygonF>
 #include <QColor>
 #include <memory>
 #include "mapsearch.h"
@@ -26,27 +27,36 @@ public:
   const MapRoom* roomAt(const QPointF& pt) const;
 
 private:
-  void loadClique(const MapSearch::Clique* clique, int roomId);
+  struct LayerData {
+    const MapSearch::Clique* source;
+    QMap<int, QPointF> coords;
+    QRectF boundingBox;
+    int zIndex;
+    QPolygonF region;
+    QSet<QPair<int, int>> layerExits;
+  };
+
+  void loadClique(const MapSearch::Clique* clique, int roomId, int zIndex);
   void relattice();
   void relax();
   void calculateBoundingBox();
+  void calculateRegion(LayerData& layer);
 
-  double tension(int roomId, int destRoomId, const QString& dir, const QMap<int, QPointF>& substitutions = {}) const;
-  double tension(int roomId, const QMap<int, QPointF>& substitutions = {}) const;
+  double tension(int roomId, int destRoomId, const QString& dir, const QMap<int, QPointF>& substitutions = {}, bool weightHigh = false) const;
+  double tension(int roomId, const QMap<int, QPointF>& substitutions = {}, bool weightHigh = false) const;
   double tension(const QMap<int, QPointF>& substitutions = {}) const;
 
-  struct CliqueData {
-    QMap<int, QPointF> coords;
-    QRectF boundingBox;
-  };
+  LayerData* findLayer(int roomId);
 
   QString title;
   QRectF boundingBox;
   QMap<int, QPointF> coords;
+  QMap<int, int> roomLayers;
   QHash<QPair<int, int>, int> coordsRev;
   QMap<QPair<int, int>, QSet<int>> pathPoints;
   QMap<int, QSet<int>> oneWayExits;
-  QList<CliqueData> cliques;
+  QList<LayerData> layers;
+  QMap<int, int> pendingLayers;
   QMap<int, QColor> colors;
   MapManager* map;
   MapSearch* search;

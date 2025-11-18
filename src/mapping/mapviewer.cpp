@@ -44,7 +44,9 @@ protected:
   {
     QPainter p(this);
     p.scale(zoomLevel, zoomLevel);
-    map->render(&p, rect());
+    QRect vp = event->rect();
+    vp = QRect(vp.left() / zoomLevel, vp.top() / zoomLevel, vp.width() / zoomLevel, vp.height() / zoomLevel);
+    map->render(&p, vp);
   }
 };
 
@@ -70,10 +72,12 @@ MapViewer::MapViewer(MapManager* map, QWidget* parent)
   layout->addWidget(zone, 1);
 
   QToolButton* bIn = new QToolButton(header);
+  bIn->setText("+");
   QObject::connect(bIn, SIGNAL(clicked()), this, SLOT(zoomIn()));
   layout->addWidget(bIn);
 
   QToolButton* bOut = new QToolButton(header);
+  bOut->setText("\u2212");
   QObject::connect(bOut, SIGNAL(clicked()), this, SLOT(zoomOut()));
   layout->addWidget(bOut);
 

@@ -62,6 +62,32 @@ void MapSearch::getCliquesForZone(const MapZone* zone)
       Clique* clique = newClique(zone);
       clique->roomIds << roomId;
       crawlClique(clique, roomId);
+
+      // Check for clique intersections and merge if needed
+      for (Clique* other : QList<Clique*>(cliques[zone->name])) {
+        if (clique->roomIds.intersects(other->roomIds)) {
+          other->roomIds.unite(clique->roomIds);
+          other->unresolvedExits.unite(clique->unresolvedExits);
+          for (const CliqueExit& exit : clique->exits) {
+            bool found = false;
+            for (const CliqueExit& oexit : other->exits) {
+              if (exit.fromRoomId == oexit.fromRoomId && exit.toRoomId == oexit.toRoomId) {
+                found = true;
+                break;
+              }
+            }
+            if (!found) {
+              other->exits << exit;
+            }
+          }
+          // It's not safe to remove the underlying storage but at least minimize overhead
+          cliques[zone->name].removeAll(clique);
+          clique->roomIds.clear();
+          clique->unresolvedExits.clear();
+          clique->exits.clear();
+          clique->routes.clear();
+        }
+      }
     }
   }
 }
