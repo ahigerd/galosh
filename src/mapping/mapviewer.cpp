@@ -1,5 +1,6 @@
 #include "mapviewer.h"
 #include "mapmanager.h"
+#include <QSettings>
 #include <QHBoxLayout>
 #include <QComboBox>
 #include <QToolButton>
@@ -53,6 +54,9 @@ protected:
 MapViewer::MapViewer(MapManager* map, QWidget* parent)
 : QScrollArea(parent), map(map)
 {
+  setAttribute(Qt::WA_WindowPropagation, true);
+  setAttribute(Qt::WA_DeleteOnClose, true);
+
   setBackgroundRole(QPalette::Window);
   QPalette p(palette());
   while (p.color(QPalette::Window).value() > 128) {
@@ -88,11 +92,13 @@ MapViewer::MapViewer(MapManager* map, QWidget* parent)
     }
     zone->addItem(name);
   }
-  loadZone("The Temple of Chaos");
 
   setViewportMargins(0, header->sizeHint().height(), 0, 0);
   setWidgetResizable(false);
   setWidget(view);
+
+  QSettings settings;
+  restoreGeometry(settings.value("map").toByteArray());
 }
 
 void MapViewer::setZoom(double level)
@@ -118,6 +124,11 @@ void MapViewer::zoomOut()
 
 void MapViewer::loadZone(const QString& name)
 {
+  if (zone->currentText() != name) {
+    zone->blockSignals(true);
+    zone->setCurrentText(name);
+    zone->blockSignals(false);
+  }
   mapLayout->loadZone(map->zone(name));
   view->resize(mapLayout->displaySize() * view->zoomLevel);
   view->update();
@@ -133,4 +144,13 @@ void MapViewer::resizeEvent(QResizeEvent* event)
   view->resize(view->sizeHint());
 
   QScrollArea::resizeEvent(event);
+
+  QSettings settings;
+  settings.setValue("map", saveGeometry());
+}
+
+void MapViewer::moveEvent(QMoveEvent*)
+{
+  QSettings settings;
+  settings.setValue("map", saveGeometry());
 }

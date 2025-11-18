@@ -15,6 +15,7 @@ class QTreeView;
 class GaloshTerm;
 class InfoModel;
 class RoomView;
+class MapViewer;
 class ExploreDialog;
 
 class GaloshWindow : public QMainWindow, public TextCommandProcessor
@@ -31,6 +32,7 @@ public slots:
   void openMsspDialog();
   void openConfigFolder();
   void openWebsite();
+  void showMap();
   void exploreMap(int roomId = -1, const QString& movement = QString());
   void about();
 
@@ -68,6 +70,9 @@ private:
   ItemDatabase itemDB;
   GaloshTerm* term;
   QAction* exploreAction;
+  QAction* exploreActionTB;
+  QAction* mapAction;
+  QAction* mapActionTB;
   QDockWidget* infoDock;
   QAction* infoAction;
   QTreeView* infoView;
@@ -79,6 +84,7 @@ private:
   QAction* msspMenu;
   QLabel* sbStatus;
   QPointer<ExploreDialog> explore;
+  QPointer<MapViewer> mapView;
   QStringList speedPath;
   int lastRoomId;
   bool fixGeometry;

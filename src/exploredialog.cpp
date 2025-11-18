@@ -9,6 +9,7 @@
 #include "commands/routecommand.h"
 #include "commands/simplifycommand.h"
 #include "commands/zonecommand.h"
+#include <QSettings>
 #include <QGridLayout>
 #include <QLineEdit>
 #include <QPushButton>
@@ -20,9 +21,7 @@
 ExploreDialog::ExploreDialog(MapManager* map, int roomId, int lastRoomId, const QString& movement, QWidget* parent)
 : QDialog(parent), map(map), history(map)
 {
-  setWindowFlag(Qt::Dialog, true);
-  setWindowFlag(Qt::WindowStaysOnTopHint, true);
-  setAttribute(Qt::WA_WindowPropagation, true);
+  setWindowFlag(Qt::Window, true);
   setAttribute(Qt::WA_WindowPropagation, true);
   setAttribute(Qt::WA_DeleteOnClose, true);
 
@@ -81,6 +80,9 @@ ExploreDialog::ExploreDialog(MapManager* map, int roomId, int lastRoomId, const 
   addCommand(new SlotCommand("BACK", this, SLOT(goBack()), "Returns to the previous room"));
   addCommand(new SlotCommand("GOTO", this, SLOT(goToRoom(QString)), "Teleports to a room by numeric ID"));
   addCommand(new SlotCommand("RESET", &history, SLOT(reset()), "Clears the exploration history"));
+
+  QSettings settings;
+  restoreGeometry(settings.value("explore").toByteArray());
 }
 
 void ExploreDialog::roomUpdated(const QString& title, int id, const QString& movement)
@@ -220,4 +222,16 @@ void ExploreDialog::goToRoom(const QString& id)
     setResponse(true, "Invalid room ID: " + id);
   }
   emit exploreRoom(roomId, QString());
+}
+
+void ExploreDialog::resizeEvent(QResizeEvent*)
+{
+  QSettings settings;
+  settings.setValue("explore", saveGeometry());
+}
+
+void ExploreDialog::moveEvent(QMoveEvent*)
+{
+  QSettings settings;
+  settings.setValue("explore", saveGeometry());
 }

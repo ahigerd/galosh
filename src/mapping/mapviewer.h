@@ -19,8 +19,12 @@ public slots:
   void setZoom(double level);
   void zoomIn();
   void zoomOut();
+  // TODO: toggle pin
 
 protected:
+  // TODO: explore on double-click
+  // TODO: menu on right-click
+  void moveEvent(QMoveEvent*);
   void resizeEvent(QResizeEvent*);
 
 private:

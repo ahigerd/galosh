@@ -23,6 +23,8 @@ signals:
 public slots:
   void roomUpdated(const QString& title, int id, const QString& movement = QString());
   void refocus();
+  // TODO: toggle pin
+  // TODO: open map
 
 private slots:
   void doCommand();
@@ -36,8 +38,10 @@ protected:
   virtual void showCommandMessage(TextCommand* command, const QString& message, bool isError) override;
   virtual bool commandFilter(const QString& command, const QStringList& args) override;
 
+  void moveEvent(QMoveEvent*);
+  void resizeEvent(QResizeEvent*);
+
 private:
-  //void handleCommand(const QString& command, const QStringList& args);
   void handleSpeedwalk(const QStringList& dirs);
 
   MapManager* map;

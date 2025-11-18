@@ -5,6 +5,7 @@
 #include "roomview.h"
 #include "msspview.h"
 #include "exploredialog.h"
+#include "mapviewer.h"
 #include "commands/textcommand.h"
 #include "commands/identifycommand.h"
 #include "commands/slotcommand.h"
@@ -73,6 +74,8 @@ GaloshWindow::GaloshWindow(QWidget* parent)
   viewMenu->addAction("&Profiles...", this, SLOT(openProfileDialog()));
   viewMenu->addSeparator();
   msspMenu = viewMenu->addAction("View &MSSP Info...", this, SLOT(openMsspDialog()));
+  mapAction = viewMenu->addAction("&View Map...", this, SLOT(showMap()));
+  mapAction->setEnabled(false);
   exploreAction = viewMenu->addAction("E&xplore Map...", this, SLOT(exploreMap()));
   exploreAction->setEnabled(false);
   viewMenu->addSeparator();
@@ -98,7 +101,10 @@ GaloshWindow::GaloshWindow(QWidget* parent)
   tb->addAction("Profiles", this, SLOT(openProfileDialog()));
   tb->addSeparator();
   tb->addAction("Triggers", [this]{ openProfileDialog(ProfileDialog::TriggersTab); });
-  tb->addAction("Map", [this]{ exploreMap(); });
+  mapActionTB = tb->addAction("Map", [this]{ showMap(); });
+  mapActionTB->setEnabled(false);
+  exploreActionTB = tb->addAction("Explore", [this]{ exploreMap(); });
+  exploreActionTB->setEnabled(false);
   tb->addSeparator();
   msspButton = tb->addAction("MSSP", this, SLOT(openMsspDialog()));
   addToolBar(tb);
@@ -247,6 +253,8 @@ void GaloshWindow::connectToProfile(const QString& path, bool online)
   map.loadProfile(path);
   exploreHistory.reset();
   itemDB.loadProfile(path);
+  mapAction->setEnabled(true);
+  mapActionTB->setEnabled(true);
 
   if (online) {
     QString command = settings.value("commandLine").toString();
@@ -392,6 +400,7 @@ void GaloshWindow::setLastRoom(const QString& title, int roomId)
   lastRoomId = roomId;
   exploreHistory.goTo(roomId);
   exploreAction->setEnabled(true);
+  exploreActionTB->setEnabled(true);
   if (!speedPath.isEmpty()) {
     QString dir = speedPath.takeFirst();
     if (dir == "done") {
@@ -403,6 +412,22 @@ void GaloshWindow::setLastRoom(const QString& title, int roomId)
       speedPath << "done";
     }
   }
+}
+
+void GaloshWindow::showMap()
+{
+  if (!mapView) {
+    mapView = new MapViewer(&map, this);
+    mapView->setWindowFlags(Qt::Window);
+  }
+  // TODO: link ExploreHistory so MapViewer can show current location
+  const MapRoom* room = exploreHistory.currentRoom();
+  if (room) {
+    mapView->loadZone(room->zone);
+  }
+  mapView->show();
+  mapView->raise();
+  mapView->setFocus();
 }
 
 void GaloshWindow::exploreMap(int roomId, const QString& movement)

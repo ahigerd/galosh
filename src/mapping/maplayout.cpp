@@ -777,7 +777,8 @@ void MapLayout::render(QPainter* painter, const QRectF& rawViewport) const
 
 const MapRoom* MapLayout::roomAt(const QPointF& pt) const
 {
-  QPair<int, int> rev = pointToPair(pt / COORD_SCALE);
+  QPointF offset = boundingBox.topLeft();
+  QPair<int, int> rev = pointToPair((pt + offset) / COORD_SCALE);
   rev.first = ((rev.first + 128) >> 8) << 8;
   rev.second = ((rev.second + 128) >> 8) << 8;
   int roomId = coordsRev.value(rev, -1);
