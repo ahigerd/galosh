@@ -6,6 +6,7 @@
 #include <QRectF>
 #include <QPointF>
 #include <QPolygonF>
+#include <QRegion>
 #include <QColor>
 #include <memory>
 #include "mapsearch.h"
@@ -32,7 +33,8 @@ private:
     QMap<int, QPointF> coords;
     QRectF boundingBox;
     int zIndex;
-    QPolygonF region;
+    QRegion region;
+    QPolygonF polygon;
     QSet<QPair<int, int>> layerExits;
   };
 

@@ -74,12 +74,12 @@ QtKeyIterable<typename T::key_iterator> keys(const T& container)
 }
 
 
-template <typename ITER, typename ENUM = int>
+template <typename VALUE, typename ITER, typename ENUM = int>
 class EnumeratingIterator
 {
 public:
-  using difference_type = typename ITER::difference_type;
-  using value_type = std::pair<ENUM, typename ITER::value_type&>;
+  // using difference_type = typename ITER::difference_type;
+  using value_type = std::pair<ENUM, VALUE&>;
 
   EnumeratingIterator() : _index(0) {}
   EnumeratingIterator(ITER iter) : _iter(iter), _index(0) {}
@@ -101,13 +101,13 @@ private:
   ENUM _index;
 };
 
-template <typename T, typename ENUM = int>
+template <typename VALUE, typename ITER, typename ENUM = int>
 class EnumeratingIterable
 {
 public:
-  using iterator = EnumeratingIterator<typename T::iterator, ENUM>;
+  using iterator = EnumeratingIterator<VALUE, ITER, ENUM>;
 
-  EnumeratingIterable(typename T::iterator begin, typename T::iterator end) : _begin(begin), _end(end) {}
+  EnumeratingIterable(ITER begin, ITER end) : _begin(begin), _end(end) {}
 
   inline iterator begin() { return _begin; }
   inline iterator end() { return _end; }
@@ -117,15 +117,15 @@ private:
 };
 
 template <typename T, typename ENUM = int>
-EnumeratingIterable<typename T::iterator> enumerate(T& container)
+EnumeratingIterable<typename T::value_type, typename T::iterator, ENUM> enumerate(T& container)
 {
-  return EnumeratingIterable<typename T::iterator, ENUM>(container.begin(), container.end());
+  return EnumeratingIterable<typename T::value_type, typename T::iterator, ENUM>(container.begin(), container.end());
 }
 
 template <typename T, typename ENUM = int>
-EnumeratingIterable<typename T::iterator> enumerate(const T& container)
+EnumeratingIterable<const typename T::value_type, typename T::const_iterator, ENUM> enumerate(const T& container)
 {
-  return EnumeratingIterable<typename T::const_iterator, ENUM>(container.begin(), container.end());
+  return EnumeratingIterable<const typename T::value_type, typename T::const_iterator, ENUM>(container.begin(), container.end());
 }
 
 

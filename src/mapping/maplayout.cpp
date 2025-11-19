@@ -28,10 +28,10 @@ static const QMap<QString, QPointF> dirVectors = {
 };
 
 static const QMap<QString, QPointF> oneWayOffset = {
-  { "N", QPointF(0.25, 0) },
-  { "E", QPointF(0, 0.25) },
-  { "S", QPointF(-0.25, 0) },
-  { "W", QPointF(0, -0.25) },
+  { "N", QPointF(0.1, 0) },
+  { "E", QPointF(0, 0.1) },
+  { "S", QPointF(-0.1, 0) },
+  { "W", QPointF(0, -0.1) },
 };
 
 static constexpr int ROOM_SIZE = 5;
@@ -128,7 +128,6 @@ void MapLayout::loadZone(const MapZone* zone)
 
   oneWayExits.clear();
   for (const MapSearch::Clique* clique : search->cliquesForZone(zone)) {
-    qDebug() << clique->zone->name;
     for (int roomId : clique->roomIds) {
       const MapRoom* room = map->room(roomId);
       if (!room) {
@@ -169,7 +168,7 @@ void MapLayout::loadZone(const MapZone* zone)
     }
     loadClique(clique, roomId, 0);
     relax();
-    layers << (LayerData){ clique, coords, boundingBox, 0, {}, {} };
+    layers << (LayerData){ clique, coords, boundingBox, 0, {}, {}, {} };
 
     do {
       auto layersCopy = pendingLayers;
@@ -184,7 +183,7 @@ void MapLayout::loadZone(const MapZone* zone)
         coords[startRoomId] = QPointF(1, 1);
         loadClique(clique, startRoomId, zIndex);
         relax();
-        layers << (LayerData){ clique, coords, boundingBox, zIndex, {}, {} };
+        layers << (LayerData){ clique, coords, boundingBox, zIndex, {}, {}, {} };
       }
     } while (!pendingLayers.isEmpty());
   }
@@ -212,15 +211,26 @@ void MapLayout::loadZone(const MapZone* zone)
     calculateRegion(layer);
   }
 
+  for (LayerData& layer : layers) {
+    for (auto [ fromId, toId ] : layer.layerExits) {
+      LayerData* other = findLayer(toId);
+      Q_ASSERT(other);
+      other->layerExits << qMakePair(toId, fromId);
+    }
+  }
+
   QList<LayerData*> done;
   QSet<const MapSearch::Clique*> rootCliques;
   QRect bb;
-  QPolygonF locked;
+  QRegion locked;
   while (done.size() < layers.size()) {
     for (LayerData& layer : layers) {
+      if (done.contains(&layer)) {
+        continue;
+      }
       if (done.isEmpty() || !rootCliques.contains(layer.source)) {
-        locked = locked.united(layer.region);
-        bb = locked.boundingRect().toRect();
+        locked += layer.region;// locked.united(layer.region);
+        bb = locked.boundingRect();//.toRect();
         done << &layer;
         rootCliques << layer.source;
         continue;
@@ -235,6 +245,7 @@ void MapLayout::loadZone(const MapZone* zone)
       }
       if (tensionRooms.isEmpty()) {
         // doesn't connect yet, come back later
+        qDebug() << "no connections from layer to done" << layer.layerExits;
         continue;
       }
       QRect layerBB = layer.boundingBox.toRect();
@@ -264,16 +275,22 @@ void MapLayout::loadZone(const MapZone* zone)
           }
         }
       }
+      if (bestTension < 0) {
+        qDebug() << "no valid placement?";
+        break;
+      }
       for (auto [ roomId, pos ] : pairs(layer.coords)) {
         pos += bestPos;
         coords[roomId] = pos;
       }
-      layer.region.translate(bestPos);
+      layer.region.translate(bestPos.toPoint());
+      layer.polygon.translate(bestPos.toPoint());
       locked = locked.united(layer.region);
-      bb = locked.boundingRect().toRect();
+      bb = locked.boundingRect();//.toRect();
       done << &layer;
       rootCliques << layer.source;
     }
+    break;
   }
 
   calculateBoundingBox();
@@ -292,9 +309,6 @@ void MapLayout::loadClique(const MapSearch::Clique* clique, int roomId, int zInd
     }
     return;
   }
-  if (pendingLayers.contains(roomId)) {
-    qDebug() << "layer??" << roomId << zIndex << pendingLayers.value(roomId);
-  }
   roomLayers[roomId] = zIndex;
   for (auto [ dir, exit ] : cpairs(room->exits)) {
     QPointF pos = coords.value(roomId);
@@ -304,7 +318,9 @@ void MapLayout::loadClique(const MapSearch::Clique* clique, int roomId, int zInd
       if (!destRoom) {
         continue;
       }
-      if (destRoom->exits.size() > 1 || destRoom->exits.value(MapRoom::reverseDir(dir)).dest != roomId) {
+      QString rev = destRoom->findExit(roomId);
+      if (rev.isEmpty() || ((rev == "U" || rev == "D") && destRoom->exits.size() > 1)) {
+      //if (destRoom->exits.size() > 1 || destRoom->exits.value(MapRoom::reverseDir(dir)).dest != roomId) {
         int newZIndex = zIndex + (dir == "U" ? 1 : -1);
         if (pendingLayers.contains(dest)) {
           if (pendingLayers.value(dest) != newZIndex) {
@@ -386,8 +402,9 @@ double MapLayout::tension(int roomId, int destRoomId, const QString& dir, const 
     if (weightHigh) {
       // Slightly penalize vertical distance more than horizontal
       tension *= (dy < 0 ? 1 - dy * 0.1 : 1 + dy * 0.1);
-      if ((dx == dy || dx == -dy) && (dx <= -5 || dx >= 5)) {
-        // long perfectly diagonal lines are very bad because they're highly likely to intersect rooms
+      double slope = dy ? qAbs(dy / dx) : 0;
+      if (slope >= 0.9 && slope <= 1.1 && (dx <= -4 || dx >= 4)) {
+        // long nearly-diagonal lines are very bad because they're highly likely to intersect rooms
         tension *= 10;
       }
     } else if (tension > 15 && !weightHigh) {
@@ -398,6 +415,15 @@ double MapLayout::tension(int roomId, int destRoomId, const QString& dir, const 
       tension *= 20.0;
     }
     tension += 5;
+  }
+  // if it's supposed to be at straight connection, penalize going the wrong way
+  if (reverse == MapRoom::reverseDir(dir)) {
+    if (signum(int(endPoint.x() - startPoint.x())) != int(dirVectors[dir].x())) {
+      tension *= 20 * qAbs(dx);
+    }
+    if (signum(int(endPoint.y() - startPoint.y())) != int(dirVectors[dir].y())) {
+      tension *= 10 * qAbs(dy);
+    }
   }
   return tension;
 }
@@ -642,16 +668,16 @@ QSize MapLayout::displaySize() const
   return boundingBox.size().toSize();
 }
 
-void MapLayout::render(QPainter* painter, const QRectF& rawViewport) const
+void MapLayout::render(QPainter* painter, const QRectF&) const
 {
   int nl = 0;
-  QRectF viewport(rawViewport.topLeft() + boundingBox.topLeft(), rawViewport.size());
 
   painter->save();
   painter->translate(-boundingBox.x(), -boundingBox.y());
 
   painter->save();
   painter->scale(COORD_SCALE, COORD_SCALE);
+  painter->translate(-0.5, -0.5);
 
   for (const LayerData& layer : layers) {
     painter->setBrush(Qt::transparent);
@@ -660,7 +686,7 @@ void MapLayout::render(QPainter* painter, const QRectF& rawViewport) const
     painter->setPen(QPen(c, 0));
     c.setAlpha(8);
     painter->setBrush(c);
-    painter->drawPolygon(layer.region);
+    painter->drawPolygon(layer.polygon);
   }
 
   painter->restore();
@@ -673,9 +699,6 @@ void MapLayout::render(QPainter* painter, const QRectF& rawViewport) const
     static const QPointF OFFSET(COORD_SCALE, COORD_SCALE);
     static const QSizeF SIZE(COORD_SCALE * 2, COORD_SCALE * 2);
     QRectF rect(pos - OFFSET, SIZE);
-    if (!viewport.intersects(rect)) {
-      continue;
-    }
 
     const MapRoom* room = map->room(roomId);
     for (const QString& dir : room->exits.keys()) {
@@ -763,9 +786,6 @@ void MapLayout::render(QPainter* painter, const QRectF& rawViewport) const
   for (int roomId : coords.keys()) {
     QPointF pos = coords[roomId] * 15;
     QRectF rect(pos - ROOM_OFFSET, ROOM_SIZEF);
-    if (!viewport.intersects(rect)) {
-      continue;
-    }
     painter->setBrush(colors.value(roomId, Qt::white));
     painter->drawRect(rect.toRect());
     painter->setBrush(Qt::black);
@@ -788,9 +808,10 @@ const MapRoom* MapLayout::roomAt(const QPointF& pt) const
   return nullptr;
 }
 
+static constexpr double nodePadding = 1.0;
 void MapLayout::calculateRegion(LayerData& layer)
 {
-  QPainterPath r;
+  QRegion r;
   for (auto [ roomId, pos ] : cpairs(layer.coords)) {
     bool hasExit = false;
     for (const auto& [ dir, exit ] : cpairs(map->room(roomId)->exits)) {
@@ -799,24 +820,63 @@ void MapLayout::calculateRegion(LayerData& layer)
       }
       hasExit = true;
       QPointF destPos = layer.coords.value(exit.dest);
-      QRectF rect(pos, destPos);
-      rect.adjust(-0.75, -0.75, 0.75, 0.75);
-      QPainterPath p;
-      p.setFillRule(Qt::WindingFill);
-      p.addRect(rect);
-      r = r.united(p);
+      int x0 = qMin(pos.x(), destPos.x());
+      int x1 = qMax(pos.x(), destPos.x()) + 1;
+      int y0 = qMin(pos.y(), destPos.y());
+      int y1 = qMax(pos.y(), destPos.y()) + 1;
+      r += QRect(x0, y0, x1 - x0, y1 - y0);
     }
     if (!hasExit) {
-      QPainterPath p;
-      p.setFillRule(Qt::WindingFill);
-      p.addRect(pos.x() - 0.75, pos.y() - 0.75, 1.5, 1.5);
-      r = r.united(p);
+      r += QRect(pos.x(), pos.y(), 1, 1);
     }
   }
-  layer.region.clear();
-  for (const QPolygonF& poly : r.toSubpathPolygons()) {
-    layer.region = layer.region.united(poly);
+  QRect bb = r.boundingRect();
+  QRegion add;
+  for (int y = bb.top(); y <= bb.bottom(); y++) {
+    for (int x = bb.left(); x <= bb.right(); x++) {
+      if (r.contains(QPoint(x, y))) {
+        continue;
+      }
+      if ((r.contains(QPoint(x - 1, y)) && r.contains(QPoint(x + 1, y))) ||
+          (r.contains(QPoint(x, y - 1)) && r.contains(QPoint(x, y + 1)))) {
+        r += QRect(x, y, 1, 1);
+      }
+    }
   }
+  r += add;
+  layer.region = r;
+
+  QPainterPath path;
+  for (const QRect& rect : r) {
+    QPainterPath p;
+    p.setFillRule(Qt::WindingFill);
+    p.addRect(QRectF(rect).adjusted(-0.000001, -0.000001, 0.000001, 0.000001));
+    path = path.united(p);
+  }
+
+  layer.polygon.clear();
+  for (const QPolygonF& poly : path.toSubpathPolygons()) {
+    layer.polygon = layer.polygon.united(poly);
+  }
+
+  // At this point the polygon's points are in clockwise winding order
+  int ct = layer.polygon.size() - 1;
+  QPolygonF reduced;
+  for (int i = 0; i < ct; i++) {
+    QPointF prev = layer.polygon[(i + ct - 1) % ct];
+    QPointF pt = layer.polygon[i];
+    QPointF next = layer.polygon[(i + 1) % ct];
+    const QPointF& perp1 = normalized(QPointF(prev.y() - pt.y(), pt.x() - prev.x()));
+    const QPointF& perp2 = normalized(QPointF(pt.y() - next.y(), next.x() - pt.x()));
+    if (perp1 == perp2) {
+      // collinear point, remove
+      continue;
+    }
+    reduced << (pt + (perp1 + perp2) * 0.1);
+  }
+  reduced << reduced.first();
+  layer.polygon = reduced;
+
   layer.boundingBox = layer.region.boundingRect();
 }
 
