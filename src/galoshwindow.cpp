@@ -442,13 +442,6 @@ void GaloshWindow::exploreMap(int roomId, const QString& movement)
   }
 }
 
-/*
-void GaloshWindow::slashCommand(const QString& command, const QStringList& args)
-{
-  handleCommand(command, args);
-}
-*/
-
 void GaloshWindow::abortSpeedwalk()
 {
   if (speedPath.isEmpty()) {

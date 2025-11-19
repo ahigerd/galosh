@@ -97,17 +97,6 @@ static QPointF toEdge(const QPointF& pt)
   return QPointF(x, y);
 }
 
-/*
-static QPointF toLattice(const QPointF& pt)
-{
-  double x = pt.x();
-  double y = pt.y();
-  x = (x < 0 ? -1 : (x > 0 ? 1 : 0));
-  y = (y < 0 ? -1 : (y > 0 ? 1 : 0));
-  return QPointF(x, y);
-}
-*/
-
 MapLayout::MapLayout(MapManager* map, MapSearch* search)
 : map(map), search(search)
 {
@@ -229,8 +218,8 @@ void MapLayout::loadZone(const MapZone* zone)
         continue;
       }
       if (done.isEmpty() || !rootCliques.contains(layer.source)) {
-        locked += layer.region;// locked.united(layer.region);
-        bb = locked.boundingRect();//.toRect();
+        locked += layer.region;
+        bb = locked.boundingRect();
         done << &layer;
         rootCliques << layer.source;
         continue;
@@ -286,12 +275,23 @@ void MapLayout::loadZone(const MapZone* zone)
       layer.region.translate(bestPos.toPoint());
       layer.polygon.translate(bestPos.toPoint());
       locked = locked.united(layer.region);
-      bb = locked.boundingRect();//.toRect();
+      bb = locked.boundingRect();
       done << &layer;
       rootCliques << layer.source;
     }
     break;
   }
+
+  // update final coordinates
+  coords.clear();
+  coordsRev.clear();
+  for (const LayerData& layer : layers) {
+    coords.insert(layer.coords);
+    for (auto [roomId, pos] : cpairs(layer.coords)) {
+      coordsRev[pointToPair(pos)] = roomId;
+    }
+  }
+  markPathPoints();
 
   calculateBoundingBox();
   boundingBox.adjust(-1, -1, 1, 1);
@@ -313,26 +313,23 @@ void MapLayout::loadClique(const MapSearch::Clique* clique, int roomId, int zInd
   for (auto [ dir, exit ] : cpairs(room->exits)) {
     QPointF pos = coords.value(roomId);
     int dest = exit.dest;
+    int newZIndex = zIndex;
     if (dir == "U" || dir == "D") {
       const MapRoom* destRoom = map->room(dest);
       if (!destRoom) {
         continue;
       }
       QString rev = destRoom->findExit(roomId);
-      if (rev.isEmpty() || ((rev == "U" || rev == "D") && destRoom->exits.size() > 1)) {
-      //if (destRoom->exits.size() > 1 || destRoom->exits.value(MapRoom::reverseDir(dir)).dest != roomId) {
-        int newZIndex = zIndex + (dir == "U" ? 1 : -1);
+      bool isVertical = (rev == "U" || rev == "D");
+      newZIndex += (dir == "U" ? 1 : -1);
+      if (rev.isEmpty() || (isVertical && destRoom->exits.size() > 1)) {
         if (pendingLayers.contains(dest)) {
           if (pendingLayers.value(dest) != newZIndex) {
             qDebug() << "layer conflict" << roomId << zIndex << dir << dest << "from" << pendingLayers[dest] << "to" << newZIndex;
           }
           continue;
         }
-        if (dir == "U") {
-          pendingLayers[dest] = zIndex + 1;
-        } else {
-          pendingLayers[dest] = zIndex - 1;
-        }
+        pendingLayers[dest] = newZIndex;
         continue;
       }
     }
@@ -350,7 +347,7 @@ void MapLayout::loadClique(const MapSearch::Clique* clique, int roomId, int zInd
     }
     coords[dest] = nextPos;
     coordsRev[rev] = dest;
-    loadClique(clique, dest, zIndex);
+    loadClique(clique, dest, newZIndex);
   }
 }
 
@@ -390,7 +387,8 @@ double MapLayout::tension(int roomId, int destRoomId, const QString& dir, const 
   bool diagonal = (dir == "U" || dir == "D");
   if (diagonal && dx >= -2 && dx <= 2) {
     dy -= dx;
-    dx *= 0.5;
+    static constexpr double sqrt2 = std::sqrt(2);
+    dx *= sqrt2;
   }
   double tension = std::sqrt((dx * dx) + (dy * dy));
   if (tension <= 1) {
@@ -416,13 +414,13 @@ double MapLayout::tension(int roomId, int destRoomId, const QString& dir, const 
     }
     tension += 5;
   }
-  // if it's supposed to be at straight connection, penalize going the wrong way
+  // if it's supposed to be a straight connection, penalize going the wrong way
   if (reverse == MapRoom::reverseDir(dir)) {
     if (signum(int(endPoint.x() - startPoint.x())) != int(dirVectors[dir].x())) {
       tension *= 20 * qAbs(dx);
     }
     if (signum(int(endPoint.y() - startPoint.y())) != int(dirVectors[dir].y())) {
-      tension *= 10 * qAbs(dy);
+      tension *= 20 * qAbs(dy);
     }
   }
   return tension;
@@ -445,7 +443,7 @@ double MapLayout::tension(int roomId, const QMap<int, QPointF>& substitutions, b
     }
     int t = tension(roomId, sourceRoomId, MapRoom::reverseDir(source->findExit(roomId)), substitutions, weightHigh);
     if (t > 0) {
-      total += t;
+      total += t * 0.5;
     }
   }
   return total;
@@ -496,6 +494,11 @@ void MapLayout::relattice()
     coordsRev[pointToPair(pt)] = index;
   }
   // Mark lattice points that are occupied by a path
+  markPathPoints();
+}
+
+void MapLayout::markPathPoints()
+{
   pathPoints.clear();
   for (auto [ roomId, startPoint ] : pairs(coords)) {
     const MapRoom* room = map->room(roomId);
@@ -525,6 +528,12 @@ void MapLayout::relattice()
           pp.second = y * 1024;
           pathPoints[pp] << roomId;
           pathPoints[pp] << destId;
+        }
+      } else if (qAbs(dx) > 1 && (dx == dy || dx == -dy)) {
+        QPoint step(signum(dx), signum(dy));
+        QPoint end = endPoint.toPoint();
+        for (QPoint i = (startPoint + step).toPoint(); i != end; i += step) {
+          pathPoints[pointToPair(i)] << roomId << destId;
         }
       }
     }
@@ -683,6 +692,7 @@ void MapLayout::render(QPainter* painter, const QRectF&) const
     painter->setBrush(Qt::transparent);
     nl = (nl + 1) % nlColors.size();
     QColor c = nlColors[nl];
+    c.setAlpha(128);
     painter->setPen(QPen(c, 0));
     c.setAlpha(8);
     painter->setBrush(c);
@@ -725,7 +735,7 @@ void MapLayout::render(QPainter* painter, const QRectF&) const
         QPointF start = pos + exitOffset;
         QPointF revExitOffset = toEdge(dirVectors[revDir]) * EXIT_OFFSET;
         QPointF end = coords.value(dest) * COORD_SCALE + revExitOffset;
-        if (normalized(exitOffset) != normalized(end - start) || (start.x() != end.x() && start.y() != end.y() && magSqr(start - end) > 50)) {
+        if (normalized(exitOffset) != normalized(end - start) || (start.x() != end.x() && start.y() != end.y() && magSqr(start - end) > 200)) {
           nonlinear = true;
           if (start.y() < end.y() || (start.y() == end.y() && start.x() < end.x())) {
             start -= oneWayOffset.value(dir) * ROOM_SIZE;
@@ -808,7 +818,6 @@ const MapRoom* MapLayout::roomAt(const QPointF& pt) const
   return nullptr;
 }
 
-static constexpr double nodePadding = 1.0;
 void MapLayout::calculateRegion(LayerData& layer)
 {
   QRegion r;

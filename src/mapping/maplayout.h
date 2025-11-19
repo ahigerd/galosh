@@ -40,6 +40,7 @@ private:
 
   void loadClique(const MapSearch::Clique* clique, int roomId, int zIndex);
   void relattice();
+  void markPathPoints();
   void relax();
   void calculateBoundingBox();
   void calculateRegion(LayerData& layer);

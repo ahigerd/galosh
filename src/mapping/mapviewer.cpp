@@ -14,18 +14,18 @@
 class MapWidget : public QWidget
 {
 public:
-  MapWidget(MapLayout* map, QWidget* parent = nullptr)
-  : QWidget(parent), map(map), zoomLevel(5)
+  MapWidget(MapLayout* mapLayout, QWidget* parent = nullptr)
+  : QWidget(parent), mapLayout(mapLayout), zoomLevel(5)
   {
     setMouseTracking(true);
   }
 
-  MapLayout* map;
+  MapLayout* mapLayout;
   double zoomLevel;
 
   QSize sizeHint() const
   {
-    return map->displaySize() * zoomLevel;
+    return mapLayout->displaySize() * zoomLevel;
   }
 
 protected:
@@ -33,7 +33,7 @@ protected:
   {
     QPointF pt = event->pos();
     pt /= zoomLevel;
-    const MapRoom* room = map->roomAt(pt);
+    const MapRoom* room = mapLayout->roomAt(pt);
     if (room) {
       QToolTip::showText(event->globalPos(), QStringLiteral("[%1] %2").arg(room->id).arg(room->name), this);
     } else {
@@ -47,7 +47,7 @@ protected:
     p.scale(zoomLevel, zoomLevel);
     QRect vp = event->rect();
     vp = QRect(vp.left() / zoomLevel, vp.top() / zoomLevel, vp.width() / zoomLevel, vp.height() / zoomLevel);
-    map->render(&p, vp);
+    mapLayout->render(&p, vp);
   }
 };
 
