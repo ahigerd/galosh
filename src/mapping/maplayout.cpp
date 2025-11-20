@@ -106,6 +106,8 @@ MapLayout::MapLayout(MapManager* map, MapSearch* search)
 void MapLayout::loadZone(const MapZone* zone)
 {
   Q_ASSERT(zone);
+  currentZone = zone->name;
+
   roomLayers.clear();
   layers.clear();
   colors.clear();
@@ -115,6 +117,7 @@ void MapLayout::loadZone(const MapZone* zone)
     search->precompute();
   }
 
+  QMap<QPair<int, QString>, int> zoneExits;
   oneWayExits.clear();
   for (const MapSearch::Clique* clique : search->cliquesForZone(zone)) {
     for (int roomId : clique->roomIds) {
@@ -122,11 +125,14 @@ void MapLayout::loadZone(const MapZone* zone)
       if (!room) {
         continue;
       }
-      for (const MapExit& exit : room->exits) {
+      for (auto [dir, exit] : cpairs(room->exits)) {
+        const MapRoom* dest = map->room(exit.dest);
         if (!clique->roomIds.contains(exit.dest)) {
+          if (dest && dest->zone != zone->name) {
+            zoneExits[qMakePair(roomId, dir)] = exit.dest;
+          }
           continue;
         }
-        const MapRoom* dest = map->room(exit.dest);
         if (dest && !dest->hasExitTo(roomId)) {
           oneWayExits[exit.dest] << roomId;
         }
@@ -282,6 +288,10 @@ void MapLayout::loadZone(const MapZone* zone)
     break;
   }
 
+  calculateBoundingBox();
+  boundingBox.adjust(-1, -1, 1, 1);
+  boundingBox = QRectF(boundingBox.topLeft() * COORD_SCALE, boundingBox.bottomRight() * COORD_SCALE);
+
   // update final coordinates
   coords.clear();
   coordsRev.clear();
@@ -293,9 +303,10 @@ void MapLayout::loadZone(const MapZone* zone)
   }
   markPathPoints();
 
-  calculateBoundingBox();
-  boundingBox.adjust(-1, -1, 1, 1);
-  boundingBox = QRectF(boundingBox.topLeft() * COORD_SCALE, boundingBox.bottomRight() * COORD_SCALE);
+  for (auto [pair, destRoomId] : cpairs(zoneExits)) {
+    auto [roomId, dir] = pair;
+    coordsRev[pointToPair(coords.value(roomId) + dirVectors[dir] * 0.75)] = destRoomId;
+  }
 
   title = zone->name;
 }
@@ -303,6 +314,7 @@ void MapLayout::loadZone(const MapZone* zone)
 void MapLayout::loadClique(const MapSearch::Clique* clique, int roomId, int zIndex)
 {
   const MapRoom* room = map->room(roomId);
+  Q_ASSERT(room->zone == currentZone);
   if (roomLayers.contains(roomId)) {
     if (zIndex != roomLayers[roomId]) {
       qDebug() << "revisit?" << roomId << roomLayers[roomId] << zIndex;
@@ -311,6 +323,9 @@ void MapLayout::loadClique(const MapSearch::Clique* clique, int roomId, int zInd
   }
   roomLayers[roomId] = zIndex;
   for (auto [ dir, exit ] : cpairs(room->exits)) {
+    if (!clique->roomIds.contains(exit.dest)) {
+      continue;
+    }
     QPointF pos = coords.value(roomId);
     int dest = exit.dest;
     int newZIndex = zIndex;
@@ -405,9 +420,9 @@ double MapLayout::tension(int roomId, int destRoomId, const QString& dir, const 
         // long nearly-diagonal lines are very bad because they're highly likely to intersect rooms
         tension *= 10;
       }
-    } else if (tension > 15 && !weightHigh) {
+    } else if (tension > 15) {
       tension *= 10;
-    } else if (tension > 3 && !weightHigh) {
+    } else if (tension > 3) {
       tension = 60 + 2 * std::sqrt(tension - 3);
     } else {
       tension *= 20.0;
@@ -784,10 +799,12 @@ void MapLayout::render(QPainter* painter, const QRectF&) const
         painter->setPen(QPen(Qt::black, 0, Qt::DashLine));
         QPointF endpoint = pos + dirVectors[dir] * STEP_SIZE;
         painter->drawLine(pos, endpoint);
-        painter->setPen(QPen(Qt::black, 0));
         if (other && other->zone != title) {
-          painter->drawText(QRectF(endpoint - QPoint(5, 2), endpoint + QPoint(5, 0)), Qt::TextDontClip | Qt::AlignCenter, other->zone);
+          //painter->drawText(QRectF(endpoint - QPoint(5, 2), endpoint + QPoint(5, 0)), Qt::TextDontClip | Qt::AlignCenter, other->zone);
+          painter->setBrush(Qt::white);
+          painter->drawEllipse(QRectF(endpoint - QPoint(1.5, 1.5), endpoint + QPoint(1.5, 1.5)));
         }
+        painter->setPen(QPen(Qt::black, 0));
       }
     }
   }
@@ -805,12 +822,13 @@ void MapLayout::render(QPainter* painter, const QRectF&) const
   painter->restore();
 }
 
-const MapRoom* MapLayout::roomAt(const QPointF& pt) const
+const MapRoom* MapLayout::roomAt(const QPointF& _pt) const
 {
-  QPointF offset = boundingBox.topLeft();
-  QPair<int, int> rev = pointToPair((pt + offset) / COORD_SCALE);
-  rev.first = ((rev.first + 128) >> 8) << 8;
-  rev.second = ((rev.second + 128) >> 8) << 8;
+  QPointF pt = (_pt + boundingBox.topLeft()) / COORD_SCALE;
+  // Round to nearest quarter-point, bias away from zero
+  pt.setX(int(pt.x() * 4 + 0.5 * signum(pt.x())) / 4.0);
+  pt.setY(int(pt.y() * 4 + 0.5 * signum(pt.y())) / 4.0);
+  QPair<int, int> rev = pointToPair(pt);
   int roomId = coordsRev.value(rev, -1);
   if (roomId > 0) {
     return map->room(roomId);
@@ -859,6 +877,7 @@ void MapLayout::calculateRegion(LayerData& layer)
   for (const QRect& rect : r) {
     QPainterPath p;
     p.setFillRule(Qt::WindingFill);
+    // Grow the rects by an imperceptible amount to ensure they're overlapping
     p.addRect(QRectF(rect).adjusted(-0.000001, -0.000001, 0.000001, 0.000001));
     path = path.united(p);
   }

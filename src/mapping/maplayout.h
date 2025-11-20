@@ -21,6 +21,7 @@ public:
   MapLayout(MapManager* map, MapSearch* search = nullptr);
 
   void loadZone(const MapZone* zone);
+  QString currentZone;
 
   QSize displaySize() const;
   void render(QPainter* painter, const QRectF& viewport) const;

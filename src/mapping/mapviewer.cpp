@@ -14,12 +14,13 @@
 class MapWidget : public QWidget
 {
 public:
-  MapWidget(MapLayout* mapLayout, QWidget* parent = nullptr)
-  : QWidget(parent), mapLayout(mapLayout), zoomLevel(5)
+  MapWidget(MapLayout* mapLayout, MapViewer* parent)
+  : QWidget(parent), mapViewer(parent), mapLayout(mapLayout), zoomLevel(5)
   {
     setMouseTracking(true);
   }
 
+  MapViewer* mapViewer;
   MapLayout* mapLayout;
   double zoomLevel;
 
@@ -35,9 +36,25 @@ protected:
     pt /= zoomLevel;
     const MapRoom* room = mapLayout->roomAt(pt);
     if (room) {
-      QToolTip::showText(event->globalPos(), QStringLiteral("[%1] %2").arg(room->id).arg(room->name), this);
+      QString label = QStringLiteral("%2 [%1]").arg(room->id).arg(room->name);
+      if (room->zone != mapLayout->currentZone) {
+        label = QStringLiteral("%1: %2").arg(room->zone, label);
+      }
+      QToolTip::showText(event->globalPos(), label, this);
     } else {
       QToolTip::hideText();
+    }
+  }
+
+  void mouseDoubleClickEvent(QMouseEvent* event)
+  {
+    QPointF pt = event->pos();
+    pt /= zoomLevel;
+    const MapRoom* room = mapLayout->roomAt(pt);
+    if (room) {
+      if (room->zone != mapLayout->currentZone) {
+        mapViewer->loadZone(room->zone);
+      }
     }
   }
 
@@ -125,6 +142,9 @@ void MapViewer::zoomOut()
 void MapViewer::loadZone(const QString& name)
 {
   if (zone->currentText() != name) {
+    if (zone->findText(name) < 0) {
+      return;
+    }
     zone->blockSignals(true);
     zone->setCurrentText(name);
     zone->blockSignals(false);
