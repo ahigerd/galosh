@@ -100,6 +100,7 @@ MapViewer::MapViewer(MapManager* map, QWidget* parent)
   layout->setContentsMargins(2, 2, 2, 2);
 
   zone = new QComboBox(header);
+  zone->setInsertPolicy(QComboBox::InsertAlphabetically);
   QObject::connect(zone, SIGNAL(currentTextChanged(QString)), this, SLOT(loadZone(QString)));
   layout->addWidget(zone, 1);
 
@@ -114,10 +115,6 @@ MapViewer::MapViewer(MapManager* map, QWidget* parent)
   layout->addWidget(bOut);
 
   for (const QString& name : map->zoneNames()) {
-    const MapZone* mapZone = map->zone(name);
-    if (mapZone->roomIds.size() < 3) {
-      continue;
-    }
     zone->addItem(name);
   }
 
@@ -159,16 +156,23 @@ void MapViewer::setCurrentRoom(int roomId)
     qDebug() << "Unknown room" << roomId;
     return;
   }
-  loadZone(room->zone);
-  view->currentRoomId = roomId;
+  if (view->currentRoomId != roomId) {
+    loadZone(room->zone);
+    view->currentRoomId = roomId;
+  }
+  // TODO: recalc map if necessary (will this need a toggle?)
 }
 
 void MapViewer::loadZone(const QString& name)
 {
   if (zone->currentText() != name) {
     if (zone->findText(name) < 0) {
-      qDebug() << "Unknown zone" << name;
-      return;
+      if (map->zone(name)) {
+        zone->addItem(name);
+      } else {
+        qDebug() << "Unknown zone" << name;
+        return;
+      }
     }
     zone->blockSignals(true);
     zone->setCurrentText(name);

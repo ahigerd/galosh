@@ -7,26 +7,57 @@
 MapSearch::MapSearch(MapManager* map)
 : map(map)
 {
-  // initializers only
+  dirtyZones << nullptr;
 }
 
 void MapSearch::reset()
 {
   cliques.clear();
   cliqueStore.clear();
+  pendingRoomIds.clear();
+  dirtyZones << nullptr;
 }
 
-void MapSearch::precompute()
+void MapSearch::markDirty(const MapZone* zone)
 {
-  for (const QString& zone : map->zoneNames()) {
-    getCliquesForZone(map->zone(zone));
+  dirtyZones << zone;
+}
+
+bool MapSearch::precompute(bool force)
+{
+  force = force || dirtyZones.contains(nullptr);
+  if (force) {
+    reset();
+  } else {
+    for (const MapZone* zone : dirtyZones) {
+      auto zoneCliques = cliques.take(zone->name);
+      for (Clique* clique : zoneCliques) {
+        for (auto iter = cliqueStore.begin(); iter != cliqueStore.end(); iter++) {
+          if (&*iter == clique) {
+            cliqueStore.erase(iter);
+            break;
+          }
+        }
+      }
+    }
+  }
+
+  for (const QString& zoneName : map->zoneNames()) {
+    getCliquesForZone(map->zone(zoneName));
   }
   for (Clique& clique : cliqueStore) {
+    if (clique.unresolvedExits.isEmpty()) {
+      continue;
+    }
     resolveExits(&clique);
     for (const CliqueExit& exit : clique.exits) {
       fillRoutes(&clique, exit.fromRoomId);
     }
+    clique.unresolvedExits.clear();
   }
+
+  dirtyZones.clear();
+  return true;
 }
 
 MapSearch::Clique* MapSearch::newClique(const MapZone* parent)
@@ -40,6 +71,11 @@ MapSearch::Clique* MapSearch::newClique(const MapZone* parent)
 
 void MapSearch::getCliquesForZone(const MapZone* zone)
 {
+  if (cliques.contains(zone->name)) {
+    // already computed
+    return;
+  }
+
   QSet<int> allExits;
   for (const QSet<int>& exitGroup : zone->exits) {
     allExits += exitGroup;
@@ -297,6 +333,7 @@ void MapSearch::fillRoutes(MapSearch::Clique* clique, int startRoomId)
     }
     QPair<int, int> key(startRoomId, endRoomId);
     if (clique->routes.contains(key)) {
+      // already have this route
       continue;
     }
     if (!costs.contains(endRoomId)) {
@@ -418,10 +455,14 @@ QList<int> MapSearch::findRoute(int startRoomId, int endRoomId, const QStringLis
   Q_ASSERT(cliqueRoute.last() == endClique);
 
   QList<CliqueStep> steps;
+  int maxRoute = cliqueRoute.size() - 1;
   for (auto [ i, clique ] : enumerate(cliqueRoute)) {
+    if (i == maxRoute) {
+      break;
+    }
     QSet<int> outRooms, nextRooms;
     for (const CliqueExit& exit : clique->exits) {
-      if (exit.toClique == cliqueRoute[i + 1]) {
+      if (i < maxRoute && exit.toClique == cliqueRoute[i + 1]) {
         outRooms << exit.fromRoomId;
         nextRooms << exit.toRoomId;
       }

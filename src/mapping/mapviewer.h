@@ -22,6 +22,8 @@ public slots:
 
   void setCurrentRoom(int roomId);
 
+  // TODO: toggle map follow
+  // TODO: follow game or explore
   // TODO: toggle pin
 
 signals:

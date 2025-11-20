@@ -20,21 +20,27 @@ QString RouteCommand::helpMessage(bool brief) const
 
 void RouteCommand::handleInvoke(const QStringList& args, const KWArgs& kwargs)
 {
-  if (!history->currentRoom()) {
-    showError("Could not find current room");
-    return;
+  int startRoomId;
+  if (args.length() > 1) {
+    startRoomId = args.first().toInt();
+  } else {
+    if (!history->currentRoom()) {
+      showError("Could not find current room");
+      return;
+    }
+    startRoomId = history->currentRoom()->id;
   }
-  int endRoomId = args.first().toInt();
+  int endRoomId = args.last().toInt();
   const MapRoom* room = map->room(endRoomId);
   if (!room) {
     showError("Could not find destination room");
     return;
   }
-  if (room == history->currentRoom()) {
+  if (startRoomId == endRoomId) {
     showError("Start room and destination room are the same");
     return;
   }
-  int startRoomId = history->currentRoom()->id;
+  map->search()->precompute(true);
   QList<int> route = map->search()->findRoute(startRoomId, endRoomId);
   if (route.isEmpty()) {
     showError(QStringLiteral("Could not find route from %1 to %2").arg(startRoomId).arg(endRoomId));

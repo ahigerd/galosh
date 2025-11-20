@@ -31,7 +31,8 @@ public:
   MapSearch(MapManager* map);
 
   void reset();
-  void precompute();
+  void markDirty(const MapZone* zone = nullptr);
+  bool precompute(bool force = false);
   QList<const Clique*> cliquesForZone(const MapZone* zone) const;
   QList<const Clique*> findCliqueRoute(int startRoomId, int endRoomId, const QStringList& avoidZones = {}) const;
   QList<int> findRoute(int startRoomId, int endRoomId, const QStringList& avoidZones = {}) const;
@@ -60,6 +61,7 @@ private:
   std::list<Clique> cliqueStore;
   QMap<QString, QList<Clique*>> cliques;
   QSet<int> pendingRoomIds;
+  QSet<const MapZone*> dirtyZones;
 };
 
 #endif

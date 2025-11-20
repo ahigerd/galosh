@@ -357,6 +357,9 @@ void MapManager::updateRoom(const QVariantMap& info)
   if (mapFile) {
     saveRoom(&room);
   }
+  if (mapSearch) {
+    mapSearch->markDirty(zone);
+  }
 
   currentRoom = roomId;
   emit currentRoomUpdated(this, roomId);
