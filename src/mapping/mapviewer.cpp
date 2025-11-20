@@ -15,7 +15,7 @@ class MapWidget : public QWidget
 {
 public:
   MapWidget(MapLayout* mapLayout, MapViewer* parent)
-  : QWidget(parent), mapViewer(parent), mapLayout(mapLayout), zoomLevel(5)
+  : QWidget(parent), mapViewer(parent), mapLayout(mapLayout), zoomLevel(5), currentRoomId(-1)
   {
     setMouseTracking(true);
   }
@@ -23,6 +23,7 @@ public:
   MapViewer* mapViewer;
   MapLayout* mapLayout;
   double zoomLevel;
+  int currentRoomId;
 
   QSize sizeHint() const
   {
@@ -54,6 +55,8 @@ protected:
     if (room) {
       if (room->zone != mapLayout->currentZone) {
         mapViewer->loadZone(room->zone);
+      } else {
+        emit mapViewer->exploreMap(room->id);
       }
     }
   }
@@ -65,6 +68,14 @@ protected:
     QRect vp = event->rect();
     vp = QRect(vp.left() / zoomLevel, vp.top() / zoomLevel, vp.width() / zoomLevel, vp.height() / zoomLevel);
     mapLayout->render(&p, vp);
+
+    QRectF highlight = mapLayout->roomPos(currentRoomId);
+    if (!highlight.isNull()) {
+      highlight.adjust(-1.5, -1.5, 2.5, 2.5);
+      p.setPen(QPen(QColor(128, 255, 255), 1));
+      p.setBrush(Qt::transparent);
+      p.drawRect(highlight);
+    }
   }
 };
 
@@ -116,6 +127,8 @@ MapViewer::MapViewer(MapManager* map, QWidget* parent)
 
   QSettings settings;
   restoreGeometry(settings.value("map").toByteArray());
+
+  QObject::connect(map, SIGNAL(currentRoomUpdated(MapManager*,int)), this, SLOT(setCurrentRoom(MapManager*,int)));
 }
 
 void MapViewer::setZoom(double level)
@@ -139,10 +152,22 @@ void MapViewer::zoomOut()
   setZoom(view->zoomLevel * 4/5);
 }
 
+void MapViewer::setCurrentRoom(int roomId)
+{
+  const MapRoom* room = map->room(roomId);
+  if (!room) {
+    qDebug() << "Unknown room" << roomId;
+    return;
+  }
+  loadZone(room->zone);
+  view->currentRoomId = roomId;
+}
+
 void MapViewer::loadZone(const QString& name)
 {
   if (zone->currentText() != name) {
     if (zone->findText(name) < 0) {
+      qDebug() << "Unknown zone" << name;
       return;
     }
     zone->blockSignals(true);

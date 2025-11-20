@@ -811,7 +811,7 @@ void MapLayout::render(QPainter* painter, const QRectF&) const
 
   painter->setPen(QPen(Qt::black, 0.5));
   for (int roomId : coords.keys()) {
-    QPointF pos = coords[roomId] * 15;
+    QPointF pos = coords[roomId] * COORD_SCALE;
     QRectF rect(pos - ROOM_OFFSET, ROOM_SIZEF);
     painter->setBrush(colors.value(roomId, Qt::white));
     painter->drawRect(rect.toRect());
@@ -834,6 +834,16 @@ const MapRoom* MapLayout::roomAt(const QPointF& _pt) const
     return map->room(roomId);
   }
   return nullptr;
+}
+
+QRectF MapLayout::roomPos(int roomId) const
+{
+  if (!coords.contains(roomId)) {
+    return QRectF();
+  }
+  QPointF pos = (coords[roomId] * COORD_SCALE) - boundingBox.topLeft();
+  QRectF rect(pos - ROOM_OFFSET, ROOM_SIZEF);
+  return rect;
 }
 
 void MapLayout::calculateRegion(LayerData& layer)

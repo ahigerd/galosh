@@ -19,7 +19,16 @@ public slots:
   void setZoom(double level);
   void zoomIn();
   void zoomOut();
+
+  void setCurrentRoom(int roomId);
+
   // TODO: toggle pin
+
+signals:
+  void exploreMap(int roomId);
+
+private slots:
+  inline void setCurrentRoom(MapManager*, int roomId) { setCurrentRoom(roomId); }
 
 protected:
   // TODO: explore on double-click
@@ -28,6 +37,8 @@ protected:
   void resizeEvent(QResizeEvent*);
 
 private:
+  friend class MapWidget;
+
   std::unique_ptr<MapLayout> mapLayout;
   MapManager* map;
   QWidget* header;

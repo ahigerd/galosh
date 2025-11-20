@@ -27,6 +27,7 @@ public:
   void render(QPainter* painter, const QRectF& viewport) const;
 
   const MapRoom* roomAt(const QPointF& pt) const;
+  QRectF roomPos(int roomId) const;
 
 private:
   struct LayerData {

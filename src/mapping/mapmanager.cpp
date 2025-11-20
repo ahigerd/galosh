@@ -370,6 +370,11 @@ const MapRoom* MapManager::room(int id)
   return nullptr;
 }
 
+const MapRoom* MapManager::room()
+{
+  return room(currentRoom);
+}
+
 MapRoom* MapManager::mutableRoom(int id)
 {
   MapRoom* room = &rooms[id];

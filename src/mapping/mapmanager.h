@@ -17,6 +17,7 @@ Q_OBJECT
 public:
   MapManager(QObject* parent = nullptr);
 
+  const MapRoom* room();
   const MapRoom* room(int id);
   MapRoom* mutableRoom(int id);
   QList<const MapRoom*> searchForRooms(const QStringList& args, bool namesOnly, const QString& zone = QString()) const;

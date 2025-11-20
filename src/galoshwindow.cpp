@@ -419,6 +419,7 @@ void GaloshWindow::showMap()
   if (!mapView) {
     mapView = new MapViewer(&map, this);
     mapView->setWindowFlags(Qt::Window);
+    QObject::connect(mapView, SIGNAL(exploreMap(int)), this, SLOT(exploreMap(int)));
   }
   // TODO: link ExploreHistory so MapViewer can show current location
   const MapRoom* room = exploreHistory.currentRoom();
