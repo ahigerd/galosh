@@ -10,6 +10,7 @@
 #include "commands/identifycommand.h"
 #include "commands/slotcommand.h"
 #include "commands/routecommand.h"
+#include "commands/waypointcommand.h"
 #include <QDesktopServices>
 #include <QApplication>
 #include <QFontDatabase>
@@ -162,10 +163,15 @@ GaloshWindow::GaloshWindow(QWidget* parent)
   updateStatus();
 
   addCommand(new IdentifyCommand(&itemDB));
-  addCommand(new RouteCommand(&map, &exploreHistory));
   addCommand(new SlotCommand(".", this, SLOT(abortSpeedwalk()), "Aborts a speedwalk path in progress"));
   addCommand(new SlotCommand("DC", term->socket(), SLOT(disconnectFromHost()), "Disconnects from the game"))->addKeyword("DISCONNECT");
   addCommand(new SlotCommand("EXPLORE", this, SLOT(exploreMap()), "Opens the map exploration window"))->addKeyword("MAP");
+
+  RouteCommand* routeCommand = addCommand(new RouteCommand(&map, &exploreHistory));
+  QObject::connect(routeCommand, SIGNAL(speedwalk(QStringList)), this, SLOT(speedwalk(QStringList)));
+
+  WaypointCommand* waypointCommand = addCommand(new WaypointCommand(&map, &exploreHistory));
+  QObject::connect(waypointCommand, SIGNAL(speedwalk(QStringList)), this, SLOT(speedwalk(QStringList)));
 }
 
 void GaloshWindow::showEvent(QShowEvent* event)
@@ -178,7 +184,6 @@ void GaloshWindow::paintEvent(QPaintEvent* event)
 {
   if (fixGeometry) {
     QSettings settings;
-    shouldRestoreDocks = true;
     restoreGeometry(settings.value("window").toByteArray());
     QStringList sizes = settings.value("infoColumns").toStringList();
     for (int i = 0; i < sizes.size(); i++) {
@@ -193,6 +198,7 @@ void GaloshWindow::paintEvent(QPaintEvent* event)
     }
     fixGeometry = false;
     geometryReady = true;
+    shouldRestoreDocks = true;
   }
   QMainWindow::paintEvent(event);
 }
@@ -312,9 +318,9 @@ void GaloshWindow::moveEvent(QMoveEvent*)
 void GaloshWindow::resizeEvent(QResizeEvent*)
 {
   if (shouldRestoreDocks) {
-    QSettings settings;
-    restoreState(settings.value("docks").toByteArray());
-    shouldRestoreDocks = false;
+      QSettings settings;
+      restoreState(settings.value("docks").toByteArray());
+      shouldRestoreDocks = false;
   } else {
     updateGeometry(true);
   }
@@ -337,7 +343,9 @@ void GaloshWindow::updateGeometry(bool queue)
   if (isVisible()) {
     QSettings settings;
     settings.setValue("window", saveGeometry());
-    settings.setValue("docks", saveState());
+    if (!shouldRestoreDocks) {
+      settings.setValue("docks", saveState());
+    }
 
     QStringList sizes;
     for (int i = 0; i < infoModel->columnCount(); i++) {

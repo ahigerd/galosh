@@ -35,6 +35,7 @@ public:
   QList<const Clique*> cliquesForZone(const MapZone* zone) const;
   QList<const Clique*> findCliqueRoute(int startRoomId, int endRoomId, const QStringList& avoidZones = {}) const;
   QList<int> findRoute(int startRoomId, int endRoomId, const QStringList& avoidZones = {}) const;
+  QStringList routeDirections(const QList<int>& route) const;
 
 private:
   void getCliquesForZone(const MapZone* zone);

@@ -240,7 +240,10 @@ void MapSearch::resolveExits(MapSearch::Clique* clique)
         const MapRoom* dest = map->room(exit.dest);
         if (dest && dest->zone == zoneId) {
           Clique* toClique = findClique(zoneId, exit.dest);
-          Q_ASSERT(toClique);
+          if (!toClique) {
+            qDebug() << "XXX: broken clique, debug this";
+            continue;
+          }
           clique->exits << (CliqueExit){ roomId, toClique, exit.dest };
         }
       }
@@ -554,4 +557,29 @@ QList<int> MapSearch::findRoute(const QList<MapSearch::CliqueStep>& steps, int i
     }
   }
   return bestRoute;
+}
+
+QStringList MapSearch::routeDirections(const QList<int>& route) const
+{
+  if (route.length() < 2) {
+    return {};
+  }
+  QStringList path;
+  int startRoomId = route.first();
+  const MapRoom* room = map->room(startRoomId);
+  for (int step : route) {
+    if (step == startRoomId) {
+      continue;
+    }
+    if (!room) {
+      return {};
+    }
+    QString dir = room->findExit(step);
+    if (dir.isEmpty()) {
+      return {};
+    }
+    path << dir;
+    room = map->room(step);
+  }
+  return path;
 }

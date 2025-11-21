@@ -2,15 +2,20 @@
 #define GALOSH_ROUTECOMMAND_H
 
 #include "textcommand.h"
+#include <QObject>
 class MapManager;
 class ExploreHistory;
 
-class RouteCommand : public TextCommand
+class RouteCommand : public QObject, public TextCommand
 {
+Q_OBJECT
 public:
   RouteCommand(MapManager* map, ExploreHistory* history);
 
   virtual QString helpMessage(bool brief) const override;
+
+signals:
+  void speedwalk(const QStringList& steps);
 
 protected:
   virtual int minimumArguments() const override { return 1; }

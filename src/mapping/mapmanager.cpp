@@ -9,6 +9,22 @@
 #include <time.h>
 #include <QtDebug>
 
+struct SettingsGroup
+{
+  SettingsGroup(QSettings* settings, const QString& group)
+  : settings(settings)
+  {
+    settings->beginGroup(group);
+  }
+
+  ~SettingsGroup()
+  {
+    settings->endGroup();
+  }
+
+  QSettings* settings;
+};
+
 MapManager::MapManager(QObject* parent)
 : QObject(parent), mapFile(nullptr), gmcpMode(false), logRoomLegacy(false), logRoomDescription(false), logExits(false), roomDirty(false),
   autoRoomId(1), currentRoom(-1), destinationRoom(-1), previousRoom(-1), mapSearch(nullptr)
@@ -42,8 +58,11 @@ void MapManager::loadMap(const QString& mapFileName)
   autoRoomId = mapFile->value("autoID", 1).toInt();
 
   for (const QString& zone : mapFile->childGroups()) {
+    if (zone.startsWith(" ")) {
+      continue;
+    }
     QString zoneName = zone == "-" ? "" : zone;
-    mapFile->beginGroup(zone);
+    SettingsGroup zoneGroup(mapFile, zone);
     MapZone* zoneObj = mutableZone(zoneName);
     for (const QString& idStr : mapFile->childGroups()) {
       int id = idStr.toInt();
@@ -51,14 +70,14 @@ void MapManager::loadMap(const QString& mapFileName)
         qDebug() << "Unexpected room ID" << idStr << "in zone" << zone;
         continue;
       }
-      mapFile->beginGroup(idStr);
+      SettingsGroup idGroup(mapFile, idStr);
       MapRoom* room = mutableRoom(id);
       room->zone = zoneName;
       room->name = mapFile->value("name").toString();
       room->description = mapFile->value("description").toString();
-      mapFile->beginGroup("exit");
+      SettingsGroup exitGroup(mapFile, "exit");
       for (const QString& dir : mapFile->childGroups()) {
-        mapFile->beginGroup(dir);
+        SettingsGroup dirGroup(mapFile, dir);
         MapExit exit;
         exit.name = mapFile->value("name").toString();
         exit.dest = mapFile->value("id").toInt();
@@ -67,13 +86,9 @@ void MapManager::loadMap(const QString& mapFileName)
         exit.open = false;
         exit.locked = exit.lockable;
         room->exits[dir] = exit;
-        mapFile->endGroup();
       }
       zoneObj->addRoom(room);
-      mapFile->endGroup();
-      mapFile->endGroup();
     }
-    mapFile->endGroup();
   }
 
   for (const MapRoom& room : rooms) {
@@ -83,13 +98,6 @@ void MapManager::loadMap(const QString& mapFileName)
       }
     }
   }
-
-  /*
-  // TODO: no need to do this until requested
-  for (auto iter : zones) {
-    zones.at(iter.first).computeTransits();
-  }
-  */
 }
 
 void MapManager::promptWaiting()
@@ -329,6 +337,7 @@ void MapManager::updateRoom(const QVariantMap& info)
   QString zoneName = info["zone"].toString();
 
   int roomId = info["id"].toInt();
+  bool newRoom = !rooms.contains(roomId);
   MapRoom& room = rooms[roomId];
   room.id = roomId;
   room.name = info["name"].toString();
@@ -337,6 +346,7 @@ void MapManager::updateRoom(const QVariantMap& info)
 
   QVariantMap exits = info["Exits"].toMap();
   for (const QString& dir : exits.keys()) {
+    newRoom = newRoom || !room.exits.contains(dir);
     MapExit& exit = room.exits[dir];
     QVariantMap exitInfo = exits[dir].toMap();
     QString status = exitInfo["door"].toString().toUpper();
@@ -357,7 +367,7 @@ void MapManager::updateRoom(const QVariantMap& info)
   if (mapFile) {
     saveRoom(&room);
   }
-  if (mapSearch) {
+  if (newRoom && mapSearch) {
     mapSearch->markDirty(zone);
   }
 
@@ -436,7 +446,7 @@ QStringList MapManager::zoneNames() const
 
 const MapZone* MapManager::zone(const QString& name) const
 {
-  auto iter = zones.find(name);
+  auto iter = zones.find(name.simplified());
   if (iter != zones.end()) {
     return &iter->second;
   }
@@ -445,11 +455,12 @@ const MapZone* MapManager::zone(const QString& name) const
 
 MapZone* MapManager::mutableZone(const QString& name)
 {
-  auto iter = zones.find(name);
+  QString key = name.simplified();
+  auto iter = zones.find(key);
   if (iter != zones.end()) {
     return &iter->second;
   }
-  auto [newIter, ok] = zones.try_emplace(name, this, name);
+  auto [newIter, ok] = zones.try_emplace(key, this, key);
   return &newIter->second;
 }
 
@@ -459,7 +470,7 @@ const MapZone* MapManager::searchForZone(const QString& name) const
   QString bestMatch;
   QString match = name.simplified().replace(" ", "").toUpper();
   for (const auto& iter : zones) {
-    QString check = iter.first.simplified().replace(" ", "").toUpper();
+    QString check = QString(iter.first).replace(" ", "").toUpper();
     if (check.startsWith(match)) {
       if (bestMatch.isEmpty() || check.length() < bestMatch.length()) {
         bestMatch = iter.first;
@@ -498,16 +509,16 @@ void MapManager::saveRoom(MapRoom* room)
     qWarning() << "No zone in GMCP mode";
   }
 
-  mapFile->beginGroup(room->zone.isEmpty() ? "-" : room->zone);
-  mapFile->beginGroup(QString::number(room->id));
+  SettingsGroup zoneGroup(mapFile, room->zone.isEmpty() ? "-" : room->zone);
   mapFile->setValue("name", room->name);
   mapFile->setValue("description", room->description);
   mapFile->setValue("type", room->roomType);
-  mapFile->beginGroup("exit");
+
+  SettingsGroup exitGroup(mapFile, "exit");
 
   for (const QString& dir : room->exits.keys()) {
+    SettingsGroup dirGroup(mapFile, dir);
     MapExit& exit = room->exits[dir];
-    mapFile->beginGroup(dir);
     mapFile->setValue("id", exit.dest);
     if (exit.door) {
       if (!exit.name.isEmpty()) {
@@ -522,11 +533,7 @@ void MapManager::saveRoom(MapRoom* room)
       mapFile->remove("name");
       mapFile->remove("lockable");
     }
-    mapFile->endGroup();
   }
-  mapFile->endGroup();
-  mapFile->endGroup();
-  mapFile->endGroup();
 }
 
 
@@ -539,6 +546,60 @@ MapSearch* MapManager::search()
     mapSearch.reset(s);
   }
   return s;
+}
+
+int MapManager::waypoint(const QString& name, QString* canonicalName) const
+{
+  if (!mapFile) {
+    return -1;
+  }
+  QString search = name.simplified().toLower();
+  SettingsGroup g(mapFile, " Waypoints");
+  for (const QString& key : mapFile->childKeys()) {
+    if (key.simplified().toLower().startsWith(search)) {
+      if (canonicalName) {
+        *canonicalName = key;
+      }
+      return mapFile->value(key).toInt();
+    }
+  }
+  return -1;
+}
+
+QStringList MapManager::waypoints() const
+{
+  if (!mapFile) {
+    return {};
+  }
+  SettingsGroup g(mapFile, " Waypoints");
+  QStringList names = mapFile->childKeys();
+  return names;
+}
+
+bool MapManager::setWaypoint(const QString& name, int roomId)
+{
+  if (!mapFile) {
+    return false;
+  }
+  if (!room(roomId)) {
+    return false;
+  }
+  SettingsGroup g(mapFile, " Waypoints");
+  mapFile->setValue(name, roomId);
+  return true;
+}
+
+bool MapManager::removeWaypoint(const QString& name)
+{
+  if (!mapFile) {
+    return false;
+  }
+  SettingsGroup g(mapFile, " Waypoints");
+  if (!mapFile->contains(name)) {
+    return false;
+  }
+  mapFile->remove(name);
+  return true;
 }
 
 class MapDownloader : public QObject

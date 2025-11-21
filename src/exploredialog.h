@@ -37,6 +37,7 @@ private slots:
 
   void goBack();
   void goToRoom(const QString& id);
+  void handleSpeedwalk(const QStringList& dirs);
 
 protected:
   virtual void showCommandMessage(TextCommand* command, const QString& message, bool isError) override;
@@ -46,7 +47,6 @@ protected:
   void resizeEvent(QResizeEvent*);
 
 private:
-  void handleSpeedwalk(const QStringList& dirs);
 
   QSplitter* splitter;
   MapManager* map;

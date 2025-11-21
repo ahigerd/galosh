@@ -3,9 +3,10 @@
 #include "explorehistory.h"
 
 RouteCommand::RouteCommand(MapManager* map, ExploreHistory* history)
-: TextCommand("ROUTE"), map(map), history(history)
+: QObject(nullptr), TextCommand("ROUTE"), map(map), history(history)
 {
   supportedKwargs["-q"] = false;
+  supportedKwargs["-g"] = false;
 }
 
 QString RouteCommand::helpMessage(bool brief) const
@@ -15,7 +16,8 @@ QString RouteCommand::helpMessage(bool brief) const
   }
   // TODO: better docs
   return "Calculates the path to a specified room.\n"
-    "Add '-q' to show only the speedwalking path.";
+    "Add '-q' to show only the speedwalking path.\n"
+    "Add '-g' to immediately run the speedwalking path.";
 }
 
 void RouteCommand::handleInvoke(const QStringList& args, const KWArgs& kwargs)
@@ -31,6 +33,9 @@ void RouteCommand::handleInvoke(const QStringList& args, const KWArgs& kwargs)
     startRoomId = history->currentRoom()->id;
   }
   int endRoomId = args.last().toInt();
+  if (!endRoomId) {
+    endRoomId = map->waypoint(args.last());
+  }
   const MapRoom* room = map->room(endRoomId);
   if (!room) {
     showError("Could not find destination room");
@@ -46,23 +51,20 @@ void RouteCommand::handleInvoke(const QStringList& args, const KWArgs& kwargs)
     showError(QStringLiteral("Could not find route from %1 to %2").arg(startRoomId).arg(endRoomId));
     return;
   }
+  QStringList dirs = map->search()->routeDirections(route);
+  if (dirs.isEmpty()) {
+    showError(QStringLiteral("Could not find route from %1 to %2").arg(startRoomId).arg(endRoomId));
+    return;
+  }
   ExploreHistory path(map);
   path.goTo(startRoomId);
-  for (int step : route) {
-    if (step == startRoomId) {
-      continue;
-    }
-    for (const QString& dir : path.currentRoom()->exits.keys()) {
-      if (path.currentRoom()->exits.value(dir).dest == step) {
-        path.travel(dir);
-        break;
-      }
-    }
+  for (const QString& dir : dirs) {
+    path.travel(dir);
   }
   QStringList warnings;
   QStringList messages;
   messages << path.speedwalk(-1, false, &warnings);
-  if (kwargs.contains("-q")) {
+  if (kwargs.contains("-q") || kwargs.contains("-g")) {
     if (!warnings.isEmpty()) {
       messages << "";
       messages += warnings;
@@ -73,6 +75,8 @@ void RouteCommand::handleInvoke(const QStringList& args, const KWArgs& kwargs)
   }
   if (warnings.isEmpty()) {
     showMessage(messages.join("\n"));
+    if (kwargs.contains("-g")) {
+    }
   } else {
     showError(messages.join("\n"));
   }

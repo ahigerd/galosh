@@ -30,6 +30,11 @@ public:
 
   MapSearch* search();
 
+  int waypoint(const QString& name, QString* canonicalName = nullptr) const;
+  QStringList waypoints() const;
+  bool setWaypoint(const QString& name, int roomId);
+  bool removeWaypoint(const QString& name);
+
 signals:
   void currentRoomUpdated(MapManager* map, int roomId);
 

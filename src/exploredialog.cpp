@@ -9,6 +9,7 @@
 #include "commands/maphistorycommand.h"
 #include "commands/routecommand.h"
 #include "commands/simplifycommand.h"
+#include "commands/waypointcommand.h"
 #include "commands/zonecommand.h"
 #include <QSettings>
 #include <QGridLayout>
@@ -91,11 +92,16 @@ ExploreDialog::ExploreDialog(MapManager* map, int roomId, int lastRoomId, const 
   addCommand(new MapHistoryCommand("HISTORY", &history));
   addCommand(new MapHistoryCommand("REVERSE", &history));
   addCommand(new MapHistoryCommand("SPEED", &history));
-  addCommand(new RouteCommand(map, &history));
   addCommand(new SimplifyCommand(&history));
   addCommand(new SlotCommand("BACK", this, SLOT(goBack()), "Returns to the previous room"));
   addCommand(new SlotCommand("GOTO", this, SLOT(goToRoom(QString)), "Teleports to a room by numeric ID"));
   addCommand(new SlotCommand("RESET", &history, SLOT(reset()), "Clears the exploration history"));
+
+  RouteCommand* route = addCommand(new RouteCommand(map, &history));
+  QObject::connect(route, SIGNAL(speedwalk(QStringList)), this, SLOT(handleSpeedwalk(QStringList)));
+
+  WaypointCommand* waypoint = addCommand(new WaypointCommand(map, &history));
+  QObject::connect(waypoint, SIGNAL(speedwalk(QStringList)), this, SLOT(handleSpeedwalk(QStringList)));
 
   QSettings settings;
   restoreGeometry(settings.value("explore").toByteArray());
@@ -236,7 +242,11 @@ void ExploreDialog::goToRoom(const QString& id)
 {
   int roomId = id.toInt();
   if (roomId <= 0) {
-    setResponse(true, "Invalid room ID: " + id);
+    roomId = map->waypoint(id);
+    if (roomId <= 0) {
+      setResponse(true, "Invalid room ID: " + id);
+      return;
+    }
   }
   emit exploreRoom(roomId, QString());
 }
