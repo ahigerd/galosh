@@ -97,8 +97,8 @@ static QPointF toEdge(const QPointF& pt)
   return QPointF(x, y);
 }
 
-MapLayout::MapLayout(MapManager* map, MapSearch* search)
-: map(map), search(search)
+MapLayout::MapLayout(MapManager* map)
+: map(map), search(nullptr)
 {
   // initializers only
 }
@@ -106,10 +106,7 @@ MapLayout::MapLayout(MapManager* map, MapSearch* search)
 void MapLayout::loadZone(const MapZone* zone)
 {
   Q_ASSERT(zone);
-  if (!search) {
-    search = new MapSearch(map);
-    ownedSearch.reset(search);
-  }
+  search = map->search();
   if (!search->precompute()) {
     // If no changes occurred in the search computation,
     // it's safe to short-circuit and keep what we have,
@@ -705,7 +702,7 @@ QSize MapLayout::displaySize() const
   return boundingBox.size().toSize();
 }
 
-void MapLayout::render(QPainter* painter, const QRectF&) const
+void MapLayout::render(QPainter* painter, const QRectF&, bool drawLabels) const
 {
   int nl = 0;
 
@@ -813,7 +810,6 @@ void MapLayout::render(QPainter* painter, const QRectF&) const
         QPointF endpoint = pos + dirVectors[dir] * STEP_SIZE;
         painter->drawLine(pos, endpoint);
         if (other && other->zone != title) {
-          //painter->drawText(QRectF(endpoint - QPoint(5, 2), endpoint + QPoint(5, 0)), Qt::TextDontClip | Qt::AlignCenter, other->zone);
           painter->setBrush(Qt::white);
           painter->drawEllipse(QRectF(endpoint - QPoint(1.5, 1.5), endpoint + QPoint(1.5, 1.5)));
         }
@@ -829,7 +825,9 @@ void MapLayout::render(QPainter* painter, const QRectF&) const
     painter->setBrush(colors.value(roomId, Qt::white));
     painter->drawRect(rect.toRect());
     painter->setBrush(Qt::black);
-    painter->drawText(rect.toRect().adjusted(0, 0, 0, -1), Qt::AlignCenter, QString::number(roomId % 100));
+    if (drawLabels) {
+      painter->drawText(rect.toRect().adjusted(0, 0, 0, -1), Qt::AlignCenter, QString::number(roomId % 100));
+    }
   }
 
   painter->restore();

@@ -56,6 +56,7 @@ private slots:
   void speedwalk(const QStringList& steps);
   void toggleRoomDock(bool checked);
   void toggleInfoDock(bool checked);
+  void toggleMapDock(bool checked);
   void abortSpeedwalk();
   void showCommandMessage(TextCommand* command, const QString& message, bool isError) override;
 
@@ -80,6 +81,9 @@ private:
   QDockWidget* roomDock;
   QAction* roomAction;
   RoomView* roomView;
+  QDockWidget* mapDock;
+  QAction* mapDockAction;
+  MapViewer* mapDockView;
   QAction* msspButton;
   QAction* msspMenu;
   QLabel* sbStatus;

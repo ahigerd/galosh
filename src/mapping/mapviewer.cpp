@@ -67,7 +67,7 @@ protected:
     p.scale(zoomLevel, zoomLevel);
     QRect vp = event->rect();
     vp = QRect(vp.left() / zoomLevel, vp.top() / zoomLevel, vp.width() / zoomLevel, vp.height() / zoomLevel);
-    mapLayout->render(&p, vp);
+    mapLayout->render(&p, vp, !mapViewer->isMiniMap);
 
     QRectF highlight = mapLayout->roomPos(currentRoomId);
     if (!highlight.isNull()) {
@@ -80,10 +80,18 @@ protected:
 };
 
 MapViewer::MapViewer(MapManager* map, QWidget* parent)
-: QScrollArea(parent), map(map)
+: MapViewer(false, map, parent)
 {
-  setAttribute(Qt::WA_WindowPropagation, true);
-  setAttribute(Qt::WA_DeleteOnClose, true);
+  // forwarded constructor only
+}
+
+MapViewer::MapViewer(bool isMiniMap, MapManager* map, QWidget* parent)
+: QScrollArea(parent), map(map), isMiniMap(isMiniMap)
+{
+  if (!isMiniMap) {
+    setAttribute(Qt::WA_WindowPropagation, true);
+    setAttribute(Qt::WA_DeleteOnClose, true);
+  }
 
   setBackgroundRole(QPalette::Window);
   QPalette p(palette());
@@ -92,7 +100,7 @@ MapViewer::MapViewer(MapManager* map, QWidget* parent)
   }
   setPalette(p);
 
-  mapLayout.reset(new MapLayout(map, map->search()));
+  mapLayout.reset(new MapLayout(map));
   view = new MapWidget(mapLayout.get(), this);
 
   header = new QWidget(this);
@@ -123,7 +131,12 @@ MapViewer::MapViewer(MapManager* map, QWidget* parent)
   setWidget(view);
 
   QSettings settings;
-  restoreGeometry(settings.value("map").toByteArray());
+  if (!isMiniMap) {
+    restoreGeometry(settings.value("map").toByteArray());
+    setZoom(settings.value("mapZoom", 5).toDouble());
+  } else {
+    setZoom(settings.value("miniMapZoom", 1).toDouble());
+  }
 
   QObject::connect(map, SIGNAL(currentRoomUpdated(MapManager*,int)), this, SLOT(setCurrentRoom(MapManager*,int)));
 }
@@ -137,6 +150,14 @@ void MapViewer::setZoom(double level)
   center *= view->zoomLevel;
   horizontalScrollBar()->setValue(center.x());
   verticalScrollBar()->setValue(center.y());
+  resizeEvent(nullptr);
+
+  QSettings settings;
+  if (isMiniMap) {
+    settings.setValue("miniMapZoom", level);
+  } else {
+    settings.setValue("mapZoom", level);
+  }
 }
 
 void MapViewer::zoomIn()
@@ -159,6 +180,8 @@ void MapViewer::setCurrentRoom(int roomId)
   if (view->currentRoomId != roomId) {
     loadZone(room->zone);
     view->currentRoomId = roomId;
+    QPointF pos = mapLayout->roomPos(roomId).center();
+    ensureVisible(pos.x(), pos.y(), width() / 3, height() / 3);
   }
   // TODO: recalc map if necessary (will this need a toggle?)
 }
@@ -180,6 +203,7 @@ void MapViewer::loadZone(const QString& name)
   }
   mapLayout->loadZone(map->zone(name));
   view->resize(mapLayout->displaySize() * view->zoomLevel);
+  resizeEvent(nullptr);
   view->update();
 }
 
@@ -192,14 +216,20 @@ void MapViewer::resizeEvent(QResizeEvent* event)
   header->setGeometry(0, 0, w, header->sizeHint().height());
   view->resize(view->sizeHint());
 
-  QScrollArea::resizeEvent(event);
+  if (event) {
+    QScrollArea::resizeEvent(event);
 
-  QSettings settings;
-  settings.setValue("map", saveGeometry());
+    if (!isMiniMap) {
+      QSettings settings;
+      settings.setValue("map", saveGeometry());
+    }
+  }
 }
 
 void MapViewer::moveEvent(QMoveEvent*)
 {
-  QSettings settings;
-  settings.setValue("map", saveGeometry());
+  if (!isMiniMap) {
+    QSettings settings;
+    settings.setValue("map", saveGeometry());
+  }
 }

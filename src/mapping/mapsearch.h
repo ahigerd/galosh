@@ -57,6 +57,7 @@ private:
   };
   QList<int> findRoute(const QList<CliqueStep>& steps, int index, int startRoomId) const;
 
+public:
   MapManager* map;
   std::list<Clique> cliqueStore;
   QMap<QString, QList<Clique*>> cliques;

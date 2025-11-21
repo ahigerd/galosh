@@ -12,7 +12,14 @@ class MapViewer : public QScrollArea
 {
 Q_OBJECT
 public:
+  enum FollowMode {
+    NoFollow,
+    FollowPlayer,
+    FollowExplore,
+  };
+
   MapViewer(MapManager* map, QWidget* parent = nullptr);
+  MapViewer(bool isMiniMap, MapManager* map, QWidget* parent = nullptr);
 
 public slots:
   void loadZone(const QString& name);
@@ -46,6 +53,7 @@ private:
   QWidget* header;
   MapWidget* view;
   QComboBox* zone;
+  bool isMiniMap;
 };
 
 #endif

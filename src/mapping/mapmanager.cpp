@@ -11,7 +11,7 @@
 
 MapManager::MapManager(QObject* parent)
 : QObject(parent), mapFile(nullptr), gmcpMode(false), logRoomLegacy(false), logRoomDescription(false), logExits(false), roomDirty(false),
-  autoRoomId(1), currentRoom(-1), destinationRoom(-1), previousRoom(-1)
+  autoRoomId(1), currentRoom(-1), destinationRoom(-1), previousRoom(-1), mapSearch(nullptr)
 {
   // initializers only
 }

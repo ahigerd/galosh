@@ -8,6 +8,7 @@
 #include <QPolygonF>
 #include <QRegion>
 #include <QColor>
+#include <QPointer>
 #include <memory>
 #include "mapsearch.h"
 class QPainter;
@@ -18,13 +19,13 @@ class MapRoom;
 class MapLayout
 {
 public:
-  MapLayout(MapManager* map, MapSearch* search = nullptr);
+  MapLayout(MapManager* map);
 
   void loadZone(const MapZone* zone);
   QString currentZone;
 
   QSize displaySize() const;
-  void render(QPainter* painter, const QRectF& viewport) const;
+  void render(QPainter* painter, const QRectF& viewport, bool drawLabels = true) const;
 
   const MapRoom* roomAt(const QPointF& pt) const;
   QRectF roomPos(int roomId) const;
@@ -65,7 +66,6 @@ private:
   QMap<int, QColor> colors;
   MapManager* map;
   MapSearch* search;
-  std::unique_ptr<MapSearch> ownedSearch;
 };
 
 #endif

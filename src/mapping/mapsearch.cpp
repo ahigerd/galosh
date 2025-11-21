@@ -46,14 +46,18 @@ bool MapSearch::precompute(bool force)
     getCliquesForZone(map->zone(zoneName));
   }
   for (Clique& clique : cliqueStore) {
-    if (clique.unresolvedExits.isEmpty()) {
-      continue;
-    }
     resolveExits(&clique);
+    QSet<int> distinctExits;
     for (const CliqueExit& exit : clique.exits) {
-      fillRoutes(&clique, exit.fromRoomId);
+      distinctExits << exit.fromRoomId;
     }
-    clique.unresolvedExits.clear();
+    int n = distinctExits.size();
+    if (force || (n * (n - 1)) != clique.routes.size()) {
+      for (const CliqueExit& exit : clique.exits) {
+        fillRoutes(&clique, exit.fromRoomId);
+      }
+      clique.unresolvedExits.clear();
+    }
   }
 
   dirtyZones.clear();
@@ -93,35 +97,41 @@ void MapSearch::getCliquesForZone(const MapZone* zone)
     clique->roomIds << exit;
     crawlClique(clique, exit);
   }
-  for (int roomId : pendingRoomIds) {
-    if (!findClique(zone->name, roomId)) {
-      Clique* clique = newClique(zone);
-      clique->roomIds << roomId;
-      crawlClique(clique, roomId);
 
-      // Check for clique intersections and merge if needed
-      for (Clique* other : QList<Clique*>(cliques[zone->name])) {
-        if (clique->roomIds.intersects(other->roomIds)) {
-          other->roomIds.unite(clique->roomIds);
-          other->unresolvedExits.unite(clique->unresolvedExits);
-          for (const CliqueExit& exit : clique->exits) {
-            bool found = false;
-            for (const CliqueExit& oexit : other->exits) {
-              if (exit.fromRoomId == oexit.fromRoomId && exit.toRoomId == oexit.toRoomId) {
-                found = true;
-                break;
-              }
-            }
-            if (!found) {
-              other->exits << exit;
-            }
+  // operate on a copy because it can get modified
+  for (int roomId : QSet<int>(pendingRoomIds)) {
+    if (!pendingRoomIds.contains(roomId)) {
+      // removed by another call
+      continue;
+    }
+    Clique* clique = newClique(zone);
+    clique->roomIds << roomId;
+    crawlClique(clique, roomId);
+
+    // Check for clique intersections and merge if needed
+    for (Clique* other : QList<Clique*>(cliques[zone->name])) {
+      if (clique == other || !clique->roomIds.intersects(other->roomIds)) {
+        continue;
+      }
+      other->roomIds.unite(clique->roomIds);
+      other->unresolvedExits.unite(clique->unresolvedExits);
+      for (const CliqueExit& exit : clique->exits) {
+        bool found = false;
+        for (const CliqueExit& oexit : other->exits) {
+          if (exit.fromRoomId == oexit.fromRoomId && exit.toRoomId == oexit.toRoomId) {
+            found = true;
+            break;
           }
-          // It's not safe to remove the underlying storage but at least minimize overhead
-          cliques[zone->name].removeAll(clique);
-          clique->roomIds.clear();
-          clique->unresolvedExits.clear();
-          clique->exits.clear();
-          clique->routes.clear();
+        }
+        if (!found) {
+          other->exits << exit;
+        }
+      }
+      cliques[zone->name].removeAll(clique);
+      for (auto iter = cliqueStore.begin(); iter != cliqueStore.end(); iter++) {
+        if (&*iter == clique) {
+          cliqueStore.erase(iter);
+          break;
         }
       }
     }
@@ -168,17 +178,18 @@ void MapSearch::crawlClique(Clique* clique, int roomId)
   while (extended) {
     extended = false;
     // Iterate over a copy
-    for (int roomId : QSet<int>(pendingRoomIds)) {
-      if (!pendingRoomIds.contains(roomId)) {
+    for (int pendingId : QSet<int>(pendingRoomIds)) {
+      if (!pendingRoomIds.contains(pendingId)) {
         // removed by a recursive call
         continue;
       }
-      const MapRoom* room = map->room(roomId);
+      const MapRoom* room = map->room(pendingId);
       if (!room) {
         continue;
       }
       for (const MapExit& exit : room->exits) {
-        if (clique->roomIds.contains(exit.dest)) {
+        if (!clique->roomIds.contains(exit.dest)) {
+          // this exit doesn't connect to anything in the clique
           continue;
         }
         const MapRoom* dest = map->room(exit.dest);
@@ -186,9 +197,8 @@ void MapSearch::crawlClique(Clique* clique, int roomId)
           continue;
         }
         extended = true;
-        clique->roomIds << exit.dest;
-        pendingRoomIds.remove(exit.dest);
-        crawlClique(clique, exit.dest);
+        clique->roomIds << pendingId;
+        pendingRoomIds.remove(pendingId);
       }
     }
   }

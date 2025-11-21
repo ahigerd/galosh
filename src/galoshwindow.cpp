@@ -60,6 +60,12 @@ GaloshWindow::GaloshWindow(QWidget* parent)
   QObject::connect(roomView, SIGNAL(exploreRoom(int, QString)), this, SLOT(exploreMap(int, QString)));
   addDockWidget(Qt::TopDockWidgetArea, roomDock);
 
+  mapDock = new QDockWidget(this);
+  mapDock->setObjectName("mapView");
+  mapDockView = new MapViewer(true, &map, this);
+  mapDock->setWidget(mapDockView);
+  addDockWidget(Qt::TopDockWidgetArea, mapDock);
+
   QMenuBar* mb = new QMenuBar(this);
   setMenuBar(mb);
 
@@ -83,6 +89,8 @@ GaloshWindow::GaloshWindow(QWidget* parent)
   roomAction->setCheckable(true);
   infoAction = viewMenu->addAction("Character &Stats", this, SLOT(toggleInfoDock(bool)));
   infoAction->setCheckable(true);
+  mapDockAction = viewMenu->addAction("Mini-Ma&p", this, SLOT(toggleMapDock(bool)));
+  mapDockAction->setCheckable(true);
   viewMenu->addSeparator();
   viewMenu->addAction("Open &Configuration Folder...", this, SLOT(openConfigFolder()));
   mb->addMenu(viewMenu);
@@ -176,6 +184,7 @@ void GaloshWindow::paintEvent(QPaintEvent* event)
     }
     infoAction->setChecked(infoView->isVisible());
     roomAction->setChecked(roomView->isVisible());
+    mapDockAction->setChecked(mapDockView->isVisible());
 
     if (pos().x() < 0 || pos().y() < 0) {
       move(0, 0);
@@ -330,6 +339,7 @@ void GaloshWindow::updateGeometry(bool queue)
 
     infoAction->setChecked(infoView->isVisible());
     roomAction->setChecked(roomView->isVisible());
+    mapDockAction->setChecked(mapDockView->isVisible());
   }
 }
 
@@ -342,6 +352,12 @@ void GaloshWindow::toggleRoomDock(bool checked)
 void GaloshWindow::toggleInfoDock(bool checked)
 {
   infoDock->setVisible(checked);
+  updateGeometry(false);
+}
+
+void GaloshWindow::toggleMapDock(bool checked)
+{
+  mapDock->setVisible(checked);
   updateGeometry(false);
 }
 
