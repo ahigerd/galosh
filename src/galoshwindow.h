@@ -93,6 +93,7 @@ private:
   int lastRoomId;
   bool fixGeometry;
   bool geometryReady;
+  bool shouldRestoreDocks;
 };
 
 #endif

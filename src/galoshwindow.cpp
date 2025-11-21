@@ -27,7 +27,7 @@
 #include <QtDebug>
 
 GaloshWindow::GaloshWindow(QWidget* parent)
-: QMainWindow(parent), exploreHistory(&map), explore(nullptr), lastRoomId(-1), geometryReady(false)
+: QMainWindow(parent), exploreHistory(&map), explore(nullptr), lastRoomId(-1), geometryReady(false), shouldRestoreDocks(false)
 {
   setCorner(Qt::TopLeftCorner, Qt::LeftDockWidgetArea);
   setCorner(Qt::BottomLeftCorner, Qt::LeftDockWidgetArea);
@@ -152,6 +152,7 @@ GaloshWindow::GaloshWindow(QWidget* parent)
 
   infoDock->installEventFilter(this);
   roomDock->installEventFilter(this);
+  mapDock->installEventFilter(this);
   stateThrottle.setSingleShot(true);
   stateThrottle.setInterval(100);
   QObject::connect(&stateThrottle, SIGNAL(timeout()), this, SLOT(updateGeometry()));
@@ -176,8 +177,8 @@ void GaloshWindow::paintEvent(QPaintEvent* event)
 {
   if (fixGeometry) {
     QSettings settings;
+    shouldRestoreDocks = true;
     restoreGeometry(settings.value("window").toByteArray());
-    restoreState(settings.value("docks").toByteArray());
     QStringList sizes = settings.value("infoColumns").toStringList();
     for (int i = 0; i < sizes.size(); i++) {
       infoView->setColumnWidth(i, sizes[i].toInt());
@@ -309,7 +310,13 @@ void GaloshWindow::moveEvent(QMoveEvent*)
 
 void GaloshWindow::resizeEvent(QResizeEvent*)
 {
-  updateGeometry(true);
+  if (shouldRestoreDocks) {
+    QSettings settings;
+    restoreState(settings.value("docks").toByteArray());
+    shouldRestoreDocks = false;
+  } else {
+    updateGeometry(true);
+  }
 }
 
 bool GaloshWindow::eventFilter(QObject*, QEvent* event)
