@@ -5,6 +5,8 @@
 #include "commands/textcommandprocessor.h"
 #include "explorehistory.h"
 class MapManager;
+class MapViewer;
+class QSplitter;
 class RoomView;
 class CommandLine;
 class QPushButton;
@@ -27,6 +29,8 @@ public slots:
   // TODO: open map
 
 private slots:
+  void saveState();
+
   void doCommand();
   void setResponse(bool isError = false, const QString& message = QString());
   void clearResponse();
@@ -44,7 +48,9 @@ protected:
 private:
   void handleSpeedwalk(const QStringList& dirs);
 
+  QSplitter* splitter;
   MapManager* map;
+  MapViewer* mapView;
   RoomView* room;
   CommandLine* line;
   QPushButton* backButton;

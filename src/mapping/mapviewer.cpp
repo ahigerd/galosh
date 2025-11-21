@@ -1,5 +1,6 @@
 #include "mapviewer.h"
 #include "mapmanager.h"
+#include "explorehistory.h"
 #include <QSettings>
 #include <QHBoxLayout>
 #include <QComboBox>
@@ -67,7 +68,7 @@ protected:
     p.scale(zoomLevel, zoomLevel);
     QRect vp = event->rect();
     vp = QRect(vp.left() / zoomLevel, vp.top() / zoomLevel, vp.width() / zoomLevel, vp.height() / zoomLevel);
-    mapLayout->render(&p, vp, !mapViewer->isMiniMap);
+    mapLayout->render(&p, vp, mapViewer->mapType != MapViewer::MiniMap);
 
     QRectF highlight = mapLayout->roomPos(currentRoomId);
     if (!highlight.isNull()) {
@@ -79,16 +80,10 @@ protected:
   }
 };
 
-MapViewer::MapViewer(MapManager* map, QWidget* parent)
-: MapViewer(false, map, parent)
+MapViewer::MapViewer(MapViewer::MapType mapType, MapManager* map, ExploreHistory* history, QWidget* parent)
+: QScrollArea(parent), map(map), mapType(mapType)
 {
-  // forwarded constructor only
-}
-
-MapViewer::MapViewer(bool isMiniMap, MapManager* map, QWidget* parent)
-: QScrollArea(parent), map(map), isMiniMap(isMiniMap)
-{
-  if (!isMiniMap) {
+  if (mapType == StandaloneMap) {
     setAttribute(Qt::WA_WindowPropagation, true);
     setAttribute(Qt::WA_DeleteOnClose, true);
   }
@@ -105,7 +100,12 @@ MapViewer::MapViewer(bool isMiniMap, MapManager* map, QWidget* parent)
 
   header = new QWidget(this);
   QHBoxLayout* layout = new QHBoxLayout(header);
+  layout->setSpacing(0);
   layout->setContentsMargins(2, 2, 2, 2);
+
+  if (mapType == MiniMap) {
+    layout->addStretch(1);
+  }
 
   zone = new QComboBox(header);
   zone->setInsertPolicy(QComboBox::InsertAlphabetically);
@@ -126,19 +126,32 @@ MapViewer::MapViewer(bool isMiniMap, MapManager* map, QWidget* parent)
     zone->addItem(name);
   }
 
-  setViewportMargins(0, header->sizeHint().height(), 0, 0);
+  if (mapType == MiniMap) {
+    QFont small = font();
+    small.setPointSize(small.pointSize() * .75);
+    bIn->setFont(small);
+    bOut->setFont(small);
+    bIn->setFixedSize(bIn->minimumSizeHint());
+    bOut->setFixedSize(bOut->minimumSizeHint());
+    zone->setVisible(false);
+  } else {
+    setViewportMargins(0, header->sizeHint().height(), 0, 0);
+  }
+
   setWidgetResizable(false);
   setWidget(view);
 
   QSettings settings;
-  if (!isMiniMap) {
+  if (mapType == MiniMap) {
+    setZoom(settings.value("miniMapZoom", 1.5).toDouble());
+  } else if (mapType == EmbedMap) {
+    setZoom(settings.value("embedMapZoom", 5).toDouble());
+  } else {
     restoreGeometry(settings.value("map").toByteArray());
     setZoom(settings.value("mapZoom", 5).toDouble());
-  } else {
-    setZoom(settings.value("miniMapZoom", 1).toDouble());
   }
 
-  QObject::connect(map, SIGNAL(currentRoomUpdated(MapManager*,int)), this, SLOT(setCurrentRoom(MapManager*,int)));
+  QObject::connect(history, SIGNAL(currentRoomChanged(int)), this, SLOT(setCurrentRoom(int)));
 }
 
 void MapViewer::setZoom(double level)
@@ -153,8 +166,10 @@ void MapViewer::setZoom(double level)
   resizeEvent(nullptr);
 
   QSettings settings;
-  if (isMiniMap) {
+  if (mapType == MiniMap) {
     settings.setValue("miniMapZoom", level);
+  } else if (mapType == EmbedMap) {
+    settings.setValue("embedMapZoom", level);
   } else {
     settings.setValue("mapZoom", level);
   }
@@ -180,7 +195,7 @@ void MapViewer::setCurrentRoom(int roomId)
   if (view->currentRoomId != roomId) {
     loadZone(room->zone);
     view->currentRoomId = roomId;
-    QPointF pos = mapLayout->roomPos(roomId).center();
+    QPointF pos = mapLayout->roomPos(roomId).center() * view->zoomLevel;
     ensureVisible(pos.x(), pos.y(), width() / 3, height() / 3);
   }
   // TODO: recalc map if necessary (will this need a toggle?)
@@ -219,16 +234,22 @@ void MapViewer::resizeEvent(QResizeEvent* event)
   if (event) {
     QScrollArea::resizeEvent(event);
 
-    if (!isMiniMap) {
+    if (mapType == StandaloneMap) {
       QSettings settings;
       settings.setValue("map", saveGeometry());
     }
   }
 }
 
+void MapViewer::showEvent(QShowEvent*)
+{
+  QPointF pos = mapLayout->roomPos(view->currentRoomId).center() * view->zoomLevel;
+  ensureVisible(pos.x(), pos.y(), width() / 3, height() / 3);
+}
+
 void MapViewer::moveEvent(QMoveEvent*)
 {
-  if (!isMiniMap) {
+  if (mapType == StandaloneMap) {
     QSettings settings;
     settings.setValue("map", saveGeometry());
   }

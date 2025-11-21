@@ -7,19 +7,19 @@
 class QComboBox;
 class MapManager;
 class MapWidget;
+class ExploreHistory;
 
 class MapViewer : public QScrollArea
 {
 Q_OBJECT
 public:
-  enum FollowMode {
-    NoFollow,
-    FollowPlayer,
-    FollowExplore,
+  enum MapType {
+    MiniMap,
+    EmbedMap,
+    StandaloneMap,
   };
 
-  MapViewer(MapManager* map, QWidget* parent = nullptr);
-  MapViewer(bool isMiniMap, MapManager* map, QWidget* parent = nullptr);
+  MapViewer(MapType mapType, MapManager* map, ExploreHistory* history, QWidget* parent = nullptr);
 
 public slots:
   void loadZone(const QString& name);
@@ -36,12 +36,10 @@ public slots:
 signals:
   void exploreMap(int roomId);
 
-private slots:
-  inline void setCurrentRoom(MapManager*, int roomId) { setCurrentRoom(roomId); }
-
 protected:
   // TODO: explore on double-click
   // TODO: menu on right-click
+  void showEvent(QShowEvent*);
   void moveEvent(QMoveEvent*);
   void resizeEvent(QResizeEvent*);
 
@@ -53,7 +51,7 @@ private:
   QWidget* header;
   MapWidget* view;
   QComboBox* zone;
-  bool isMiniMap;
+  MapType mapType;
 };
 
 #endif

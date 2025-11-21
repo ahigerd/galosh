@@ -27,6 +27,9 @@ public slots:
   int back();
   void simplify(bool aggressive = false);
 
+signals:
+  void currentRoomChanged(int roomId);
+
 private:
   QString getReverse(int from, int to, const QString& forward, bool* isGuess) const;
   QPair<int, int> getBounds(int length, bool reverse) const;

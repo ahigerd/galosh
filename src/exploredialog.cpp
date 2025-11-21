@@ -2,6 +2,7 @@
 #include "mapmanager.h"
 #include "mapzone.h"
 #include "roomview.h"
+#include "mapviewer.h"
 #include "commandline.h"
 #include "commands/slotcommand.h"
 #include "commands/mapsearchcommand.h"
@@ -14,6 +15,7 @@
 #include <QLineEdit>
 #include <QPushButton>
 #include <QTimer>
+#include <QSplitter>
 #include <QMetaObject>
 #include <algorithm>
 #include <QtDebug>
@@ -25,20 +27,33 @@ ExploreDialog::ExploreDialog(MapManager* map, int roomId, int lastRoomId, const 
   setAttribute(Qt::WA_WindowPropagation, true);
   setAttribute(Qt::WA_DeleteOnClose, true);
 
-  QGridLayout* layout = new QGridLayout(this);
+  QVBoxLayout* vbox = new QVBoxLayout(this);
+  vbox->setContentsMargins(0, 0, 0, 0);
+
+  splitter = new QSplitter(Qt::Vertical, this);
+  QObject::connect(splitter, SIGNAL(splitterMoved(int,int)), this, SLOT(saveState()));
+  vbox->addWidget(splitter, 1);
+
+  mapView = new MapViewer(MapViewer::EmbedMap, map, &history, this);
+  splitter->addWidget(mapView);
+
+  QWidget* w = new QWidget(splitter);
+  splitter->addWidget(w);
+
+  QGridLayout* layout = new QGridLayout(w);
   QMargins margins = layout->contentsMargins();
   margins.setTop(margins.top() + 2);
   layout->setContentsMargins(margins);
 
-  room = new RoomView(map, roomId, lastRoomId, this);
+  room = new RoomView(map, roomId, lastRoomId, w);
   room->layout()->setContentsMargins(0, 0, 0, 0);
   layout->addWidget(room, 0, 0, 1, 2);
 
-  line = new CommandLine(this);
+  line = new CommandLine(w);
   line->setParsing(false); // we'll handle the parsing here
   layout->addWidget(line, 1, 0);
 
-  backButton = new QPushButton("&Back", this);
+  backButton = new QPushButton("&Back", w);
   backButton->setDefault(false);
   backButton->setAutoDefault(false);
   layout->addWidget(backButton, 1, 1);
@@ -83,6 +98,7 @@ ExploreDialog::ExploreDialog(MapManager* map, int roomId, int lastRoomId, const 
 
   QSettings settings;
   restoreGeometry(settings.value("explore").toByteArray());
+  splitter->restoreState(settings.value("exploreSplit").toByteArray());
 }
 
 void ExploreDialog::roomUpdated(const QString& title, int id, const QString& movement)
@@ -224,14 +240,19 @@ void ExploreDialog::goToRoom(const QString& id)
   emit exploreRoom(roomId, QString());
 }
 
-void ExploreDialog::resizeEvent(QResizeEvent*)
+void ExploreDialog::saveState()
 {
   QSettings settings;
   settings.setValue("explore", saveGeometry());
+  settings.setValue("exploreSplit", splitter->saveState());
+}
+
+void ExploreDialog::resizeEvent(QResizeEvent*)
+{
+  saveState();
 }
 
 void ExploreDialog::moveEvent(QMoveEvent*)
 {
-  QSettings settings;
-  settings.setValue("explore", saveGeometry());
+  saveState();
 }

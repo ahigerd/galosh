@@ -143,6 +143,7 @@ void ExploreHistory::goTo(int roomId)
 {
   steps << (Step){ -1, roomId, QString() };
   currentRoomId = roomId;
+  emit currentRoomChanged(roomId);
 }
 
 int ExploreHistory::travel(const QString& dir, int dest)
@@ -166,6 +167,7 @@ int ExploreHistory::travel(const QString& dir, int dest)
   }
   steps << (Step){ currentRoomId, dest, dir };
   currentRoomId = dest;
+  emit currentRoomChanged(dest);
   return dest;
 }
 

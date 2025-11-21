@@ -62,7 +62,8 @@ GaloshWindow::GaloshWindow(QWidget* parent)
 
   mapDock = new QDockWidget(this);
   mapDock->setObjectName("mapView");
-  mapDockView = new MapViewer(true, &map, this);
+  mapDock->setWindowTitle("Mini-Map");
+  mapDockView = new MapViewer(MapViewer::MiniMap, &map, &exploreHistory, this);
   mapDock->setWidget(mapDockView);
   addDockWidget(Qt::TopDockWidgetArea, mapDock);
 
@@ -440,7 +441,7 @@ void GaloshWindow::setLastRoom(const QString& title, int roomId)
 void GaloshWindow::showMap()
 {
   if (!mapView) {
-    mapView = new MapViewer(&map, this);
+    mapView = new MapViewer(MapViewer::StandaloneMap, &map, &exploreHistory, this);
     mapView->setWindowFlags(Qt::Window);
     QObject::connect(mapView, SIGNAL(exploreMap(int)), this, SLOT(exploreMap(int)));
   }
