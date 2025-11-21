@@ -20,7 +20,7 @@ public:
   inline RoomView* roomView() const { return room; }
 
 signals:
-  void exploreRoom(int roomId, const QString& movement);
+  void exploreRoom(int roomId, const QString& movement = QString());
 
 public slots:
   void roomUpdated(const QString& title, int id, const QString& movement = QString());

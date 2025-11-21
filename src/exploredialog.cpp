@@ -35,6 +35,7 @@ ExploreDialog::ExploreDialog(MapManager* map, int roomId, int lastRoomId, const 
   vbox->addWidget(splitter, 1);
 
   mapView = new MapViewer(MapViewer::EmbedMap, map, &history, this);
+  QObject::connect(mapView, SIGNAL(exploreMap(int)), this, SIGNAL(exploreRoom(int)));
   splitter->addWidget(mapView);
 
   QWidget* w = new QWidget(splitter);

@@ -4,6 +4,24 @@
 #include "algorithms.h"
 #include <QtDebug>
 
+QDebug operator<<(QDebug debug, const MapSearch::Clique& clique)
+{
+  return debug << clique.zone->name;
+}
+
+QDebug operator<<(QDebug debug, const MapSearch::Clique* clique)
+{
+  if (!clique) {
+    return debug << "[null]";
+  }
+  return debug << clique->zone->name;
+}
+
+QDebug operator<<(QDebug debug, const MapZone* zone)
+{
+  return debug << zone->name;
+}
+
 MapSearch::MapSearch(MapManager* map)
 : map(map)
 {
@@ -56,7 +74,9 @@ bool MapSearch::precompute(bool force)
       for (const CliqueExit& exit : clique.exits) {
         fillRoutes(&clique, exit.fromRoomId);
       }
-      clique.unresolvedExits.clear();
+    }
+    if (distinctExits.size() < 2) {
+      deadEnds << &clique;
     }
   }
 
@@ -114,7 +134,6 @@ void MapSearch::getCliquesForZone(const MapZone* zone)
         continue;
       }
       other->roomIds.unite(clique->roomIds);
-      other->unresolvedExits.unite(clique->unresolvedExits);
       for (const CliqueExit& exit : clique->exits) {
         bool found = false;
         for (const CliqueExit& oexit : other->exits) {
@@ -166,10 +185,6 @@ void MapSearch::crawlClique(Clique* clique, int roomId)
       clique->roomIds << exit;
       pendingRoomIds.remove(exit);
       crawlClique(clique, exit);
-    } else if (Clique* destClique = findClique(dest->zone, exit)) {
-      clique->exits << CliqueExit{ roomId, destClique, exit };
-    } else {
-      clique->unresolvedExits << roomId;
     }
   }
   // Check for rooms that connect to this clique that we missed
@@ -199,6 +214,7 @@ void MapSearch::crawlClique(Clique* clique, int roomId)
         extended = true;
         clique->roomIds << pendingId;
         pendingRoomIds.remove(pendingId);
+        crawlClique(clique, exit.dest);
       }
     }
   }
@@ -206,23 +222,30 @@ void MapSearch::crawlClique(Clique* clique, int roomId)
 
 void MapSearch::resolveExits(MapSearch::Clique* clique)
 {
-  for (int exit : clique->unresolvedExits) {
-    const MapRoom* room = map->room(exit);
-    if (!room) {
+  for (auto [zoneId, exitRoomIds] : cpairs(clique->zone->exits)) {
+    const MapZone* destZone = map->zone(zoneId);
+    if (!destZone) {
       continue;
     }
-    for (int destId : room->exitRooms()) {
-      const MapRoom* dest = map->room(destId);
-      if (!dest) {
+    for (int roomId : exitRoomIds) {
+      if (!clique->roomIds.contains(roomId)) {
+        // exit belongs to a different clique
         continue;
       }
-      Clique* destClique = findClique(dest->zone, destId);
-      if (destClique) {
-        clique->exits << CliqueExit{ exit, destClique, destId };
+      const MapRoom* room = map->room(roomId);
+      if (!room) {
+        continue;
+      }
+      for (const MapExit& exit : room->exits) {
+        const MapRoom* dest = map->room(exit.dest);
+        if (dest && dest->zone == zoneId) {
+          Clique* toClique = findClique(zoneId, exit.dest);
+          Q_ASSERT(toClique);
+          clique->exits << (CliqueExit){ roomId, toClique, exit.dest };
+        }
       }
     }
   }
-  clique->unresolvedExits.clear();
 }
 
 MapSearch::Clique* MapSearch::findClique(const QString& zoneName, int roomId) const
@@ -402,12 +425,12 @@ QPair<QList<const MapSearch::Clique*>, int> MapSearch::findCliqueRoute(const Map
   avoid << fromClique;
   int bestCost = 0;
   QList<const Clique*> bestPath;
-  QStringList avoidStr;
-  for (auto a : avoid) avoidStr << a->zone->name;
-
   for (const CliqueExit& exit : fromClique->exits) {
     const Clique* next = exit.toClique;
-    if (avoid.contains(next)) {
+    if (avoid.contains(next) && next != toClique) {
+      continue;
+    }
+    if (next != toClique && deadEnds.contains(next)) {
       continue;
     }
     auto [path, cost] = findCliqueRoute(next, toClique, avoid);
@@ -472,7 +495,7 @@ QList<int> MapSearch::findRoute(int startRoomId, int endRoomId, const QStringLis
     }
     QSet<int> outRooms, nextRooms;
     for (const CliqueExit& exit : clique->exits) {
-      if (i < maxRoute && exit.toClique == cliqueRoute[i + 1]) {
+      if (exit.toClique == cliqueRoute[i + 1]) {
         outRooms << exit.fromRoomId;
         nextRooms << exit.toRoomId;
       }

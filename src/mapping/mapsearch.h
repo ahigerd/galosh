@@ -23,7 +23,6 @@ public:
   struct Clique {
     const MapZone* zone;
     QSet<int> roomIds;
-    QSet<int> unresolvedExits;
     QList<CliqueExit> exits;
     QMap<QPair<int, int>, QList<int>> routes;
   };
@@ -61,6 +60,7 @@ public:
   MapManager* map;
   std::list<Clique> cliqueStore;
   QMap<QString, QList<Clique*>> cliques;
+  QSet<const Clique*> deadEnds;
   QSet<int> pendingRoomIds;
   QSet<const MapZone*> dirtyZones;
 };
