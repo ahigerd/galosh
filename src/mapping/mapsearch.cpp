@@ -6,20 +6,20 @@
 
 QDebug operator<<(QDebug debug, const MapSearch::Clique& clique)
 {
-  return debug << clique.zone->name;
+  return debug << clique.zone;
 }
 
 QDebug operator<<(QDebug debug, const MapSearch::Clique* clique)
 {
   if (!clique) {
-    return debug << "[null]";
+    return debug << "[null clique]";
   }
-  return debug << clique->zone->name;
+  return debug << clique->zone;
 }
 
 QDebug operator<<(QDebug debug, const MapZone* zone)
 {
-  return debug << zone->name;
+  return debug << (zone ? zone->name : "[null zone]");
 }
 
 MapSearch::MapSearch(MapManager* map)
@@ -43,6 +43,9 @@ void MapSearch::markDirty(const MapZone* zone)
 
 bool MapSearch::precompute(bool force)
 {
+  if (!force && dirtyZones.isEmpty()) {
+    return false;
+  }
   force = force || dirtyZones.contains(nullptr);
   if (force) {
     reset();

@@ -109,7 +109,6 @@ MapViewer::MapViewer(MapViewer::MapType mapType, MapManager* map, ExploreHistory
 
   zone = new QComboBox(header);
   zone->setInsertPolicy(QComboBox::InsertAlphabetically);
-  QObject::connect(zone, SIGNAL(currentTextChanged(QString)), this, SLOT(loadZone(QString)));
   layout->addWidget(zone, 1);
 
   QToolButton* bIn = new QToolButton(header);
@@ -151,6 +150,7 @@ MapViewer::MapViewer(MapViewer::MapType mapType, MapManager* map, ExploreHistory
     setZoom(settings.value("mapZoom", 5).toDouble());
   }
 
+  QObject::connect(zone, SIGNAL(currentTextChanged(QString)), this, SLOT(loadZone(QString)));
   QObject::connect(history, SIGNAL(currentRoomChanged(int)), this, SLOT(setCurrentRoom(int)));
 }
 
@@ -204,15 +204,16 @@ void MapViewer::setCurrentRoom(int roomId)
 void MapViewer::loadZone(const QString& name)
 {
   if (zone->currentText() != name) {
+    zone->blockSignals(true);
     if (zone->findText(name) < 0) {
-      if (map->zone(name)) {
+      if (map->zoneNames().contains(name)) {
         zone->addItem(name);
       } else {
         qDebug() << "Unknown zone" << name;
+        zone->blockSignals(false);
         return;
       }
     }
-    zone->blockSignals(true);
     zone->setCurrentText(name);
     zone->blockSignals(false);
   }

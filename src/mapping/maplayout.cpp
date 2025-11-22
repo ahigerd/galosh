@@ -105,15 +105,18 @@ MapLayout::MapLayout(MapManager* map)
 
 void MapLayout::loadZone(const MapZone* zone)
 {
-  Q_ASSERT(zone);
-  search = map->search();
-  if (!search->precompute()) {
-    // If no changes occurred in the search computation,
-    // it's safe to short-circuit and keep what we have,
-    // assuming we aren't moving to a new zone.
-    if (currentZone == zone->name) {
-      return;
+  if (zone) {
+    search = map->search();
+    if (!search->precompute()) {
+      // If no changes occurred in the search computation,
+      // it's safe to short-circuit and keep what we have,
+      // assuming we aren't moving to a new zone.
+      if (currentZone == zone->name) {
+        return;
+      }
     }
+  } else {
+    currentZone.clear();
   }
 
   coords.clear();
@@ -125,6 +128,11 @@ void MapLayout::loadZone(const MapZone* zone)
   pendingLayers.clear();
   colors.clear();
   boundingBox = QRectF();
+
+  if (!zone) {
+    return;
+  }
+
   currentZone = zone->name;
 
   QMap<QPair<int, QString>, int> zoneExits;

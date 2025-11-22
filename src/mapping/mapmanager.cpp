@@ -444,6 +444,10 @@ QStringList MapManager::zoneNames() const
 {
   QStringList names;
   for (const auto& iter : zones) {
+    QString name = iter.second.name;
+    if (!gmcpMode && (name == "-" || name.isEmpty())) {
+      continue;
+    }
     names << iter.second.name;
   }
   return names;
@@ -506,12 +510,13 @@ void MapManager::saveRoom(MapRoom* room)
     return;
   }
 
-  if (!gmcpMode) {
-    mapFile->setValue("autoID", autoRoomId);
-  }
-
   if (room->zone.isEmpty() && gmcpMode) {
     qWarning() << "No zone in GMCP mode";
+    return;
+  }
+
+  if (!gmcpMode) {
+    mapFile->setValue("autoID", autoRoomId);
   }
 
   SettingsGroup zoneGroup(mapFile, room->zone.isEmpty() ? "-" : room->zone);
