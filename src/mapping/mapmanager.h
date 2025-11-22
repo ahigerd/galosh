@@ -15,6 +15,8 @@ class MapManager : public QObject
 {
 Q_OBJECT
 public:
+  static QString mapForProfile(const QString& profile);
+
   MapManager(QObject* parent = nullptr);
 
   const MapRoom* room();

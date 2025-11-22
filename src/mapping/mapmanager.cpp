@@ -25,14 +25,7 @@ struct SettingsGroup
   QSettings* settings;
 };
 
-MapManager::MapManager(QObject* parent)
-: QObject(parent), mapFile(nullptr), gmcpMode(false), logRoomLegacy(false), logRoomDescription(false), logExits(false), roomDirty(false),
-  autoRoomId(1), currentRoom(-1), destinationRoom(-1), previousRoom(-1), mapSearch(nullptr)
-{
-  // initializers only
-}
-
-void MapManager::loadProfile(const QString& profile)
+QString MapManager::mapForProfile(const QString& profile)
 {
   QSettings settings(profile, QSettings::IniFormat);
   settings.beginGroup("Profile");
@@ -43,7 +36,19 @@ void MapManager::loadProfile(const QString& profile)
     QDir dir = QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation);
     mapFileName = dir.absoluteFilePath(mapFileName + ".galosh_map");
   }
-  loadMap(mapFileName);
+  return mapFileName;
+}
+
+MapManager::MapManager(QObject* parent)
+: QObject(parent), mapFile(nullptr), gmcpMode(false), logRoomLegacy(false), logRoomDescription(false), logExits(false), roomDirty(false),
+  autoRoomId(1), currentRoom(-1), destinationRoom(-1), previousRoom(-1), mapSearch(nullptr)
+{
+  // initializers only
+}
+
+void MapManager::loadProfile(const QString& profile)
+{
+  loadMap(mapForProfile(profile));
 }
 
 void MapManager::loadMap(const QString& mapFileName)

@@ -31,8 +31,8 @@ SOURCES += src/msspview.cpp src/exploredialog.cpp
 HEADERS += src/galoshterm.h   src/roomview.h   src/commandline.h
 SOURCES += src/galoshterm.cpp src/roomview.cpp src/commandline.cpp
 
-HEADERS += src/triggertab.h   src/appearancetab.h
-SOURCES += src/triggertab.cpp src/appearancetab.cpp
+HEADERS += src/triggertab.h   src/appearancetab.h   src/waypointstab.h
+SOURCES += src/triggertab.cpp src/appearancetab.cpp src/waypointstab.cpp
 
 # models
 HEADERS += src/triggermanager.h   src/infomodel.h   src/itemdatabase.h

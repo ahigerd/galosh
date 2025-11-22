@@ -1,6 +1,7 @@
 #include "profiledialog.h"
 #include "triggertab.h"
 #include "appearancetab.h"
+#include "waypointstab.h"
 #include "msspview.h"
 #include "telnetsocket.h"
 #include <QMessageBox>
@@ -73,13 +74,14 @@ ProfileDialog::ProfileDialog(bool forConnection, QWidget* parent)
   QFormLayout* lServer = new QFormLayout(tServer);
   tabs->addTab(tServer, "&Server");
   tabs->addTab(tTriggers = new TriggerTab(tabs), "&Triggers");
-  tabs->addTab(tAppearance = new AppearanceTab(tabs), "&Appearance");
+  tabs->addTab(tAppearance = new AppearanceTab(tabs), "&Visual");
+  tabs->addTab(tWaypoints = new WaypointsTab(tabs), "&Waypoints");
 
   lServer->addRow("Profile &name:", profileName = new QLineEdit(tServer));
   lServer->addRow(horizontalLine(tServer));
 
   QHBoxLayout* lRadio = new QHBoxLayout;
-  lRadio->addWidget(oServer = new QRadioButton("Connect to a &server", tServer), 1);
+  lRadio->addWidget(oServer = new QRadioButton("Connect to a se&rver", tServer), 1);
   lRadio->addWidget(oProgram = new QRadioButton("Run a p&rogram", tServer), 1);
   QButtonGroup* group = new QButtonGroup(this);
   group->addButton(oServer, 0);
@@ -143,6 +145,7 @@ ProfileDialog::ProfileDialog(bool forConnection, QWidget* parent)
   }
   QObject::connect(tTriggers, SIGNAL(markDirty()), this, SLOT(markDirty()));
   QObject::connect(tAppearance, SIGNAL(markDirty()), this, SLOT(markDirty()));
+  QObject::connect(tWaypoints, SIGNAL(markDirty()), this, SLOT(markDirty()));
 
   QSettings settings;
   restoreGeometry(settings.value("profiles").toByteArray());
@@ -282,8 +285,13 @@ bool ProfileDialog::save()
     QMessageBox::critical(this, "Galosh", QStringLiteral("Could not save %1").arg(path));
   } else {
     item->setData(profileName->text().trimmed(), Qt::DisplayRole);
-    tTriggers->save(path);
-    tAppearance->save(path);
+    bool ok = true;
+    ok = tTriggers->save(path) && ok;
+    ok = tAppearance->save(path) && ok;
+    ok = tWaypoints->save(path) && ok;
+    if (!ok) {
+      return false;
+    }
   }
   emit profileUpdated(path);
   return true;
@@ -384,6 +392,7 @@ bool ProfileDialog::loadProfile(const QString& path)
 
   tTriggers->load(path);
   tAppearance->load(path);
+  tWaypoints->load(path);
   return true;
 }
 

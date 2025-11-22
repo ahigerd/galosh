@@ -13,6 +13,7 @@ class QStandardItemModel;
 class QDialogButtonBox;
 class TriggerTab;
 class AppearanceTab;
+class WaypointsTab;
 
 class ProfileDialog : public QDialog
 {
@@ -72,6 +73,7 @@ private:
   QLineEdit* passwordPrompt;
   TriggerTab* tTriggers;
   AppearanceTab* tAppearance;
+  WaypointsTab* tWaypoints;
   QDialogButtonBox* buttons;
   bool emitConnect;
   bool dirty;
