@@ -27,9 +27,13 @@ public:
     bool operator<(const Grid& other) const;
     operator bool() const;
 
+    QPair<int, int> pos(int roomId) const;
+    int at(int x, int y) const;
+    inline int at(const QPair<int, int>& pos) const { return at(pos.first, pos.second); }
+
     inline int size() const { return rooms.size(); }
+    inline bool contains(int roomId) const { return rooms.contains(roomId); }
     inline bool contains(const Grid& other) const { return rooms.contains(other.rooms); }
-    inline bool intersects(const Grid& other) const { return (rooms & other.rooms).size() > 0; }
   };
 
   struct Clique;
@@ -68,7 +72,7 @@ private:
   void findGrids(Clique* clique);
   void fillRoutes(Clique* clique, int startRoomId);
   QMap<int, int> getCosts(const Clique* clique, int startRoomId, int endRoomId = -1) const;
-  QList<int> findRouteInClique(int startRoomId, int endRoomId, const QMap<int, int>& costs, int maxCost = 0) const;
+  QList<int> findRouteInClique(const Clique* clique, int startRoomId, int endRoomId, const QMap<int, int>& costs, int maxCost = 0) const;
   Clique* newClique(const MapZone* parent);
   Clique* findClique(const QString& zoneName, int roomId) const;
   Clique* findClique(int roomId) const;

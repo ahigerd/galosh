@@ -73,31 +73,27 @@ bool MapSearch::precompute(bool force)
     }
   }
 
-  benchmark("get cliques", [&]{
-    for (const QString& zoneName : map->zoneNames()) {
-      getCliquesForZone(map->zone(zoneName));
-    }
-  });
-  benchmark("resolve exits", [&]{
-    for (Clique& clique : cliqueStore) {
-      resolveExits(&clique);
-      findGrids(&clique);
+  for (const QString& zoneName : map->zoneNames()) {
+    getCliquesForZone(map->zone(zoneName));
+  }
+  for (Clique& clique : cliqueStore) {
+    resolveExits(&clique);
+    findGrids(&clique);
 
-      QSet<int> distinctExits;
+    QSet<int> distinctExits;
+    for (const CliqueExit& exit : clique.exits) {
+      distinctExits << exit.fromRoomId;
+    }
+    int n = distinctExits.size();
+    if ((n * (n - 1)) != clique.routes.size()) {
       for (const CliqueExit& exit : clique.exits) {
-        distinctExits << exit.fromRoomId;
-      }
-      int n = distinctExits.size();
-      if ((n * (n - 1)) != clique.routes.size()) {
-        for (const CliqueExit& exit : clique.exits) {
-          incremental.emplace_back(&clique, exit.fromRoomId);
-        }
-      }
-      if (distinctExits.size() < 2) {
-        deadEnds << &clique;
+        incremental.emplace_back(&clique, exit.fromRoomId);
       }
     }
-  });
+    if (distinctExits.size() < 2) {
+      deadEnds << &clique;
+    }
+  }
 
   dirtyZones.clear();
   QTimer::singleShot(1, this, SLOT(precomputeIncremental()));
@@ -106,24 +102,22 @@ bool MapSearch::precompute(bool force)
 
 void MapSearch::precomputeRoutes()
 {
-  benchmark("precomputeRoutes", [&]{
-    incremental.clear();
-    for (Clique& clique : cliqueStore) {
-      QSet<int> distinctExits;
+  incremental.clear();
+  for (Clique& clique : cliqueStore) {
+    QSet<int> distinctExits;
+    for (const CliqueExit& exit : clique.exits) {
+      distinctExits << exit.fromRoomId;
+    }
+    int n = distinctExits.size();
+    if ((n * (n - 1)) != clique.routes.size()) {
       for (const CliqueExit& exit : clique.exits) {
-        distinctExits << exit.fromRoomId;
-      }
-      int n = distinctExits.size();
-      if ((n * (n - 1)) != clique.routes.size()) {
-        for (const CliqueExit& exit : clique.exits) {
-          fillRoutes(&clique, exit.fromRoomId);
-        }
-      }
-      if (distinctExits.size() < 2) {
-        deadEnds << &clique;
+        fillRoutes(&clique, exit.fromRoomId);
       }
     }
-  });
+    if (distinctExits.size() < 2) {
+      deadEnds << &clique;
+    }
+  }
 }
 
 void MapSearch::precomputeIncremental()
@@ -131,12 +125,9 @@ void MapSearch::precomputeIncremental()
   if (incremental.empty()) {
     return;
   }
-  benchmark("precomputeIncremental", [&]{
-    auto [clique, fromRoomId] = incremental.front();
-    qDebug() << clique->zone->name << fromRoomId;
-    incremental.pop_front();
-    fillRoutes(clique, fromRoomId);
-  });
+  auto [clique, fromRoomId] = incremental.front();
+  incremental.pop_front();
+  fillRoutes(clique, fromRoomId);
   QTimer::singleShot(1, this, SLOT(precomputeIncremental()));
 }
 
@@ -454,6 +445,30 @@ MapSearch::Grid::operator bool() const
   return grid.size() > 1 && grid.first().size() > 1;
 }
 
+QPair<int, int> MapSearch::Grid::pos(int sought) const
+{
+  for (auto [y, row] : enumerate(grid)) {
+    for (auto [x, roomId] : enumerate(row)) {
+      if (roomId == sought) {
+        return { x, y };
+      }
+    }
+  }
+  return { -1, -1 };
+}
+
+int MapSearch::Grid::at(int x, int y) const
+{
+  if (x < 0 || y < 0 || y >= grid.size()) {
+    return -1;
+  }
+  const QVector<int>& row = grid[y];
+  if (x >= row.size()) {
+    return -1;
+  }
+  return row[x];
+}
+
 bool MapSearch::Grid::mask(const QSet<int>& exclude)
 {
   if (exclude.isEmpty()) {
@@ -632,7 +647,7 @@ QMap<int, int> MapSearch::getCosts(const MapSearch::Clique* clique, int startRoo
   return costs;
 }
 
-QList<int> MapSearch::findRouteInClique(int startRoomId, int endRoomId, const QMap<int, int>& costs, int maxCost) const
+QList<int> MapSearch::findRouteInClique(const Clique* clique, int startRoomId, int endRoomId, const QMap<int, int>& costs, int maxCost) const
 {
   if (startRoomId == endRoomId) {
     return { endRoomId };
@@ -648,12 +663,57 @@ QList<int> MapSearch::findRouteInClique(int startRoomId, int endRoomId, const QM
   if (room->exitRooms().contains(startRoomId)) {
     return { startRoomId, endRoomId };
   }
+  bool gridStepped = false;
+  QList<int> gridRoute{ endRoomId };
+  for (const Grid& grid : clique->grids) {
+    do {
+      gridStepped = false;
+      QPair<int, int> pos = grid.pos(endRoomId);
+      if (pos.first < 0) {
+        break;
+      }
+      int bestEntrance = -1;
+      int bestCost = maxCost;
+      bool bestIsExit = false;
+      static QPair<int, int> offsets[] = { { -1, 0 }, { 1, 0 }, { 0, -1 }, { 0, 1 } };
+      for (QPair<int, int> offset : offsets) {
+        int nextRoomId = grid.at(pos.first + offset.first, pos.second + offset.second);
+        if (nextRoomId == startRoomId) {
+          gridRoute.insert(0, nextRoomId);
+          return gridRoute;
+        }
+        int cost = costs.value(nextRoomId, maxCost);
+        if (bestIsExit ? cost < bestCost : cost <= bestCost) {
+          bestCost = cost;
+          bestEntrance = nextRoomId;
+          bestIsExit = !grid.contains(nextRoomId);
+        }
+      }
+      if (bestEntrance >= 0) {
+        gridStepped = true;
+        gridRoute.insert(0, bestEntrance);
+        endRoomId = bestEntrance;
+        maxCost = bestCost;
+      }
+    } while (gridStepped);
+    if (gridRoute.size() > 1) {
+      break;
+    }
+  }
+  if (gridRoute.size() > 1) {
+    QList<int> enterRoute = findRouteInClique(clique, startRoomId, endRoomId, costs, costs[endRoomId]);
+    if (enterRoute.isEmpty()) {
+      return {};
+    } else {
+      return enterRoute + gridRoute.mid(1);
+    }
+  }
   QList<int> bestRoute;
   for (int nextRoomId : room->entrances) {
     if (nextRoomId == startRoomId || costs.value(nextRoomId, maxCost) >= maxCost) {
       continue;
     }
-    QList<int> route = findRouteInClique(startRoomId, nextRoomId, costs, costs[nextRoomId]);
+    QList<int> route = findRouteInClique(clique, startRoomId, nextRoomId, costs, costs[nextRoomId]);
     if (route.isEmpty()) {
       continue;
     }
@@ -690,9 +750,7 @@ void MapSearch::fillRoutes(MapSearch::Clique* clique, int startRoomId)
       // Can't get there from here -- perhaps one-way connection
       continue;
     }
-    benchmark("findRouteInClique " + QString::number(startRoomId) + "-" + QString::number(endRoomId), [&]{
-      clique->routes[key] = findRouteInClique(startRoomId, endRoomId, costs);
-    });
+    clique->routes[key] = findRouteInClique(clique, startRoomId, endRoomId, costs);
   }
 }
 
@@ -795,7 +853,7 @@ QList<int> MapSearch::findRoute(int startRoomId, int endRoomId, const QStringLis
 
   if (startClique == endClique) {
     QMap<int, int> costs = getCosts(startClique, startRoomId, endRoomId);
-    return findRouteInClique(startRoomId, endRoomId, costs);
+    return findRouteInClique(startClique, startRoomId, endRoomId, costs);
   }
 
   QList<const Clique*> avoidCliques = collectCliques(avoidZones);
@@ -841,7 +899,7 @@ QList<int> MapSearch::findRoute(const QList<MapSearch::CliqueStep>& steps, int i
   QList<int> bestRoute, stepRoute;
   for (int endRoomId : step.endRoomIds) {
     if (index == 0 || index == steps.length() - 1) {
-      stepRoute = findRouteInClique(startRoomId, endRoomId, costs);
+      stepRoute = findRouteInClique(step.clique, startRoomId, endRoomId, costs);
     } else {
       stepRoute = step.clique->routes[qMakePair(startRoomId, endRoomId)];
     }
