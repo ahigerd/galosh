@@ -45,7 +45,8 @@ void RouteCommand::handleInvoke(const QStringList& args, const KWArgs& kwargs)
     showError("Start room and destination room are the same");
     return;
   }
-  map->search()->precompute(true);
+  map->search()->precompute();
+  map->search()->precomputeRoutes();
   QList<int> route = map->search()->findRoute(startRoomId, endRoomId);
   if (route.isEmpty()) {
     showError(QStringLiteral("Could not find route from %1 to %2").arg(startRoomId).arg(endRoomId));
@@ -76,6 +77,7 @@ void RouteCommand::handleInvoke(const QStringList& args, const KWArgs& kwargs)
   if (warnings.isEmpty()) {
     showMessage(messages.join("\n"));
     if (kwargs.contains("-g")) {
+      emit speedwalk(dirs);
     }
   } else {
     showError(messages.join("\n"));

@@ -520,6 +520,7 @@ void MapManager::saveRoom(MapRoom* room)
   }
 
   SettingsGroup zoneGroup(mapFile, room->zone.isEmpty() ? "-" : room->zone);
+  SettingsGroup roomGroup(mapFile, QString::number(room->id));
   mapFile->setValue("name", room->name);
   mapFile->setValue("description", room->description);
   mapFile->setValue("type", room->roomType);

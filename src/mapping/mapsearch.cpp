@@ -2,7 +2,13 @@
 #include "mapmanager.h"
 #include "mapzone.h"
 #include "algorithms.h"
+#include <QTimer>
 #include <QtDebug>
+
+QDebug operator<<(QDebug debug, const MapSearch::Grid& grid)
+{
+  return debug << qPrintable(grid.debug());
+}
 
 QDebug operator<<(QDebug debug, const MapSearch::Clique& clique)
 {
@@ -33,6 +39,9 @@ void MapSearch::reset()
   cliques.clear();
   cliqueStore.clear();
   pendingRoomIds.clear();
+  deadEnds.clear();
+  incremental.clear();
+  dirtyZones.clear();
   dirtyZones << nullptr;
 }
 
@@ -47,6 +56,7 @@ bool MapSearch::precompute(bool force)
     return false;
   }
   force = force || dirtyZones.contains(nullptr);
+  incremental.clear();
   if (force) {
     reset();
   } else {
@@ -63,28 +73,71 @@ bool MapSearch::precompute(bool force)
     }
   }
 
-  for (const QString& zoneName : map->zoneNames()) {
-    getCliquesForZone(map->zone(zoneName));
-  }
-  for (Clique& clique : cliqueStore) {
-    resolveExits(&clique);
-    QSet<int> distinctExits;
-    for (const CliqueExit& exit : clique.exits) {
-      distinctExits << exit.fromRoomId;
+  benchmark("get cliques", [&]{
+    for (const QString& zoneName : map->zoneNames()) {
+      getCliquesForZone(map->zone(zoneName));
     }
-    int n = distinctExits.size();
-    if (force || (n * (n - 1)) != clique.routes.size()) {
+  });
+  benchmark("resolve exits", [&]{
+    for (Clique& clique : cliqueStore) {
+      resolveExits(&clique);
+      findGrids(&clique);
+
+      QSet<int> distinctExits;
       for (const CliqueExit& exit : clique.exits) {
-        fillRoutes(&clique, exit.fromRoomId);
+        distinctExits << exit.fromRoomId;
+      }
+      int n = distinctExits.size();
+      if ((n * (n - 1)) != clique.routes.size()) {
+        for (const CliqueExit& exit : clique.exits) {
+          incremental.emplace_back(&clique, exit.fromRoomId);
+        }
+      }
+      if (distinctExits.size() < 2) {
+        deadEnds << &clique;
       }
     }
-    if (distinctExits.size() < 2) {
-      deadEnds << &clique;
-    }
-  }
+  });
 
   dirtyZones.clear();
+  QTimer::singleShot(1, this, SLOT(precomputeIncremental()));
   return true;
+}
+
+void MapSearch::precomputeRoutes()
+{
+  benchmark("precomputeRoutes", [&]{
+    incremental.clear();
+    for (Clique& clique : cliqueStore) {
+      QSet<int> distinctExits;
+      for (const CliqueExit& exit : clique.exits) {
+        distinctExits << exit.fromRoomId;
+      }
+      int n = distinctExits.size();
+      if ((n * (n - 1)) != clique.routes.size()) {
+        for (const CliqueExit& exit : clique.exits) {
+          fillRoutes(&clique, exit.fromRoomId);
+        }
+      }
+      if (distinctExits.size() < 2) {
+        deadEnds << &clique;
+      }
+    }
+  });
+}
+
+void MapSearch::precomputeIncremental()
+{
+  if (incremental.empty()) {
+    return;
+  }
+  benchmark("precomputeIncremental", [&]{
+    auto [clique, fromRoomId] = incremental.front();
+    qDebug() << clique->zone->name << fromRoomId;
+    incremental.pop_front();
+    fillRoutes(clique, fromRoomId);
+  });
+  QTimer::singleShot(1, this, SLOT(precomputeIncremental()));
 }
 
 MapSearch::Clique* MapSearch::newClique(const MapZone* parent)
@@ -254,6 +307,264 @@ void MapSearch::resolveExits(MapSearch::Clique* clique)
   }
 }
 
+namespace {
+using Column = QList<const MapRoom*>;
+
+// A room can be part of a grid if:
+// - It has all four cardinal exits and no others
+// - All four exits are two-way
+// - All four exits are contained within the same zone
+// A grid can be entered and exited from any point and use Manhattan distance
+struct GridCollector
+{
+  GridCollector(MapManager* map, int startRoomId)
+  : map(map)
+  {
+    startRoom = map->room(startRoomId);
+    if (!checkGrid(startRoom)) {
+      startRoom = nullptr;
+    }
+  }
+
+  bool checkGrid(const MapRoom* room)
+  {
+    if (!room) {
+      return false;
+    }
+    int goodExits = 0;
+    for (auto [dir, exit] : cpairs(room->exits)) {
+      if (dir != "N" && dir != "E" && dir != "S" && dir != "W") {
+        return false;
+      }
+      const MapRoom* dest = map->room(exit.dest);
+      if (!dest || dest->zone != room->zone || dest->exits.value(MapRoom::reverseDir(dir)).dest != room->id) {
+        return false;
+      }
+      goodExits += 1;
+    }
+    return goodExits == 4;
+  }
+
+  const MapRoom* gridStep(const MapRoom* room, const QString& dir)
+  {
+    if (!room) {
+      return nullptr;
+    }
+    int nextId = room->exits.value(dir).dest;
+    if (nextId <= 0) {
+      return nullptr;
+    }
+    const MapRoom* next = map->room(nextId);
+    if (!checkGrid(next)) {
+      return nullptr;
+    }
+    return next;
+  }
+
+  Column collectGridColumn(const MapRoom* start)
+  {
+    Column rooms{ start };
+    const MapRoom* step = start;
+    while ((step = gridStep(step, "S"))) {
+      rooms << step;
+    }
+    return rooms;
+  }
+
+  MapSearch::Grid collectGrid()
+  {
+    if (!startRoom) {
+      return {};
+    }
+    Column steps{ startRoom };
+    const MapRoom* step = startRoom;
+    while ((step = gridStep(step, "S"))) {
+      steps << step;
+    }
+
+    QList<Column> columns;
+    int bestSize = 0;
+    QList<Column> bestState;
+    while (steps.size() > 1) {
+      columns << steps;
+      int size = columns.size() * steps.size();
+      if (size > bestSize) {
+        bestState = columns;
+        bestSize = size;
+      }
+      for (int y = 0; y < steps.size(); y++) {
+        steps[y] = gridStep(steps[y], "E");
+        if (!steps[y]) {
+          steps = steps.mid(0, y);
+        }
+      }
+    }
+    if (bestState.size() < 2) {
+      return {};
+    }
+    MapSearch::Grid grid;
+    grid.grid.resize(bestState[0].size());
+    for (const Column& column : bestState) {
+      for (auto [y, room] : enumerate(column)) {
+        grid.grid[y] << room->id;
+        grid.rooms << room->id;
+      }
+    }
+    return grid;
+  }
+
+  MapManager* map;
+  const MapRoom* startRoom;
+};
+}
+
+QString MapSearch::Grid::debug(const QSet<int>& exclude) const
+{
+  QString result = "[[[\n";
+  for (int y = 0; y < grid.size(); y++) {
+    QStringList row;
+    for (int x = 0; x < grid[y].size(); x++) {
+      int roomId = grid[y][x];
+      QString label = QString::number(roomId);
+      if (roomId < 0 || exclude.contains(roomId)) {
+        row << QString(label.length(), '-');
+      } else {
+        row << label;
+      }
+    }
+    result += row.join("\t") + "\n";
+  }
+  result += "]]]";
+  return result;
+}
+
+bool MapSearch::Grid::operator<(const Grid& other) const
+{
+  if (contains(other)) {
+    return true;
+  }
+  if (other.contains(*this)) {
+    return false;
+  }
+  return size() > other.size();
+}
+
+MapSearch::Grid::operator bool() const
+{
+  return grid.size() > 1 && grid.first().size() > 1;
+}
+
+bool MapSearch::Grid::mask(const QSet<int>& exclude)
+{
+  if (exclude.isEmpty()) {
+    return true;
+  }
+  bool fail = false;
+  int offsetLeft = -1;
+  QVector<QVector<int>> masked;
+  for (QVector<int>& row : grid) {
+    int skipped = 0;
+    bool first = true;
+    QVector<int> result;
+    for (int i = 0; i < row.size(); i++) {
+      if (exclude.contains(row[i])) {
+        row[i] = -1;
+        ++skipped;
+        continue;
+      }
+      if (first) {
+        if (offsetLeft >= 0 && i != offsetLeft) {
+          fail = true;
+        }
+        offsetLeft = i;
+        first = false;
+      }
+      result << row[i];
+    }
+    if (result.isEmpty()) {
+      if (masked.isEmpty()) {
+        continue;
+      }
+    } else {
+      if (result.size() < 2) {
+        fail = true;
+      }
+      if (!masked.isEmpty() && masked.last().size() != result.size()) {
+        fail = true;
+      }
+    }
+    masked << result;
+  }
+  while (!masked.isEmpty() && masked.last().isEmpty()) {
+    masked.removeLast();
+  }
+  if (masked.size() < 2) {
+    fail = true;
+  }
+  if (fail) {
+    return false;
+  }
+  grid = masked;
+  rooms.clear();
+  for (const QVector<int>& row : grid) {
+    for (int roomId : row) {
+      rooms << roomId;
+    }
+  }
+  return true;
+}
+
+void MapSearch::findGrids(MapSearch::Clique* clique)
+{
+  if (!clique || !clique->grids.isEmpty()) {
+    return;
+  }
+  QList<Grid> grids;
+  QSet<int> visited;
+  for (int roomId : clique->roomIds) {
+    if (visited.contains(roomId)) {
+      continue;
+    }
+    visited << roomId;
+    GridCollector collector(map, roomId);
+    if (collector.startRoom) {
+      Grid grid = collector.collectGrid();
+      visited.unite(grid.rooms);
+      if (grid.rooms.size() > 4) {
+        bool found = false;
+        for (int i = 0; i < grids.size(); i++) {
+          Grid& other = grids[i];
+          if (other.contains(grid)) {
+            found = true;
+            break;
+          } else if (grid.contains(other)) {
+            found = true;
+            grids[i] = grid;
+            break;
+          }
+        }
+        if (!found) {
+          grids << grid;
+        }
+      }
+    }
+  }
+  if (grids.isEmpty()) {
+    return;
+  }
+  std::sort(grids.begin(), grids.end());
+  QSet<int> exclude;
+  for (int i = 0; i < grids.size(); i++) {
+    if (grids[i].mask(exclude)) {
+      exclude.unite(grids[i].rooms);
+    } else {
+      grids.removeAt(i);
+      --i;
+    }
+  }
+  clique->grids = grids;
+}
+
 MapSearch::Clique* MapSearch::findClique(const QString& zoneName, int roomId) const
 {
   for (Clique* clique : cliques.value(zoneName)) {
@@ -379,7 +690,9 @@ void MapSearch::fillRoutes(MapSearch::Clique* clique, int startRoomId)
       // Can't get there from here -- perhaps one-way connection
       continue;
     }
-    clique->routes[key] = findRouteInClique(startRoomId, endRoomId, costs);
+    benchmark("findRouteInClique " + QString::number(startRoomId) + "-" + QString::number(endRoomId), [&]{
+      clique->routes[key] = findRouteInClique(startRoomId, endRoomId, costs);
+    });
   }
 }
 

@@ -37,7 +37,7 @@ void WaypointCommand::handleInvoke(const QStringList& args, const KWArgs& kwargs
   } else if (kwargs.contains("-a")) {
     if (args.length() == 1) {
       bool ok;
-      int roomId = args[1].toInt(&ok);
+      int roomId = args[0].toInt(&ok);
       handleAdd(kwargs.value("-a"), ok ? roomId : -1);
     } else if (args.length() == 0) {
       handleAdd(kwargs.value("-a"), history->currentRoom() ? history->currentRoom()->id : -1);
@@ -119,7 +119,8 @@ void WaypointCommand::handleRoute(const QString& name, bool run)
     }
     return;
   }
-  map->search()->precompute(true);
+  map->search()->precompute();
+  map->search()->precomputeRoutes();
   QList<int> route = map->search()->findRoute(startRoomId, endRoomId);
   QStringList dirs = route.isEmpty() ? QStringList() : map->search()->routeDirections(route);
   if (dirs.isEmpty()) {

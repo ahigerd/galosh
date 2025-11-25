@@ -817,7 +817,7 @@ void MapLayout::render(QPainter* painter, const QRectF&, bool drawLabels) const
         painter->setPen(QPen(Qt::black, 0, Qt::DashLine));
         QPointF endpoint = pos + dirVectors[dir] * STEP_SIZE;
         painter->drawLine(pos, endpoint);
-        if (other && other->zone != title) {
+        if (other && other->zone != title && !other->zone.isEmpty() && other->zone != "-") {
           painter->setBrush(Qt::white);
           painter->drawEllipse(QRectF(endpoint - QPoint(1.5, 1.5), endpoint + QPoint(1.5, 1.5)));
         }
