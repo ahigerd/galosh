@@ -37,6 +37,11 @@ public:
   bool setWaypoint(const QString& name, int roomId);
   bool removeWaypoint(const QString& name);
 
+  int roomCost(int roomId) const;
+  int roomCost(const MapRoom* room) const;
+  int roomCost(const QString& roomType) const;
+  void setRoomCost(const QString& roomType, int cost);
+
 signals:
   void currentRoomUpdated(MapManager* map, int roomId);
 
@@ -55,6 +60,7 @@ private:
   void endRoomCapture();
 
   QSettings* mapFile;
+  QMap<QString, int> roomCosts;
   QMap<int, MapRoom> rooms;
   std::map<QString, MapZone> zones;
   QMap<QString, QSet<QString>> zoneConnections;

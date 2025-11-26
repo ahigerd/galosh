@@ -17,7 +17,20 @@ class MapSearch : public QObject
 {
 Q_OBJECT
 public:
+  struct Clique;
+
+  struct Route {
+    QList<int> rooms;
+    int cost;
+  };
+
+  struct CliqueRoute {
+    QList<const Clique*> cliques;
+    int cost;
+  };
+
   struct Grid {
+    MapManager* map;
     QVector<QVector<int>> grid;
     QSet<int> rooms;
 
@@ -36,7 +49,6 @@ public:
     inline bool contains(const Grid& other) const { return rooms.contains(other.rooms); }
   };
 
-  struct Clique;
   struct CliqueExit {
     int fromRoomId;
     Clique* toClique;
@@ -47,7 +59,7 @@ public:
     const MapZone* zone;
     QSet<int> roomIds;
     QList<CliqueExit> exits;
-    QMap<QPair<int, int>, QList<int>> routes;
+    QMap<QPair<int, int>, Route> routes;
     QList<Grid> grids;
   };
 
@@ -72,19 +84,19 @@ private:
   void findGrids(Clique* clique);
   void fillRoutes(Clique* clique, int startRoomId);
   QMap<int, int> getCosts(const Clique* clique, int startRoomId, int endRoomId = -1) const;
-  QList<int> findRouteInClique(const Clique* clique, int startRoomId, int endRoomId, const QMap<int, int>& costs, int maxCost = 0) const;
+  Route findRouteInClique(const Clique* clique, int startRoomId, int endRoomId, const QMap<int, int>& costs, int maxCost = 0) const;
   Clique* newClique(const MapZone* parent);
   Clique* findClique(const QString& zoneName, int roomId) const;
   Clique* findClique(int roomId) const;
   QList<const Clique*> collectCliques(const QStringList& zones) const;
-  QPair<QList<const MapSearch::Clique*>, int> findCliqueRoute(const Clique* fromClique, const Clique* toClique, QList<const Clique*> avoid) const;
+  CliqueRoute findCliqueRoute(const Clique* fromClique, const Clique* toClique, QList<const Clique*> avoid) const;
 
   struct CliqueStep {
     const Clique* clique;
     QSet<int> endRoomIds;
     QSet<int> nextRoomIds;
   };
-  QList<int> findRoute(const QList<CliqueStep>& steps, int index, int startRoomId) const;
+  Route findRoute(const QList<CliqueStep>& steps, int index, int startRoomId) const;
 
 public:
   MapManager* map;

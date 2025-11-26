@@ -62,6 +62,17 @@ void MapManager::loadMap(const QString& mapFileName)
   endRoomCapture();
   autoRoomId = mapFile->value("autoID", 1).toInt();
 
+  roomCosts.clear();
+  for (const QString& key : mapFile->childKeys()) {
+    if (key.startsWith("cost_")) {
+      int cost = mapFile->value(key).toInt();
+      if (cost < 1) {
+        cost = 1;
+      }
+      roomCosts[key.mid(5)] = cost;
+    }
+  }
+
   for (const QString& zone : mapFile->childGroups()) {
     if (zone.startsWith(" ")) {
       continue;
@@ -80,6 +91,7 @@ void MapManager::loadMap(const QString& mapFileName)
       room->zone = zoneName;
       room->name = mapFile->value("name").toString();
       room->description = mapFile->value("description").toString();
+      room->roomType = mapFile->value("type").toString();
       SettingsGroup exitGroup(mapFile, "exit");
       for (const QString& dir : mapFile->childGroups()) {
         SettingsGroup dirGroup(mapFile, dir);
@@ -611,6 +623,35 @@ bool MapManager::removeWaypoint(const QString& name)
   }
   mapFile->remove(name);
   return true;
+}
+
+int MapManager::roomCost(int roomId) const
+{
+  return roomCost(rooms.value(roomId).roomType);
+}
+
+int MapManager::roomCost(const MapRoom* room) const
+{
+  if (!room) {
+    return 1;
+  }
+  return roomCost(room->roomType);
+}
+
+int MapManager::roomCost(const QString& roomType) const
+{
+  return roomCosts.value(roomType, 1);
+}
+
+void MapManager::setRoomCost(const QString& roomType, int cost)
+{
+  if (cost < 1) {
+    cost = 1;
+  }
+  roomCosts[roomType] = cost;
+  if (mapFile) {
+    mapFile->setValue("cost_" + roomType, cost);
+  }
 }
 
 class MapDownloader : public QObject

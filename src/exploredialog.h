@@ -6,10 +6,11 @@
 #include "explorehistory.h"
 class MapManager;
 class MapViewer;
-class QSplitter;
 class RoomView;
 class CommandLine;
+class QSplitter;
 class QPushButton;
+class QLabel;
 
 class ExploreDialog : public QDialog, public TextCommandProcessor
 {
@@ -51,6 +52,7 @@ private:
   QSplitter* splitter;
   MapManager* map;
   MapViewer* mapView;
+  QLabel* roomTitle;
   RoomView* room;
   CommandLine* line;
   QPushButton* backButton;

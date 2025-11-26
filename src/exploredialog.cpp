@@ -15,6 +15,7 @@
 #include <QGridLayout>
 #include <QLineEdit>
 #include <QPushButton>
+#include <QLabel>
 #include <QTimer>
 #include <QSplitter>
 #include <QMetaObject>
@@ -47,21 +48,25 @@ ExploreDialog::ExploreDialog(MapManager* map, int roomId, int lastRoomId, const 
   margins.setTop(margins.top() + 2);
   layout->setContentsMargins(margins);
 
+  roomTitle = new QLabel(w);
+  layout->addWidget(roomTitle, 0, 0, 1, 2);
+
   room = new RoomView(map, roomId, lastRoomId, w);
-  room->layout()->setContentsMargins(0, 0, 0, 0);
-  layout->addWidget(room, 0, 0, 1, 2);
+  room->layout()->setContentsMargins(1, 0, 0, 0);
+  layout->addWidget(room, 1, 0, 1, 2);
 
   line = new CommandLine(w);
   line->setParsing(false); // we'll handle the parsing here
-  layout->addWidget(line, 1, 0);
+  layout->addWidget(line, 2, 0);
 
   backButton = new QPushButton("&Back", w);
   backButton->setDefault(false);
   backButton->setAutoDefault(false);
-  layout->addWidget(backButton, 1, 1);
+  layout->addWidget(backButton, 2, 1);
 
-  layout->setRowStretch(0, 1);
-  layout->setRowStretch(1, 0);
+  layout->setRowStretch(0, 0);
+  layout->setRowStretch(1, 1);
+  layout->setRowStretch(2, 0);
   layout->setColumnStretch(0, 1);
   layout->setColumnStretch(1, 0);
 
@@ -80,8 +85,10 @@ ExploreDialog::ExploreDialog(MapManager* map, int roomId, int lastRoomId, const 
     room = map->room(lastRoomId);
   }
   if (room) {
+    roomTitle->setText(room->name);
     setWindowTitle(room->name);
   } else {
+    roomTitle->setText("Unknown location");
     setWindowTitle("Unknown location");
   }
 
@@ -110,6 +117,7 @@ ExploreDialog::ExploreDialog(MapManager* map, int roomId, int lastRoomId, const 
 
 void ExploreDialog::roomUpdated(const QString& title, int id, const QString& movement)
 {
+  roomTitle->setText(title);
   setWindowTitle(title);
   history.travel(movement, id);
   backButton->setEnabled(history.canGoBack());
@@ -142,7 +150,11 @@ void ExploreDialog::handleSpeedwalk(const QStringList& dirs)
   QStringList messages;
   bool error = false;
   QString lastRoom;
+  int cost = 0;
+  const MapRoom* room = nullptr;
   for (int i = 0; i < dirs.length(); i++) {
+    const MapRoom* room = history.currentRoom();
+    cost += room ? map->roomCost(room->roomType) : 1;
     QString dir = MapRoom::normalizeDir(dirs[i]);
     int dest = history.travel(dir);
     if (dest < 0) {
@@ -156,7 +168,8 @@ void ExploreDialog::handleSpeedwalk(const QStringList& dirs)
     lastRoom = RoomView::formatRoomTitle(history.currentRoom());
     messages << QStringLiteral("%1 to %2").arg(dir).arg(lastRoom);
   }
-  const MapRoom* room = history.currentRoom();
+  messages << "" << QStringLiteral("Total movement cost: %1").arg(cost);
+  room = history.currentRoom();
   roomView()->setRoom(map, room ? room->id : -1);
   setResponse(error, messages.join("\n"));
 }
