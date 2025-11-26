@@ -23,7 +23,7 @@
 #include <QtDebug>
 
 ExploreDialog::ExploreDialog(MapManager* map, int roomId, int lastRoomId, const QString& movement, QWidget* parent)
-: QDialog(parent), map(map), history(map)
+: QWidget(parent), map(map), history(map)
 {
   setWindowFlag(Qt::Window, true);
   setAttribute(Qt::WA_WindowPropagation, true);
@@ -171,6 +171,7 @@ void ExploreDialog::handleSpeedwalk(const QStringList& dirs)
   messages << "" << QStringLiteral("Total movement cost: %1").arg(cost);
   room = history.currentRoom();
   roomView()->setRoom(map, room ? room->id : -1);
+  roomTitle->setText(room ? room->name : "Unknown location");
   setResponse(error, messages.join("\n"));
 }
 

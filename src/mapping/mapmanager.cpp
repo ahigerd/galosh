@@ -489,14 +489,23 @@ const MapZone* MapManager::searchForZone(const QString& name) const
 {
   const MapZone* zone = nullptr;
   QString bestMatch;
-  QString match = name.simplified().replace(" ", "").toUpper();
+  QStringList match = QString(name).replace(" ","").toUpper().split("-");
+  int bestMatchPos = -1;
   for (const auto& iter : zones) {
     QString check = QString(iter.first).replace(" ", "").toUpper();
-    if (check.startsWith(match)) {
-      if (bestMatch.isEmpty() || check.length() < bestMatch.length()) {
-        bestMatch = iter.first;
-        zone = &iter.second;
+    int matchPos = 0;
+    for (int i = 0; i < match.length(); i++) {
+      matchPos = check.indexOf(match[i], matchPos);
+      if (matchPos < 0) {
+        break;
       }
+    }
+    if (matchPos < 0) {
+      continue;
+    }
+    if (bestMatch.isEmpty() || bestMatchPos > matchPos || (bestMatchPos == matchPos && check.length() < bestMatch.length())) {
+      bestMatch = iter.first;
+      zone = &iter.second;
     }
   }
   return zone;

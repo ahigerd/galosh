@@ -1,7 +1,7 @@
 #ifndef GALOSH_EXPLOREDIALOG_H
 #define GALOSH_EXPLOREDIALOG_H
 
-#include <QDialog>
+#include <QWidget>
 #include "commands/textcommandprocessor.h"
 #include "explorehistory.h"
 class MapManager;
@@ -12,7 +12,7 @@ class QSplitter;
 class QPushButton;
 class QLabel;
 
-class ExploreDialog : public QDialog, public TextCommandProcessor
+class ExploreDialog : public QWidget, public TextCommandProcessor
 {
 Q_OBJECT
 public:
