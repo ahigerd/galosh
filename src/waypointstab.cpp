@@ -46,6 +46,7 @@ void WaypointsTab::load(const QString& profile)
 
   settings.beginGroup(" Waypoints");
   table->clearContents();
+  table->setRowCount(0);
   table->blockSignals(true);
   QMap<int, QTableWidgetItem*> rowMap;
   for (const QString& key : settings.childKeys()) {
