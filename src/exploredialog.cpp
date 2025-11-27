@@ -83,8 +83,8 @@ ExploreDialog::ExploreDialog(MapManager* map, int roomId, int lastRoomId, const 
   mb->addMenu(mMap);
 
   QMenu* mView = new QMenu("&View", mb);
-  mView->addAction("Zoom &In", mapView, SLOT(zoomIn()));
-  mView->addAction("Zoom &Out", mapView, SLOT(zoomOut()));
+  mView->addAction("Zoom &In", mapView, SLOT(zoomIn()))->setShortcuts({ QKeySequence::ZoomIn, QKeySequence("Ctrl+=") });
+  mView->addAction("Zoom &Out", mapView, SLOT(zoomOut()))->setShortcuts(QKeySequence::ZoomOut);
   mView->addSeparator();
   pinAction = mView->addAction("Always on &Top", this, SLOT(togglePin()));
   pinAction->setCheckable(true);

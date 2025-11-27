@@ -273,6 +273,8 @@ void GaloshWindow::connectToProfile(const QString& path, bool online)
   itemDB.loadProfile(path);
   mapAction->setEnabled(true);
   mapActionTB->setEnabled(true);
+  exploreAction->setEnabled(true);
+  exploreActionTB->setEnabled(true);
   if (mapView) {
     mapView->reload();
   }
@@ -438,8 +440,6 @@ void GaloshWindow::setLastRoom(const QString& title, int roomId)
   settings.value("lastRoom", roomId);
   lastRoomId = roomId;
   exploreHistory.goTo(roomId);
-  exploreAction->setEnabled(true);
-  exploreActionTB->setEnabled(true);
   if (!speedPath.isEmpty()) {
     QString dir = speedPath.takeFirst();
     if (dir == "done") {
