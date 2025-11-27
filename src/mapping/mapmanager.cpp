@@ -77,7 +77,12 @@ void MapManager::loadMap(const QString& mapFileName)
     if (zone.startsWith(" ")) {
       continue;
     }
-    QString zoneName = zone == "-" ? "" : zone;
+    QString zoneName = zone;
+    if (zoneName == "-") {
+      zoneName = "";
+    } else {
+      gmcpMode = true;
+    }
     SettingsGroup zoneGroup(mapFile, zone);
     MapZone* zoneObj = mutableZone(zoneName);
     for (const QString& idStr : mapFile->childGroups()) {
@@ -115,6 +120,8 @@ void MapManager::loadMap(const QString& mapFileName)
       }
     }
   }
+
+  gmcpMode = zones.size() > 1;
 }
 
 void MapManager::promptWaiting()
@@ -288,6 +295,15 @@ void MapManager::processLine(const QString& line)
         if (roomDirty) {
           rooms[currentRoom].description = pendingDescription;
         }
+        if (!gmcpMode) {
+          MapZone* zone = mutableZone("");
+          if (!zone->roomIds.contains(currentRoom)) {
+            zone->roomIds << currentRoom;
+            if (mapSearch) {
+              mapSearch->markDirty(zone);
+            }
+          }
+        }
         saveRoom(&rooms[currentRoom]);
       }
       emit currentRoomUpdated(this, currentRoom);
@@ -457,7 +473,7 @@ QStringList MapManager::zoneNames() const
   QStringList names;
   for (const auto& iter : zones) {
     QString name = iter.second.name;
-    if (!gmcpMode && (name == "-" || name.isEmpty())) {
+    if (gmcpMode && (name == "-" || name.isEmpty())) {
       continue;
     }
     names << iter.second.name;

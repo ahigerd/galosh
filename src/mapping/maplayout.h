@@ -21,7 +21,7 @@ class MapLayout
 public:
   MapLayout(MapManager* map);
 
-  void loadZone(const MapZone* zone);
+  void loadZone(const MapZone* zone, bool force = false);
   QString currentZone;
 
   QSize displaySize() const;

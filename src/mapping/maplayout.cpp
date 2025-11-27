@@ -98,16 +98,16 @@ static QPointF toEdge(const QPointF& pt)
 }
 
 MapLayout::MapLayout(MapManager* map)
-: map(map), search(nullptr)
+: currentZone("(none)"), map(map), search(nullptr)
 {
   // initializers only
 }
 
-void MapLayout::loadZone(const MapZone* zone)
+void MapLayout::loadZone(const MapZone* zone, bool force)
 {
   if (zone) {
     search = map->search();
-    if (!search->precompute()) {
+    if (!search->precompute(force)) {
       // If no changes occurred in the search computation,
       // it's safe to short-circuit and keep what we have,
       // assuming we aren't moving to a new zone.

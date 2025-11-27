@@ -272,6 +272,12 @@ void GaloshWindow::connectToProfile(const QString& path, bool online)
   itemDB.loadProfile(path);
   mapAction->setEnabled(true);
   mapActionTB->setEnabled(true);
+  if (mapView) {
+    mapView->reload();
+  }
+  if (mapDockView) {
+    mapDockView->reload();
+  }
 
   if (online) {
     QString command = settings.value("commandLine").toString();
@@ -453,10 +459,12 @@ void GaloshWindow::showMap()
     mapView->setWindowFlags(Qt::Window);
     QObject::connect(mapView, SIGNAL(exploreMap(int)), this, SLOT(exploreMap(int)));
   }
-  // TODO: link ExploreHistory so MapViewer can show current location
   const MapRoom* room = exploreHistory.currentRoom();
+  QStringList zoneNames = map.zoneNames();
   if (room) {
     mapView->loadZone(room->zone);
+  } else if (zoneNames.size() == 1) {
+    mapView->loadZone(zoneNames.first(), true);
   }
   mapView->show();
   mapView->raise();

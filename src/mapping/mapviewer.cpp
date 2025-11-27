@@ -121,10 +121,6 @@ MapViewer::MapViewer(MapViewer::MapType mapType, MapManager* map, ExploreHistory
   QObject::connect(bOut, SIGNAL(clicked()), this, SLOT(zoomOut()));
   layout->addWidget(bOut);
 
-  for (const QString& name : map->zoneNames()) {
-    zone->addItem(name);
-  }
-
   if (mapType == MiniMap) {
     QFont small = font();
     small.setPointSize(small.pointSize() * .75);
@@ -152,6 +148,16 @@ MapViewer::MapViewer(MapViewer::MapType mapType, MapManager* map, ExploreHistory
 
   QObject::connect(zone, SIGNAL(currentTextChanged(QString)), this, SLOT(loadZone(QString)));
   QObject::connect(history, SIGNAL(currentRoomChanged(int)), this, SLOT(setCurrentRoom(int)));
+}
+
+void MapViewer::reload()
+{
+  zone->blockSignals(true);
+  zone->clear();
+  for (const QString& name : map->zoneNames()) {
+    zone->addItem(name);
+  }
+  zone->blockSignals(false);
 }
 
 void MapViewer::setZoom(double level)
@@ -201,7 +207,7 @@ void MapViewer::setCurrentRoom(int roomId)
   // TODO: recalc map if necessary (will this need a toggle?)
 }
 
-void MapViewer::loadZone(const QString& name)
+void MapViewer::loadZone(const QString& name, bool force)
 {
   if (zone->currentText() != name) {
     zone->blockSignals(true);
@@ -217,7 +223,7 @@ void MapViewer::loadZone(const QString& name)
     zone->setCurrentText(name);
     zone->blockSignals(false);
   }
-  mapLayout->loadZone(map->zone(name));
+  mapLayout->loadZone(map->zone(name), force);
   view->resize(mapLayout->displaySize() * view->zoomLevel);
   resizeEvent(nullptr);
   view->update();

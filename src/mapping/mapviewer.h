@@ -22,7 +22,8 @@ public:
   MapViewer(MapType mapType, MapManager* map, ExploreHistory* history, QWidget* parent = nullptr);
 
 public slots:
-  void loadZone(const QString& name);
+  void reload();
+  void loadZone(const QString& name, bool force = false);
   void setZoom(double level);
   void zoomIn();
   void zoomOut();
