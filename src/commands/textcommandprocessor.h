@@ -8,7 +8,7 @@ class TextCommand;
 class TextCommandProcessor
 {
 public:
-  TextCommandProcessor();
+  TextCommandProcessor(const QString& commandPrefix = QString());
   virtual ~TextCommandProcessor();
 
   void addCommand(TextCommand* command);
@@ -19,6 +19,7 @@ public:
     return command;
   }
 
+  void help();
   bool handleCommand(const QString& command);
   bool handleCommand(const QString& command, const QStringList& args);
 
@@ -32,6 +33,7 @@ private:
   friend class TextCommand;
   friend class HelpCommand;
   QMap<QString, TextCommand*> m_commands;
+  TextCommand* m_helpCommand;
 };
 
 #endif

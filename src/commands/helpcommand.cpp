@@ -1,10 +1,11 @@
 #include "helpcommand.h"
 #include "textcommandprocessor.h"
 
-HelpCommand::HelpCommand(TextCommandProcessor* source)
-: TextCommand("HELP"), source(source)
+HelpCommand::HelpCommand(const QString& commandPrefix, TextCommandProcessor* source)
+: TextCommand("HELP"), source(source), commandPrefix(commandPrefix)
 {
   addKeyword("H");
+  addKeyword("?");
 }
 
 QString HelpCommand::helpMessage(bool brief) const
@@ -26,17 +27,20 @@ void HelpCommand::handleInvoke(const QStringList& args, const KWArgs&)
     }
     for (QString name : names.keys()) {
       const TextCommand* cmd = names[name];
-      showMessage(QStringLiteral("%1\t%2").arg(name.leftJustified(8)).arg(cmd->helpMessage(true)));
+      showMessage(QStringLiteral("%1%2\t%3").arg(commandPrefix).arg(name.leftJustified(8)).arg(cmd->helpMessage(true)));
     }
     return;
   }
   QString name = args.first().toUpper();
+  if (!commandPrefix.isEmpty() && name.startsWith(commandPrefix)) {
+    name = name.mid(commandPrefix.length());
+  }
   const TextCommand* cmd = source->m_commands.value(name);
   if (!cmd) {
     showError("Unknown command: " + name);
     return;
   }
-  QString intro = cmd->name();
+  QString intro = QStringLiteral("Help for %1%2").arg(commandPrefix).arg(cmd->name());
   if (cmd->keywords().length() > 1) {
     if (cmd->keywords().length() > 2) {
       intro += " (aliases: ";
@@ -51,10 +55,14 @@ void HelpCommand::handleInvoke(const QStringList& args, const KWArgs&)
         } else {
           intro += ", ";
         }
-        intro += alias;
+        intro += commandPrefix + alias;
       }
+    }
+    if (!first) {
+      intro += ")";
     }
   }
 
-  showMessage(cmd->helpMessage(false));
+  showMessage(intro + "\n" + QString(intro.length(), '='));
+  showMessage(cmd->helpMessage(false) + "\n");
 }

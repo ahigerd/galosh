@@ -2,6 +2,7 @@
 #include "mapmanager.h"
 #include "explorehistory.h"
 #include <QSettings>
+#include <QScrollArea>
 #include <QHBoxLayout>
 #include <QComboBox>
 #include <QToolButton>
@@ -81,7 +82,7 @@ protected:
 };
 
 MapViewer::MapViewer(MapViewer::MapType mapType, MapManager* map, ExploreHistory* history, QWidget* parent)
-: QScrollArea(parent), map(map), mapType(mapType)
+: QWidget(parent), map(map), mapType(mapType)
 {
   if (mapType == StandaloneMap) {
     setAttribute(Qt::WA_WindowPropagation, true);
@@ -97,6 +98,10 @@ MapViewer::MapViewer(MapViewer::MapType mapType, MapManager* map, ExploreHistory
 
   mapLayout.reset(new MapLayout(map));
   view = new MapWidget(mapLayout.get(), this);
+
+  QVBoxLayout* mainLayout = new QVBoxLayout(this);
+  mainLayout->setContentsMargins(0, 0, 0, 0);
+  mainLayout->setSpacing(0);
 
   header = new QWidget(this);
   QHBoxLayout* layout = new QHBoxLayout(header);
@@ -129,12 +134,15 @@ MapViewer::MapViewer(MapViewer::MapType mapType, MapManager* map, ExploreHistory
     bIn->setFixedSize(bIn->minimumSizeHint());
     bOut->setFixedSize(bOut->minimumSizeHint());
     zone->setVisible(false);
+    header->setParent(view);
   } else {
-    setViewportMargins(0, header->sizeHint().height(), 0, 0);
+    mainLayout->addWidget(header, 0);
   }
 
-  setWidgetResizable(false);
-  setWidget(view);
+  scrollArea = new QScrollArea(this);
+  scrollArea->setWidgetResizable(false);
+  scrollArea->setWidget(view);
+  mainLayout->addWidget(scrollArea, 1);
 
   QSettings settings;
   if (mapType == MiniMap) {
@@ -162,13 +170,13 @@ void MapViewer::reload()
 
 void MapViewer::setZoom(double level)
 {
-  QPointF center(horizontalScrollBar()->value(), verticalScrollBar()->value());
+  QPointF center(scrollArea->horizontalScrollBar()->value(), scrollArea->verticalScrollBar()->value());
   center /= view->zoomLevel;
   view->zoomLevel = level;
   view->resize(mapLayout->displaySize() * view->zoomLevel);
   center *= view->zoomLevel;
-  horizontalScrollBar()->setValue(center.x());
-  verticalScrollBar()->setValue(center.y());
+  scrollArea->horizontalScrollBar()->setValue(center.x());
+  scrollArea->verticalScrollBar()->setValue(center.y());
   resizeEvent(nullptr);
 
   QSettings settings;
@@ -202,7 +210,7 @@ void MapViewer::setCurrentRoom(int roomId)
     loadZone(room->zone);
     view->currentRoomId = roomId;
     QPointF pos = mapLayout->roomPos(roomId).center() * view->zoomLevel;
-    ensureVisible(pos.x(), pos.y(), width() / 3, height() / 3);
+    scrollArea->ensureVisible(pos.x(), pos.y(), width() / 3, height() / 3);
   }
   // TODO: recalc map if necessary (will this need a toggle?)
 }
@@ -231,15 +239,18 @@ void MapViewer::loadZone(const QString& name, bool force)
 
 void MapViewer::resizeEvent(QResizeEvent* event)
 {
-  int w = width();
-  if (verticalScrollBar()->isVisible()) {
-    w -= verticalScrollBar()->width();
+  if (mapType == MiniMap) {
+    int w = width();
+    if (scrollArea->verticalScrollBar()->isVisible()) {
+      w -= scrollArea->verticalScrollBar()->width();
+    }
+    header->setGeometry(0, 0, w, header->sizeHint().height());
   }
-  header->setGeometry(0, 0, w, header->sizeHint().height());
+
   view->resize(view->sizeHint());
 
   if (event) {
-    QScrollArea::resizeEvent(event);
+    QWidget::resizeEvent(event);
 
     if (mapType == StandaloneMap) {
       QSettings settings;
@@ -251,7 +262,7 @@ void MapViewer::resizeEvent(QResizeEvent* event)
 void MapViewer::showEvent(QShowEvent*)
 {
   QPointF pos = mapLayout->roomPos(view->currentRoomId).center() * view->zoomLevel;
-  ensureVisible(pos.x(), pos.y(), width() / 3, height() / 3);
+  scrollArea->ensureVisible(pos.x(), pos.y(), width() / 3, height() / 3);
 }
 
 void MapViewer::moveEvent(QMoveEvent*)

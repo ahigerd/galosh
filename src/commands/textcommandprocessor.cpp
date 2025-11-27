@@ -2,9 +2,10 @@
 #include "textcommand.h"
 #include "helpcommand.h"
 
-TextCommandProcessor::TextCommandProcessor()
+TextCommandProcessor::TextCommandProcessor(const QString& commandPrefix)
 {
-  addCommand(new HelpCommand(this));
+  m_helpCommand = new HelpCommand(commandPrefix, this);
+  addCommand(m_helpCommand);
 }
 
 TextCommandProcessor::~TextCommandProcessor()
@@ -74,6 +75,11 @@ bool TextCommandProcessor::handleCommand(const QString& key, const QStringList& 
   }
   command->invoke(args);
   return true;
+}
+
+void TextCommandProcessor::help()
+{
+  m_helpCommand->invoke({});
 }
 
 bool TextCommandProcessor::commandFilter(const QString&, const QStringList&)

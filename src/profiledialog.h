@@ -22,6 +22,8 @@ public:
   enum Tab {
     ServerTab,
     TriggersTab,
+    AppearanceTab,
+    WaypointsTab,
   };
 
   static QFrame* horizontalLine(QWidget* parent = nullptr);
@@ -72,8 +74,8 @@ private:
   QLineEdit* loginPrompt;
   QLineEdit* passwordPrompt;
   TriggerTab* tTriggers;
-  AppearanceTab* tAppearance;
-  WaypointsTab* tWaypoints;
+  ::AppearanceTab* tAppearance;
+  ::WaypointsTab* tWaypoints;
   QDialogButtonBox* buttons;
   bool emitConnect;
   bool dirty;

@@ -51,6 +51,7 @@ private slots:
   void setLastRoom(const QString& title, int roomId);
   void updateGeometry(bool queue = false);
 #ifdef Q_MOC_RUN
+  void help();
   void handleCommand(const QString& command, const QStringList& args);
 #endif
   void speedwalk(const QStringList& steps);

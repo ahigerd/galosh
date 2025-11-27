@@ -6,7 +6,7 @@
 class HelpCommand : public TextCommand
 {
 public:
-  HelpCommand(TextCommandProcessor* source);
+  HelpCommand(const QString& commandPrefix, TextCommandProcessor* source);
 
   virtual int maximumArguments() const override { return 1; }
   virtual QString helpMessage(bool brief) const override;
@@ -16,6 +16,7 @@ protected:
 
 private:
   TextCommandProcessor* source;
+  QString commandPrefix;
 };
 
 #endif

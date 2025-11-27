@@ -28,7 +28,7 @@
 #include <QtDebug>
 
 GaloshWindow::GaloshWindow(QWidget* parent)
-: QMainWindow(parent), exploreHistory(&map), explore(nullptr), lastRoomId(-1), geometryReady(false), shouldRestoreDocks(false)
+: QMainWindow(parent), TextCommandProcessor("/"), exploreHistory(&map), explore(nullptr), lastRoomId(-1), geometryReady(false), shouldRestoreDocks(false)
 {
   setCorner(Qt::TopLeftCorner, Qt::LeftDockWidgetArea);
   setCorner(Qt::BottomLeftCorner, Qt::LeftDockWidgetArea);
@@ -99,6 +99,7 @@ GaloshWindow::GaloshWindow(QWidget* parent)
 
   QMenu* helpMenu = new QMenu("&Help", mb);
   helpMenu->addAction("Open &Website...", this, SLOT(openWebsite()));
+  helpMenu->addAction("Show Command &Help", this, SLOT(help()));
   helpMenu->addSeparator();
   helpMenu->addAction("&About...", this, SLOT(about()));
   helpMenu->addAction("About &Qt...", qApp, SLOT(aboutQt()));
@@ -479,6 +480,7 @@ void GaloshWindow::exploreMap(int roomId, const QString& movement)
   } else {
     explore = new ExploreDialog(&map, roomId, lastRoomId, movement, this);
     QObject::connect(explore, SIGNAL(exploreRoom(int, QString)), this, SLOT(exploreMap(int, QString)));
+    QObject::connect(explore, SIGNAL(openProfileDialog(ProfileDialog::Tab)), this, SLOT(openProfileDialog(ProfileDialog::Tab)));
     explore->show();
   }
 }

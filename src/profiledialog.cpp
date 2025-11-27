@@ -74,8 +74,8 @@ ProfileDialog::ProfileDialog(bool forConnection, QWidget* parent)
   QFormLayout* lServer = new QFormLayout(tServer);
   tabs->addTab(tServer, "&1. Server");
   tabs->addTab(tTriggers = new TriggerTab(tabs), "&2. Triggers");
-  tabs->addTab(tAppearance = new AppearanceTab(tabs), "&3. Appearance");
-  tabs->addTab(tWaypoints = new WaypointsTab(tabs), "&4. Waypoints");
+  tabs->addTab(tAppearance = new ::AppearanceTab(tabs), "&3. Appearance");
+  tabs->addTab(tWaypoints = new ::WaypointsTab(tabs), "&4. Waypoints");
 
   lServer->addRow("Profile &name:", profileName = new QLineEdit(tServer));
   lServer->addRow(horizontalLine(tServer));

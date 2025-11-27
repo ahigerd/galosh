@@ -1,9 +1,10 @@
 #ifndef GALOSH_EXPLOREDIALOG_H
 #define GALOSH_EXPLOREDIALOG_H
 
-#include <QWidget>
+#include <QMainWindow>
 #include "commands/textcommandprocessor.h"
 #include "explorehistory.h"
+#include "profiledialog.h"
 class MapManager;
 class MapViewer;
 class RoomView;
@@ -12,7 +13,7 @@ class QSplitter;
 class QPushButton;
 class QLabel;
 
-class ExploreDialog : public QWidget, public TextCommandProcessor
+class ExploreDialog : public QMainWindow, public TextCommandProcessor
 {
 Q_OBJECT
 public:
@@ -22,12 +23,13 @@ public:
 
 signals:
   void exploreRoom(int roomId, const QString& movement = QString());
+  void openProfileDialog(ProfileDialog::Tab tab);
 
 public slots:
   void roomUpdated(const QString& title, int id, const QString& movement = QString());
   void refocus();
-  // TODO: toggle pin
-  // TODO: open map
+  void togglePin();
+  void showHelp();
 
 private slots:
   void saveState();
@@ -56,6 +58,7 @@ private:
   RoomView* room;
   CommandLine* line;
   QPushButton* backButton;
+  QAction* pinAction;
   ExploreHistory history;
   QStringList responseLines;
   bool responseError;

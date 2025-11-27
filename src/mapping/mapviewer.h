@@ -1,15 +1,16 @@
 #ifndef GALOSH_MAPVIEWER_H
 #define GALOSH_MAPVIEWER_H
 
-#include <QScrollArea>
+#include <QWidget>
 #include <memory>
 #include "maplayout.h"
+class QScrollArea;
 class QComboBox;
 class MapManager;
 class MapWidget;
 class ExploreHistory;
 
-class MapViewer : public QScrollArea
+class MapViewer : public QWidget
 {
 Q_OBJECT
 public:
@@ -30,10 +31,6 @@ public slots:
 
   void setCurrentRoom(int roomId);
 
-  // TODO: toggle map follow
-  // TODO: follow game or explore
-  // TODO: toggle pin
-
 signals:
   void exploreMap(int roomId);
 
@@ -50,6 +47,7 @@ private:
   std::unique_ptr<MapLayout> mapLayout;
   MapManager* map;
   QWidget* header;
+  QScrollArea* scrollArea;
   MapWidget* view;
   QComboBox* zone;
   MapType mapType;

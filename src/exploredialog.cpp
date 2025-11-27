@@ -13,6 +13,8 @@
 #include "commands/zonecommand.h"
 #include <QSettings>
 #include <QGridLayout>
+#include <QMenuBar>
+#include <QToolButton>
 #include <QLineEdit>
 #include <QPushButton>
 #include <QLabel>
@@ -20,46 +22,47 @@
 #include <QSplitter>
 #include <QMetaObject>
 #include <algorithm>
-#include <QtDebug>
 
 ExploreDialog::ExploreDialog(MapManager* map, int roomId, int lastRoomId, const QString& movement, QWidget* parent)
-: QWidget(parent), map(map), history(map)
+: QMainWindow(parent), map(map), history(map)
 {
-  setWindowFlag(Qt::Window, true);
   setAttribute(Qt::WA_WindowPropagation, true);
   setAttribute(Qt::WA_DeleteOnClose, true);
 
-  QVBoxLayout* vbox = new QVBoxLayout(this);
+  QWidget* widget = new QWidget(this);
+  setCentralWidget(widget);
+
+  QVBoxLayout* vbox = new QVBoxLayout(widget);
   vbox->setContentsMargins(0, 0, 0, 0);
 
-  splitter = new QSplitter(Qt::Vertical, this);
+  splitter = new QSplitter(Qt::Vertical, widget);
   QObject::connect(splitter, SIGNAL(splitterMoved(int,int)), this, SLOT(saveState()));
   vbox->addWidget(splitter, 1);
 
-  mapView = new MapViewer(MapViewer::EmbedMap, map, &history, this);
+  mapView = new MapViewer(MapViewer::EmbedMap, map, &history, widget);
   QObject::connect(mapView, SIGNAL(exploreMap(int)), this, SIGNAL(exploreRoom(int)));
   splitter->addWidget(mapView);
 
-  QWidget* w = new QWidget(splitter);
-  splitter->addWidget(w);
+  QWidget* lowerPane = new QWidget(splitter);
+  splitter->addWidget(lowerPane);
 
-  QGridLayout* layout = new QGridLayout(w);
+  QGridLayout* layout = new QGridLayout(lowerPane);
   QMargins margins = layout->contentsMargins();
   margins.setTop(margins.top() + 2);
   layout->setContentsMargins(margins);
 
-  roomTitle = new QLabel(w);
+  roomTitle = new QLabel(lowerPane);
   layout->addWidget(roomTitle, 0, 0, 1, 2);
 
-  room = new RoomView(map, roomId, lastRoomId, w);
+  room = new RoomView(map, roomId, lastRoomId, lowerPane);
   room->layout()->setContentsMargins(1, 0, 0, 0);
   layout->addWidget(room, 1, 0, 1, 2);
 
-  line = new CommandLine(w);
+  line = new CommandLine(lowerPane);
   line->setParsing(false); // we'll handle the parsing here
   layout->addWidget(line, 2, 0);
 
-  backButton = new QPushButton("&Back", w);
+  backButton = new QPushButton("&Back", lowerPane);
   backButton->setDefault(false);
   backButton->setAutoDefault(false);
   layout->addWidget(backButton, 2, 1);
@@ -69,6 +72,27 @@ ExploreDialog::ExploreDialog(MapManager* map, int roomId, int lastRoomId, const 
   layout->setRowStretch(2, 0);
   layout->setColumnStretch(0, 1);
   layout->setColumnStretch(1, 0);
+
+  QMenuBar* mb = new QMenuBar(this);
+  setMenuBar(mb);
+
+  QMenu* mMap = new QMenu("&Map", mb);
+  mMap->addAction("&Waypoints...", [this]{ emit openProfileDialog(ProfileDialog::WaypointsTab); });
+  mMap->addSeparator();
+  mMap->addAction("&Close", this, SLOT(close()));
+  mb->addMenu(mMap);
+
+  QMenu* mView = new QMenu("&View", mb);
+  mView->addAction("Zoom &In", mapView, SLOT(zoomIn()));
+  mView->addAction("Zoom &Out", mapView, SLOT(zoomOut()));
+  mView->addSeparator();
+  pinAction = mView->addAction("Always on &Top", this, SLOT(togglePin()));
+  pinAction->setCheckable(true);
+  mb->addMenu(mView);
+
+  QMenu* mHelp = new QMenu("&Help", mb);
+  mHelp->addAction("&Help", this, SLOT(showHelp()));
+  mb->addMenu(mHelp);
 
   QObject::connect(room, SIGNAL(roomUpdated(QString, int, QString)), this, SLOT(roomUpdated(QString, int, QString)));
   QObject::connect(room, SIGNAL(exploreRoom(int, QString)), this, SIGNAL(exploreRoom(int, QString)));
@@ -113,6 +137,8 @@ ExploreDialog::ExploreDialog(MapManager* map, int roomId, int lastRoomId, const 
   QSettings settings;
   restoreGeometry(settings.value("explore").toByteArray());
   splitter->restoreState(settings.value("exploreSplit").toByteArray());
+  pinAction->setChecked(settings.value("explorePinned").toBool());
+  setWindowFlag(Qt::WindowStaysOnTopHint, pinAction->isChecked());
 }
 
 void ExploreDialog::roomUpdated(const QString& title, int id, const QString& movement)
@@ -265,11 +291,25 @@ void ExploreDialog::goToRoom(const QString& id)
   emit exploreRoom(roomId, QString());
 }
 
+void ExploreDialog::togglePin()
+{
+  setWindowFlag(Qt::WindowStaysOnTopHint, pinAction->isChecked());
+  saveState();
+}
+
+void ExploreDialog::showHelp()
+{
+  responseLines.clear();
+  help();
+  setResponse(false, responseLines.join("\n"));
+}
+
 void ExploreDialog::saveState()
 {
   QSettings settings;
   settings.setValue("explore", saveGeometry());
   settings.setValue("exploreSplit", splitter->saveState());
+  settings.setValue("explorePinned", pinAction->isChecked());
 }
 
 void ExploreDialog::resizeEvent(QResizeEvent*)
