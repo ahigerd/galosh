@@ -4,6 +4,7 @@
 #include <QDialog>
 class MapManager;
 class QTableWidget;
+class QTableWidgetItem;
 
 class MapOptions : public QDialog
 {
@@ -16,9 +17,16 @@ public:
 public slots:
   bool save();
 
+private slots:
+  void addRow();
+  void removeRows();
+  void onCellChanged(int row, int col);
+  void onItemDoubleClicked(QTableWidgetItem* item);
+
 private:
   MapManager* map;
   QTableWidget* table;
+  bool isDirty;
 };
 
 #endif

@@ -156,6 +156,8 @@ MapViewer::MapViewer(MapViewer::MapType mapType, MapManager* map, ExploreHistory
 
   QObject::connect(zone, SIGNAL(currentTextChanged(QString)), this, SLOT(loadZone(QString)));
   QObject::connect(history, SIGNAL(currentRoomChanged(int)), this, SLOT(setCurrentRoom(int)));
+
+  reload();
 }
 
 void MapViewer::reload()

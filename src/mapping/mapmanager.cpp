@@ -1,6 +1,7 @@
 #include "mapmanager.h"
 #include "mudletimport.h"
 #include "mapviewer.h"
+#include "algorithms.h"
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
 #include <QSettings>
@@ -45,7 +46,7 @@ QColor MapManager::colorHeuristic(const QString& roomType)
   static QList<QPair<QRegularExpression, QColor>> heuristics = {
     { QRegularExpression("\\bfountains?\\b", opt), QColor(160, 192, 255) },
     { QRegularExpression("\\b(city|town|road|street|avenue|alley)\\b", opt), QColor(224, 224, 224) },
-    { QRegularExpression("\\b(shop|store|house|halls?|structure|building|temple|inn|tavern|offices?)\\b", opt), QColor(180, 180, 180) },
+    { QRegularExpression("\\b(shop|store|house|halls?|structure|building|temple|inn|tavern|offices?)\\b", opt), QColor(160, 160, 160) },
     { QRegularExpression("\\b(path|trail|way)\\b", opt), QColor(220, 200, 180) },
     { QRegularExpression("\\b(beach)\\b", opt), QColor(200, 200, 180) },
     { QRegularExpression("\\b(swamp)", opt), QColor(64, 96, 0) },
@@ -53,7 +54,7 @@ QColor MapManager::colorHeuristic(const QString& roomType)
     { QRegularExpression("\\b(shallows|ocean|sea|river|lake|lagoon|(under)?water(fall)?|pool|pond|inlet|reefs?)\\b", opt), QColor(128, 192, 255) },
     { QRegularExpression("(hills?|pass)\\b", opt), QColor(192, 160, 128) },
     { QRegularExpression("\\b(mountains?|cliffs?|ravine?)\\b", opt), QColor(180, 140, 80) },
-    { QRegularExpression("\\b(cave(rn)?s?\\b|under.*)", opt), QColor(140, 100, 180) },
+    { QRegularExpression("\\b(cave(rn)?s?\\b|dark.*|under.*)", opt), QColor(140, 100, 180) },
     { QRegularExpression("\\b(plains?\\b|grass|meadows?\\b|fields?\\b)", opt), QColor(128, 255, 0) },
     { QRegularExpression("\\bruins?\\b", opt), QColor(128, 128, 128) },
   };
@@ -62,7 +63,7 @@ QColor MapManager::colorHeuristic(const QString& roomType)
       return color;
     }
   }
-  return Qt::white;
+  return QColor();
 }
 
 MapManager::MapManager(QObject* parent)
@@ -75,6 +76,11 @@ MapManager::MapManager(QObject* parent)
 void MapManager::loadProfile(const QString& profile)
 {
   loadMap(mapForProfile(profile));
+}
+
+QSettings* MapManager::mapProfile() const
+{
+  return mapFile;
 }
 
 void MapManager::loadMap(const QString& mapFileName)
@@ -719,14 +725,11 @@ void MapManager::setRoomCost(const QString& roomType, int cost)
 QColor MapManager::roomColor(int roomId) const
 {
   MapRoom room = rooms.value(roomId);
-  QColor color = roomColors.value(room.roomType, Qt::transparent);
-  if (color == Qt::transparent && !room.roomType.isEmpty()) {
+  QColor color = roomColors.value(room.roomType);
+  if (!color.isValid() && !room.roomType.isEmpty()) {
     color = colorHeuristic(room.roomType);
-    if (color == Qt::white) {
-      color = Qt::transparent;
-    }
   }
-  if (color == Qt::transparent) {
+  if (!color.isValid()) {
     color = colorHeuristic(room.name);
   }
   return color;
@@ -734,14 +737,27 @@ QColor MapManager::roomColor(int roomId) const
 
 QColor MapManager::roomColor(const QString& roomType) const
 {
-  return roomColors.value(roomType, colorHeuristic(roomType));
+  if (roomColors.contains(roomType)) {
+    return roomColors.value(roomType);
+  }
+  QString check = roomType.toLower().replace(" ", "");
+  for (auto [name, color] : cpairs(roomColors)) {
+    if (roomType.contains(name.toLower())) {
+      return color;
+    }
+  }
+  return colorHeuristic(roomType);
 }
 
 void MapManager::setRoomColor(const QString& roomType, const QColor& color)
 {
   roomColors[roomType] = color;
   if (mapFile) {
-    mapFile->setValue("color_" + roomType, color);
+    if (color.isValid()) {
+      mapFile->setValue("color_" + roomType, color);
+    } else {
+      mapFile->remove("color_" + roomType);
+    }
   }
 }
 
@@ -754,6 +770,17 @@ QStringList MapManager::roomTypes() const
     }
   }
   return types;
+}
+
+void MapManager::removeRoomType(const QString& roomType)
+{
+  roomCosts.remove(roomType);
+  roomColors.remove(roomType);
+
+  if (mapFile) {
+    mapFile->remove("cost_" + roomType);
+    mapFile->remove("color_" + roomType);
+  }
 }
 
 class MapDownloader : public QObject

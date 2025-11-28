@@ -40,6 +40,7 @@ public:
   bool removeWaypoint(const QString& name);
 
   QStringList roomTypes() const;
+  void removeRoomType(const QString& roomType);
 
   QString roomType(int roomId) const;
   inline QString roomType(const MapRoom* room) const { return room ? room->roomType : QString(); }
@@ -53,6 +54,8 @@ public:
   inline QColor roomColor(const MapRoom* room) const { return roomColor(roomType(room)); }
   QColor roomColor(const QString& roomType) const;
   void setRoomColor(const QString& roomType, const QColor& color);
+
+  QSettings* mapProfile() const;
 
 signals:
   void currentRoomUpdated(MapManager* map, int roomId);

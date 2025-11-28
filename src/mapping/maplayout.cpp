@@ -829,7 +829,8 @@ void MapLayout::render(QPainter* painter, const QRectF&, bool drawLabels) const
   for (int roomId : coords.keys()) {
     QPointF pos = coords[roomId] * COORD_SCALE;
     QRectF rect(pos - ROOM_OFFSET, ROOM_SIZEF);
-    painter->setBrush(map->roomColor(roomId));
+    QColor color = map->roomColor(roomId);
+    painter->setBrush(color.isValid() ? color : Qt::white);
     painter->drawRect(rect.toRect());
     painter->setBrush(Qt::black);
     if (drawLabels) {
