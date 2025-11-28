@@ -30,6 +30,7 @@ public slots:
   void refocus();
   void togglePin();
   void showHelp();
+  void openMapOptions();
 
 private slots:
   void saveState();

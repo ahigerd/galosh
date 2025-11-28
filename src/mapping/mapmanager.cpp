@@ -39,6 +39,32 @@ QString MapManager::mapForProfile(const QString& profile)
   return mapFileName;
 }
 
+QColor MapManager::colorHeuristic(const QString& roomType)
+{
+  static constexpr QRegularExpression::PatternOptions opt = QRegularExpression::CaseInsensitiveOption | QRegularExpression::DontCaptureOption;
+  static QList<QPair<QRegularExpression, QColor>> heuristics = {
+    { QRegularExpression("\\bfountains?\\b", opt), QColor(160, 192, 255) },
+    { QRegularExpression("\\b(city|town|road|street|avenue|alley)\\b", opt), QColor(224, 224, 224) },
+    { QRegularExpression("\\b(shop|store|house|halls?|structure|building|temple|inn|tavern|offices?)\\b", opt), QColor(180, 180, 180) },
+    { QRegularExpression("\\b(path|trail|way)\\b", opt), QColor(220, 200, 180) },
+    { QRegularExpression("\\b(beach)\\b", opt), QColor(200, 200, 180) },
+    { QRegularExpression("\\b(swamp)", opt), QColor(64, 96, 0) },
+    { QRegularExpression("\\b(forest|woods?|trees?)\\b", opt), QColor(96, 192, 32) },
+    { QRegularExpression("\\b(shallows|ocean|sea|river|lake|lagoon|(under)?water(fall)?|pool|pond|inlet|reefs?)\\b", opt), QColor(128, 192, 255) },
+    { QRegularExpression("(hills?|pass)\\b", opt), QColor(192, 160, 128) },
+    { QRegularExpression("\\b(mountains?|cliffs?|ravine?)\\b", opt), QColor(180, 140, 80) },
+    { QRegularExpression("\\b(cave(rn)?s?\\b|under.*)", opt), QColor(140, 100, 180) },
+    { QRegularExpression("\\b(plains?\\b|grass|meadows?\\b|fields?\\b)", opt), QColor(128, 255, 0) },
+    { QRegularExpression("\\bruins?\\b", opt), QColor(128, 128, 128) },
+  };
+  for (auto [regexp, color] : heuristics) {
+    if (regexp.match(roomType).hasMatch()) {
+      return color;
+    }
+  }
+  return Qt::white;
+}
+
 MapManager::MapManager(QObject* parent)
 : QObject(parent), mapFile(nullptr), gmcpMode(false), logRoomLegacy(false), logRoomDescription(false), logExits(false), roomDirty(false),
   autoRoomId(1), currentRoom(-1), destinationRoom(-1), previousRoom(-1), mapSearch(nullptr)
@@ -63,6 +89,7 @@ void MapManager::loadMap(const QString& mapFileName)
   autoRoomId = mapFile->value("autoID", 1).toInt();
 
   roomCosts.clear();
+  roomColors.clear();
   for (const QString& key : mapFile->childKeys()) {
     if (key.startsWith("cost_")) {
       int cost = mapFile->value(key).toInt();
@@ -70,6 +97,8 @@ void MapManager::loadMap(const QString& mapFileName)
         cost = 1;
       }
       roomCosts[key.mid(5)] = cost;
+    } else if (key.startsWith("color_")) {
+      roomColors[key.mid(6)] = mapFile->value(key, QColor(Qt::white)).value<QColor>();
     }
   }
 
@@ -97,6 +126,14 @@ void MapManager::loadMap(const QString& mapFileName)
       room->name = mapFile->value("name").toString();
       room->description = mapFile->value("description").toString();
       room->roomType = mapFile->value("type").toString();
+      if (!room->roomType.isEmpty()) {
+        if (!roomCosts.contains(room->roomType)) {
+          roomCosts[room->roomType] = 1;
+        }
+        if (!roomColors.contains(room->roomType)) {
+          roomColors[room->roomType] = colorHeuristic(room->roomType);
+        }
+      }
       SettingsGroup exitGroup(mapFile, "exit");
       for (const QString& dir : mapFile->childGroups()) {
         SettingsGroup dirGroup(mapFile, dir);
@@ -376,6 +413,14 @@ void MapManager::updateRoom(const QVariantMap& info)
   room.name = info["name"].toString();
   room.zone = zoneName;
   room.roomType = info["type"].toString();
+  if (!room.roomType.isEmpty()) {
+    if (!roomCosts.contains(room.roomType)) {
+      roomCosts[room.roomType] = 1;
+    }
+    if (!roomColors.contains(room.roomType)) {
+      roomColors[room.roomType] = colorHeuristic(room.roomType);
+    }
+  }
 
   QVariantMap exits = info["Exits"].toMap();
   for (const QString& dir : exits.keys()) {
@@ -650,17 +695,9 @@ bool MapManager::removeWaypoint(const QString& name)
   return true;
 }
 
-int MapManager::roomCost(int roomId) const
+QString MapManager::roomType(int roomId) const
 {
-  return roomCost(rooms.value(roomId).roomType);
-}
-
-int MapManager::roomCost(const MapRoom* room) const
-{
-  if (!room) {
-    return 1;
-  }
-  return roomCost(room->roomType);
+  return rooms.value(roomId).roomType;
 }
 
 int MapManager::roomCost(const QString& roomType) const
@@ -677,6 +714,46 @@ void MapManager::setRoomCost(const QString& roomType, int cost)
   if (mapFile) {
     mapFile->setValue("cost_" + roomType, cost);
   }
+}
+
+QColor MapManager::roomColor(int roomId) const
+{
+  MapRoom room = rooms.value(roomId);
+  QColor color = roomColors.value(room.roomType, Qt::transparent);
+  if (color == Qt::transparent && !room.roomType.isEmpty()) {
+    color = colorHeuristic(room.roomType);
+    if (color == Qt::white) {
+      color = Qt::transparent;
+    }
+  }
+  if (color == Qt::transparent) {
+    color = colorHeuristic(room.name);
+  }
+  return color;
+}
+
+QColor MapManager::roomColor(const QString& roomType) const
+{
+  return roomColors.value(roomType, colorHeuristic(roomType));
+}
+
+void MapManager::setRoomColor(const QString& roomType, const QColor& color)
+{
+  roomColors[roomType] = color;
+  if (mapFile) {
+    mapFile->setValue("color_" + roomType, color);
+  }
+}
+
+QStringList MapManager::roomTypes() const
+{
+  QStringList types = roomCosts.keys();
+  for (const QString& key : roomColors.keys()) {
+    if (!types.contains(key)) {
+      types << key;
+    }
+  }
+  return types;
 }
 
 class MapDownloader : public QObject

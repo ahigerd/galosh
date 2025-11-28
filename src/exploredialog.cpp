@@ -3,6 +3,7 @@
 #include "mapzone.h"
 #include "roomview.h"
 #include "mapviewer.h"
+#include "mapoptions.h"
 #include "commandline.h"
 #include "commands/slotcommand.h"
 #include "commands/mapsearchcommand.h"
@@ -78,6 +79,7 @@ ExploreDialog::ExploreDialog(MapManager* map, int roomId, int lastRoomId, const 
 
   QMenu* mMap = new QMenu("&Map", mb);
   mMap->addAction("&Waypoints...", [this]{ emit openProfileDialog(ProfileDialog::WaypointsTab); });
+  mMap->addAction("&Settings...", this, SLOT(openMapOptions()));
   mMap->addSeparator();
   mMap->addAction("&Close", this, SLOT(close()));
   mb->addMenu(mMap);
@@ -320,4 +322,10 @@ void ExploreDialog::resizeEvent(QResizeEvent*)
 void ExploreDialog::moveEvent(QMoveEvent*)
 {
   saveState();
+}
+
+void ExploreDialog::openMapOptions()
+{
+  MapOptions* o = new MapOptions(map, this);
+  o->open();
 }

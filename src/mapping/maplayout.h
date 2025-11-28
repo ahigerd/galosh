@@ -63,7 +63,6 @@ private:
   QMap<int, QSet<int>> oneWayExits;
   QList<LayerData> layers;
   QMap<int, int> pendingLayers;
-  QMap<int, QColor> colors;
   MapManager* map;
   MapSearch* search;
 };

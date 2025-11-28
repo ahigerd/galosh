@@ -5,6 +5,7 @@
 #include <QList>
 #include <QSet>
 #include <QRegularExpression>
+#include <QColor>
 #include <memory>
 #include <map>
 #include "mapzone.h"
@@ -16,6 +17,7 @@ class MapManager : public QObject
 Q_OBJECT
 public:
   static QString mapForProfile(const QString& profile);
+  static QColor colorHeuristic(const QString& roomType);
 
   MapManager(QObject* parent = nullptr);
 
@@ -37,10 +39,20 @@ public:
   bool setWaypoint(const QString& name, int roomId);
   bool removeWaypoint(const QString& name);
 
-  int roomCost(int roomId) const;
-  int roomCost(const MapRoom* room) const;
+  QStringList roomTypes() const;
+
+  QString roomType(int roomId) const;
+  inline QString roomType(const MapRoom* room) const { return room ? room->roomType : QString(); }
+
+  inline int roomCost(int roomId) const { return roomCost(roomType(roomId)); }
+  inline int roomCost(const MapRoom* room) const { return roomCost(roomType(room)); }
   int roomCost(const QString& roomType) const;
   void setRoomCost(const QString& roomType, int cost);
+
+  QColor roomColor(int roomId) const;
+  inline QColor roomColor(const MapRoom* room) const { return roomColor(roomType(room)); }
+  QColor roomColor(const QString& roomType) const;
+  void setRoomColor(const QString& roomType, const QColor& color);
 
 signals:
   void currentRoomUpdated(MapManager* map, int roomId);
@@ -61,6 +73,7 @@ private:
 
   QSettings* mapFile;
   QMap<QString, int> roomCosts;
+  QMap<QString, QColor> roomColors;
   QMap<int, MapRoom> rooms;
   std::map<QString, MapZone> zones;
   QMap<QString, QSet<QString>> zoneConnections;

@@ -126,7 +126,6 @@ void MapLayout::loadZone(const MapZone* zone, bool force)
   oneWayExits.clear();
   layers.clear();
   pendingLayers.clear();
-  colors.clear();
   boundingBox = QRectF();
 
   if (!zone) {
@@ -830,7 +829,7 @@ void MapLayout::render(QPainter* painter, const QRectF&, bool drawLabels) const
   for (int roomId : coords.keys()) {
     QPointF pos = coords[roomId] * COORD_SCALE;
     QRectF rect(pos - ROOM_OFFSET, ROOM_SIZEF);
-    painter->setBrush(colors.value(roomId, Qt::white));
+    painter->setBrush(map->roomColor(roomId));
     painter->drawRect(rect.toRect());
     painter->setBrush(Qt::black);
     if (drawLabels) {

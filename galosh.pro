@@ -24,8 +24,8 @@ RESOURCES += res/res.qrc
 HEADERS += src/galoshwindow.h   src/profiledialog.h   src/colorschemes.h
 SOURCES += src/galoshwindow.cpp src/profiledialog.cpp src/colorschemes.cpp
 
-HEADERS += src/msspview.h   src/exploredialog.h
-SOURCES += src/msspview.cpp src/exploredialog.cpp
+HEADERS += src/msspview.h   src/exploredialog.h   src/mapoptions.h
+SOURCES += src/msspview.cpp src/exploredialog.cpp src/mapoptions.cpp
 
 # widgets
 HEADERS += src/galoshterm.h   src/roomview.h   src/commandline.h
