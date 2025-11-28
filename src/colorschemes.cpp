@@ -409,7 +409,7 @@ ColorScheme ColorSchemes::scheme(const QString& name, bool defaultOnly)
       ColorScheme scheme;
       scheme.name = settings.value("name").toString();
       for (int i = 0; i < 20; i++) {
-        scheme[ColorScheme::Role(i)] = settings.value(QString::number(i)).value<QColor>();
+        scheme[ColorScheme::Role(i)] = QColor(settings.value(QString::number(i)).toString());
       }
       scheme.isDarkBackground = settings.value("dark", true).toBool();
       return scheme;
@@ -548,7 +548,7 @@ void ColorSchemes::done(int r)
       settings.setValue("name", name);
       settings.setValue("dark", scheme[ColorScheme::Background].value() < 127);
       for (int i = 0; i < 20; i++) {
-        settings.setValue(QString::number(i), scheme[ColorScheme::Role(i)]);
+        settings.setValue(QString::number(i), scheme[ColorScheme::Role(i)].name());
       }
       settings.endGroup();
     }

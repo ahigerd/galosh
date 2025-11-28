@@ -104,7 +104,8 @@ void MapManager::loadMap(const QString& mapFileName)
       }
       roomCosts[key.mid(5)] = cost;
     } else if (key.startsWith("color_")) {
-      roomColors[key.mid(6)] = mapFile->value(key, QColor(Qt::white)).value<QColor>();
+      QString colorName = mapFile->value(key).toString();
+      roomColors[key.mid(6)] = QColor(colorName);
     }
   }
 
@@ -754,7 +755,7 @@ void MapManager::setRoomColor(const QString& roomType, const QColor& color)
   roomColors[roomType] = color;
   if (mapFile) {
     if (color.isValid()) {
-      mapFile->setValue("color_" + roomType, color);
+      mapFile->setValue("color_" + roomType, color.name());
     } else {
       mapFile->remove("color_" + roomType);
     }
