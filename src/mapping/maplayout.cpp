@@ -136,7 +136,7 @@ void MapLayout::loadZone(const MapZone* zone, bool force)
 
   QMap<QPair<int, QString>, int> zoneExits;
   oneWayExits.clear();
-  for (const MapSearch::Clique* clique : search->cliquesForZone(zone)) {
+  for (MapSearch::Clique::RefR clique : search->cliquesForZone(zone)) {
     for (int roomId : clique->roomIds) {
       const MapRoom* room = map->room(roomId);
       if (!room) {
@@ -232,7 +232,7 @@ void MapLayout::loadZone(const MapZone* zone, bool force)
   }
 
   QList<LayerData*> done;
-  QSet<const MapSearch::Clique*> rootCliques;
+  QSet<Clique::Ref> rootCliques;
   QRect bb;
   QRegion locked;
   while (done.size() < layers.size()) {
@@ -328,7 +328,7 @@ void MapLayout::loadZone(const MapZone* zone, bool force)
   title = zone->name;
 }
 
-void MapLayout::loadClique(const MapSearch::Clique* clique, int roomId, int zIndex)
+void MapLayout::loadClique(MapSearch::Clique::RefR clique, int roomId, int zIndex)
 {
   const MapRoom* room = map->room(roomId);
   Q_ASSERT(room->zone == currentZone);

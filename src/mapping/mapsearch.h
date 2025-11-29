@@ -9,6 +9,7 @@
 #include <QRect>
 #include <QPair>
 #include <list>
+#include "refable.h"
 class MapManager;
 class MapZone;
 class MapRoom;
@@ -21,11 +22,6 @@ public:
 
   struct Route {
     QList<int> rooms;
-    int cost;
-  };
-
-  struct CliqueRoute {
-    QList<const Clique*> cliques;
     int cost;
   };
 
@@ -49,18 +45,24 @@ public:
     inline bool contains(const Grid& other) const { return rooms.contains(other.rooms); }
   };
 
-  struct CliqueExit {
-    int fromRoomId;
-    Clique* toClique;
-    int toRoomId;
-  };
-
-  struct Clique {
+  struct CliqueExit;
+  struct Clique : public Refable<Clique> {
     const MapZone* zone;
     QSet<int> roomIds;
     QList<CliqueExit> exits;
     QMap<QPair<int, int>, Route> routes;
     QList<Grid> grids;
+  };
+
+  struct CliqueExit {
+    int fromRoomId;
+    Clique::MRef toClique;
+    int toRoomId;
+  };
+
+  struct CliqueRoute {
+    QList<Clique::Ref> cliques;
+    int cost;
   };
 
   MapSearch(MapManager* map);
@@ -69,8 +71,8 @@ public:
   void markDirty(const MapZone* zone = nullptr);
   bool precompute(bool force = false);
   void precomputeRoutes();
-  QList<const Clique*> cliquesForZone(const MapZone* zone) const;
-  QList<const Clique*> findCliqueRoute(int startRoomId, int endRoomId, const QStringList& avoidZones = {}) const;
+  QList<Clique::Ref> cliquesForZone(const MapZone* zone) const;
+  QList<Clique::Ref> findCliqueRoute(int startRoomId, int endRoomId, const QStringList& avoidZones = {}) const;
   QList<int> findRoute(int startRoomId, int endRoomId, const QStringList& avoidZones = {}) const;
   QList<int> findRoute(int startRoomId, const QString& destZone, const QStringList& avoidZones = {}) const;
   QStringList routeDirections(const QList<int>& route) const;
@@ -80,20 +82,20 @@ private slots:
 
 private:
   void getCliquesForZone(const MapZone* zone);
-  void crawlClique(Clique* clique, int roomId);
-  void resolveExits(Clique* clique);
-  void findGrids(Clique* clique);
-  void fillRoutes(Clique* clique, int startRoomId);
-  QMap<int, int> getCosts(const Clique* clique, int startRoomId, int endRoomId = -1) const;
-  Route findRouteInClique(const Clique* clique, int startRoomId, int endRoomId, const QMap<int, int>& costs, int maxCost = 0) const;
-  Clique* newClique(const MapZone* parent);
-  Clique* findClique(const QString& zoneName, int roomId) const;
-  Clique* findClique(int roomId) const;
-  QList<const Clique*> collectCliques(const QStringList& zones) const;
-  CliqueRoute findCliqueRoute(const Clique* fromClique, const Clique* toClique, QList<const Clique*> avoid) const;
+  void crawlClique(Clique::MRefR clique, int roomId);
+  void resolveExits(Clique::MRefR clique);
+  void findGrids(Clique::MRefR clique);
+  void fillRoutes(Clique::MRefR clique, int startRoomId);
+  QMap<int, int> getCosts(Clique::RefR clique, int startRoomId, int endRoomId = -1) const;
+  Route findRouteInClique(Clique::RefR clique, int startRoomId, int endRoomId, const QMap<int, int>& costs, int maxCost = 0) const;
+  Clique::MRef newClique(const MapZone* parent);
+  Clique::MRef findClique(const QString& zoneName, int roomId) const;
+  Clique::MRef findClique(int roomId) const;
+  QList<Clique::Ref> collectCliques(const QStringList& zones) const;
+  CliqueRoute findCliqueRoute(Clique::RefR fromClique, Clique::RefR toClique, QList<Clique::Ref> avoid) const;
 
   struct CliqueStep {
-    const Clique* clique;
+    Clique::Ref clique;
     QSet<int> endRoomIds;
     QSet<int> nextRoomIds;
   };
@@ -102,11 +104,11 @@ private:
 public:
   MapManager* map;
   std::list<Clique> cliqueStore;
-  QMap<QString, QList<Clique*>> cliques;
-  QSet<const Clique*> deadEnds;
+  QMap<QString, QList<Clique::MRef>> cliques;
+  QSet<Clique::Ref> deadEnds;
   QSet<int> pendingRoomIds;
   QSet<const MapZone*> dirtyZones;
-  std::list<QPair<Clique*, int>> incremental;
+  std::list<QPair<Clique::MRef, int>> incremental;
 };
 
 #endif

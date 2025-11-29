@@ -5,6 +5,8 @@
 #include <QTimer>
 #include <QtDebug>
 
+using Clique = MapSearch::Clique;
+
 QDebug operator<<(QDebug debug, const MapSearch::Grid& grid)
 {
   return debug << qPrintable(grid.debug());
@@ -15,7 +17,7 @@ QDebug operator<<(QDebug debug, const MapSearch::Clique& clique)
   return debug << clique.zone;
 }
 
-QDebug operator<<(QDebug debug, const MapSearch::Clique* clique)
+QDebug operator<<(QDebug debug, const Clique::Ref& clique)
 {
   if (!clique) {
     return debug << "[null clique]";
@@ -62,7 +64,7 @@ bool MapSearch::precompute(bool force)
   } else {
     for (const MapZone* zone : dirtyZones) {
       auto zoneCliques = cliques.take(zone->name);
-      for (Clique* clique : zoneCliques) {
+      for (Clique::MRef clique : zoneCliques) {
         for (auto iter = cliqueStore.begin(); iter != cliqueStore.end(); iter++) {
           if (&*iter == clique) {
             cliqueStore.erase(iter);
@@ -131,10 +133,10 @@ void MapSearch::precomputeIncremental()
   QTimer::singleShot(1, this, SLOT(precomputeIncremental()));
 }
 
-MapSearch::Clique* MapSearch::newClique(const MapZone* parent)
+Clique::MRef MapSearch::newClique(const MapZone* parent)
 {
   cliqueStore.push_back(Clique());
-  Clique* clique = &cliqueStore.back();
+  Clique::MRef clique = &cliqueStore.back();
   clique->zone = parent;
   cliques[parent->name] << clique;
   return clique;
@@ -159,7 +161,7 @@ void MapSearch::getCliquesForZone(const MapZone* zone)
       // already part of a clique
       continue;
     }
-    Clique* clique = newClique(zone);
+    Clique::MRef clique = newClique(zone);
     pendingRoomIds.remove(exit);
     clique->roomIds << exit;
     crawlClique(clique, exit);
@@ -171,12 +173,12 @@ void MapSearch::getCliquesForZone(const MapZone* zone)
       // removed by another call
       continue;
     }
-    Clique* clique = newClique(zone);
+    Clique::MRef clique = newClique(zone);
     clique->roomIds << roomId;
     crawlClique(clique, roomId);
 
     // Check for clique intersections and merge if needed
-    for (Clique* other : QList<Clique*>(cliques[zone->name])) {
+    for (Clique::MRef other : QList<Clique::MRef>(cliques[zone->name])) {
       if (clique == other || !clique->roomIds.intersects(other->roomIds)) {
         continue;
       }
@@ -204,16 +206,16 @@ void MapSearch::getCliquesForZone(const MapZone* zone)
   }
 }
 
-QList<const MapSearch::Clique*> MapSearch::cliquesForZone(const MapZone* zone) const
+QList<Clique::Ref> MapSearch::cliquesForZone(const MapZone* zone) const
 {
-  QList<const Clique*> result;
-  for (Clique* clique : cliques.value(zone->name)) {
+  QList<Clique::Ref> result;
+  for (Clique::Ref clique : cliques.value(zone->name)) {
     result << clique;
   }
   return result;
 }
 
-void MapSearch::crawlClique(Clique* clique, int roomId)
+void MapSearch::crawlClique(Clique::MRefR clique, int roomId)
 {
   const MapRoom* room = map->room(roomId);
   if (!room) {
@@ -267,7 +269,7 @@ void MapSearch::crawlClique(Clique* clique, int roomId)
   }
 }
 
-void MapSearch::resolveExits(MapSearch::Clique* clique)
+void MapSearch::resolveExits(Clique::MRefR clique)
 {
   for (auto [zoneId, exitRoomIds] : cpairs(clique->zone->exits)) {
     const MapZone* destZone = map->zone(zoneId);
@@ -286,7 +288,7 @@ void MapSearch::resolveExits(MapSearch::Clique* clique)
       for (const MapExit& exit : room->exits) {
         const MapRoom* dest = map->room(exit.dest);
         if (dest && dest->zone == zoneId) {
-          Clique* toClique = findClique(zoneId, exit.dest);
+          Clique::MRef toClique = findClique(zoneId, exit.dest);
           if (!toClique) {
             qDebug() << "XXX: broken clique, debug this";
             continue;
@@ -530,7 +532,7 @@ bool MapSearch::Grid::mask(const QSet<int>& exclude)
   return true;
 }
 
-void MapSearch::findGrids(MapSearch::Clique* clique)
+void MapSearch::findGrids(Clique::MRefR clique)
 {
   if (!clique || !clique->grids.isEmpty()) {
     return;
@@ -581,9 +583,9 @@ void MapSearch::findGrids(MapSearch::Clique* clique)
   clique->grids = grids;
 }
 
-MapSearch::Clique* MapSearch::findClique(const QString& zoneName, int roomId) const
+Clique::MRef MapSearch::findClique(const QString& zoneName, int roomId) const
 {
-  for (Clique* clique : cliques.value(zoneName)) {
+  for (Clique::MRef clique : cliques.value(zoneName)) {
     if (clique->roomIds.contains(roomId)) {
       return clique;
     }
@@ -591,7 +593,7 @@ MapSearch::Clique* MapSearch::findClique(const QString& zoneName, int roomId) co
   return nullptr;
 }
 
-MapSearch::Clique* MapSearch::findClique(int roomId) const
+Clique::MRef MapSearch::findClique(int roomId) const
 {
   const MapRoom* room = map->room(roomId);
   if (!room) {
@@ -600,7 +602,7 @@ MapSearch::Clique* MapSearch::findClique(int roomId) const
   return findClique(room->zone, roomId);
 }
 
-QMap<int, int> MapSearch::getCosts(const MapSearch::Clique* clique, int startRoomId, int endRoomId) const
+QMap<int, int> MapSearch::getCosts(Clique::RefR clique, int startRoomId, int endRoomId) const
 {
   QMap<int, int> costs;
   costs[startRoomId] = map->roomCost(startRoomId);
@@ -652,7 +654,7 @@ QMap<int, int> MapSearch::getCosts(const MapSearch::Clique* clique, int startRoo
   return costs;
 }
 
-MapSearch::Route MapSearch::findRouteInClique(const Clique* clique, int startRoomId, int endRoomId, const QMap<int, int>& costs, int maxCost) const
+MapSearch::Route MapSearch::findRouteInClique(Clique::RefR clique, int startRoomId, int endRoomId, const QMap<int, int>& costs, int maxCost) const
 {
   if (startRoomId == endRoomId) {
     return { { endRoomId }, 0 };
@@ -739,7 +741,7 @@ MapSearch::Route MapSearch::findRouteInClique(const Clique* clique, int startRoo
   return bestRoute;
 }
 
-void MapSearch::fillRoutes(MapSearch::Clique* clique, int startRoomId)
+void MapSearch::fillRoutes(Clique::MRefR clique, int startRoomId)
 {
   QMap<int, int> costs = getCosts(clique, startRoomId);
   if (costs.isEmpty()) {
@@ -765,26 +767,26 @@ void MapSearch::fillRoutes(MapSearch::Clique* clique, int startRoomId)
   }
 }
 
-QList<const MapSearch::Clique*> MapSearch::findCliqueRoute(int startRoomId, int endRoomId, const QStringList& avoidZones) const
+QList<Clique::Ref> MapSearch::findCliqueRoute(int startRoomId, int endRoomId, const QStringList& avoidZones) const
 {
-  const Clique* fromClique = findClique(startRoomId);
-  const Clique* toClique = findClique(endRoomId);
+  Clique::Ref fromClique = findClique(startRoomId);
+  Clique::Ref toClique = findClique(endRoomId);
   CliqueRoute route = findCliqueRoute(fromClique, toClique, collectCliques(avoidZones));
   return route.cliques;
 }
 
-QList<const MapSearch::Clique*> MapSearch::collectCliques(const QStringList& zones) const
+QList<Clique::Ref> MapSearch::collectCliques(const QStringList& zones) const
 {
-  QList<const Clique*> result;
+  QList<Clique::Ref> result;
   for (const QString& zone : zones) {
-    for (Clique* clique : cliques.value(zone)) {
+    for (Clique::RefR clique : cliques.value(zone)) {
       result << clique;
     }
   }
   return result;
 }
 
-MapSearch::CliqueRoute MapSearch::findCliqueRoute(const MapSearch::Clique* fromClique, const MapSearch::Clique* toClique, QList<const MapSearch::Clique*> avoid) const
+MapSearch::CliqueRoute MapSearch::findCliqueRoute(Clique::RefR fromClique, Clique::RefR toClique, QList<Clique::Ref> avoid) const
 {
   // Step 1: direct connection
   for (const CliqueExit& exit : fromClique->exits) {
@@ -813,7 +815,7 @@ MapSearch::CliqueRoute MapSearch::findCliqueRoute(const MapSearch::Clique* fromC
   avoid << fromClique;
   CliqueRoute bestPath;
   for (const CliqueExit& exit : fromClique->exits) {
-    const Clique* next = exit.toClique;
+    Clique::Ref next = exit.toClique;
     if (avoid.contains(next) && next != toClique) {
       continue;
     }
@@ -824,7 +826,7 @@ MapSearch::CliqueRoute MapSearch::findCliqueRoute(const MapSearch::Clique* fromC
     if (path.cliques.isEmpty()) {
       continue;
     }
-    const Clique* transitTo = path.cliques[0];
+    Clique::Ref transitTo = path.cliques[0];
     int transitCost = -1;
     for (const CliqueExit& nextExit : next->exits) {
       if (nextExit.toClique == transitTo) {
@@ -853,8 +855,8 @@ MapSearch::CliqueRoute MapSearch::findCliqueRoute(const MapSearch::Clique* fromC
 
 QList<int> MapSearch::findRoute(int startRoomId, int endRoomId, const QStringList& avoidZones) const
 {
-  const Clique* startClique = findClique(startRoomId);
-  const Clique* endClique = findClique(endRoomId);
+  Clique::Ref startClique = findClique(startRoomId);
+  Clique::Ref endClique = findClique(endRoomId);
   if (!startClique || !endClique) {
     return {};
   }
@@ -864,8 +866,8 @@ QList<int> MapSearch::findRoute(int startRoomId, int endRoomId, const QStringLis
     return findRouteInClique(startClique, startRoomId, endRoomId, costs).rooms;
   }
 
-  QList<const Clique*> avoidCliques = collectCliques(avoidZones);
-  QList<const Clique*> cliqueRoute = findCliqueRoute(startClique, endClique, avoidCliques).cliques;
+  QList<Clique::Ref> avoidCliques = collectCliques(avoidZones);
+  QList<Clique::Ref> cliqueRoute = findCliqueRoute(startClique, endClique, avoidCliques).cliques;
   if (cliqueRoute.isEmpty()) {
     return {};
   }
@@ -894,19 +896,19 @@ QList<int> MapSearch::findRoute(int startRoomId, int endRoomId, const QStringLis
 
 QList<int> MapSearch::findRoute(int startRoomId, const QString& destZone, const QStringList& avoidZones) const
 {
-  const Clique* startClique = findClique(startRoomId);
-  QList<const Clique*> destCliques;
+  Clique::Ref startClique = findClique(startRoomId);
+  QList<Clique::Ref> destCliques;
   {
-    QList<Clique*> nonConstDestCliques = cliques.value(destZone);
-    destCliques = QList<const Clique*>(nonConstDestCliques.begin(), nonConstDestCliques.end());
+    QList<Clique::MRef> nonConstDestCliques = cliques.value(destZone);
+    destCliques = QList<Clique::Ref>(nonConstDestCliques.begin(), nonConstDestCliques.end());
   }
   if (!startClique || destCliques.isEmpty() || destCliques.contains(startClique)) {
     return {};
   }
 
-  QList<const Clique*> avoidCliques = collectCliques(avoidZones);
+  QList<Clique::Ref> avoidCliques = collectCliques(avoidZones);
   CliqueRoute cliqueRoute;
-  for (const Clique* endClique : destCliques) {
+  for (Clique::Ref endClique : destCliques) {
     CliqueRoute testRoute = findCliqueRoute(startClique, endClique, avoidCliques);
     if (testRoute.cliques.isEmpty()) {
       continue;

@@ -24,6 +24,9 @@ private slots:
   void onItemDoubleClicked(QTableWidgetItem* item);
 
 private:
+  QWidget* makeColorTab(QWidget* parent);
+  QWidget* makeRoutingTab(QWidget* parent);
+
   MapManager* map;
   QTableWidget* table;
   bool isDirty;

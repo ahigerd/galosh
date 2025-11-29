@@ -1,5 +1,6 @@
 TEMPLATE = app
 QT = core gui widgets network
+CONFIG += c++2a
 CONFIG += debug
 CONFIG -= debug_and_release release
 INCLUDEPATH += src/ src/qtermwidget src/mapping
@@ -42,7 +43,7 @@ SOURCES += src/triggermanager.cpp src/infomodel.cpp src/itemdatabase.cpp
 HEADERS += src/telnetsocket.h
 SOURCES += src/telnetsocket.cpp
 
-HEADERS += src/algorithms.h
+HEADERS += src/algorithms.h src/refable.h
 SOURCES += src/main.cpp
 
 include(src/mapping/mapping.pri)

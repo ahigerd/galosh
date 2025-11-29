@@ -19,31 +19,9 @@ MapOptions::MapOptions(MapManager* map, QWidget* parent)
   QVBoxLayout* layout = new QVBoxLayout(this);
 
   QTabWidget* tabs = new QTabWidget(this);
+  tabs->addTab(makeColorTab(tabs), "&Colors");
+  tabs->addTab(makeRoutingTab(tabs), "&Routing");
   layout->addWidget(tabs, 1);
-
-  QWidget* tColor = new QWidget(tabs);
-  QVBoxLayout* lColor = new QVBoxLayout(tColor);
-
-  table = new QTableWidget(0, 3, this);
-  table->setHorizontalHeaderLabels({ "Room Type", "Cost", "Color" });
-  table->verticalHeader()->setVisible(false);
-  table->horizontalHeader()->setStretchLastSection(true);
-  table->setSelectionBehavior(QTableWidget::SelectRows);
-  lColor->addWidget(table, 1);
-
-  QHBoxLayout* lButtons = new QHBoxLayout;
-  lButtons->addStretch(1);
-  lColor->addLayout(lButtons, 0);
-
-  QPushButton* addButton = new QPushButton("&Add", this);
-  QObject::connect(addButton, SIGNAL(clicked()), this, SLOT(addRow()));
-  lButtons->addWidget(addButton);
-
-  QPushButton* delButton = new QPushButton("&Delete", this);
-  QObject::connect(delButton, SIGNAL(clicked()), this, SLOT(removeRows()));
-  lButtons->addWidget(delButton);
-
-  tabs->addTab(tColor, "&Colors");
 
   QDialogButtonBox* buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel | QDialogButtonBox::Apply, this);
   layout->addWidget(buttons, 0);
@@ -77,6 +55,44 @@ MapOptions::MapOptions(MapManager* map, QWidget* parent)
   QObject::connect(buttons, SIGNAL(accepted()), this, SLOT(accept()));
   QObject::connect(buttons, SIGNAL(rejected()), this, SLOT(reject()));
   QObject::connect(buttons->button(QDialogButtonBox::Apply), SIGNAL(clicked()), this, SLOT(save()));
+}
+
+QWidget* MapOptions::makeColorTab(QWidget* parent)
+{
+  QWidget* tColor = new QWidget(parent);
+  QVBoxLayout* lColor = new QVBoxLayout(tColor);
+
+  table = new QTableWidget(0, 3, this);
+  table->setHorizontalHeaderLabels({ "Room Type", "Cost", "Color" });
+  table->verticalHeader()->setVisible(false);
+  table->horizontalHeader()->setStretchLastSection(true);
+  table->setSelectionBehavior(QTableWidget::SelectRows);
+  lColor->addWidget(table, 1);
+
+  QHBoxLayout* lButtons = new QHBoxLayout;
+  lButtons->addStretch(1);
+  lColor->addLayout(lButtons, 0);
+
+  QPushButton* addButton = new QPushButton("&Add", this);
+  QObject::connect(addButton, SIGNAL(clicked()), this, SLOT(addRow()));
+  lButtons->addWidget(addButton);
+
+  QPushButton* delButton = new QPushButton("&Delete", this);
+  QObject::connect(delButton, SIGNAL(clicked()), this, SLOT(removeRows()));
+  lButtons->addWidget(delButton);
+
+  return tColor;
+}
+
+QWidget* MapOptions::makeRoutingTab(QWidget* parent)
+{
+  QWidget* tRouting = new QWidget(parent);
+
+  // list of zones to avoid
+  // prioritize cost vs prioritize distance
+  // disable automapping
+
+  return tRouting;
 }
 
 bool MapOptions::save()

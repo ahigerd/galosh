@@ -19,6 +19,8 @@ class MapRoom;
 class MapLayout
 {
 public:
+  using Clique = MapSearch::Clique;
+
   MapLayout(MapManager* map);
 
   void loadZone(const MapZone* zone, bool force = false);
@@ -32,7 +34,7 @@ public:
 
 private:
   struct LayerData {
-    const MapSearch::Clique* source;
+    Clique::Ref source;
     QMap<int, QPointF> coords;
     QRectF boundingBox;
     int zIndex;
@@ -41,7 +43,7 @@ private:
     QSet<QPair<int, int>> layerExits;
   };
 
-  void loadClique(const MapSearch::Clique* clique, int roomId, int zIndex);
+  void loadClique(Clique::RefR clique, int roomId, int zIndex);
   void relattice();
   void markPathPoints();
   void relax();
