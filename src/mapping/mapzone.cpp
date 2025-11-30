@@ -92,7 +92,6 @@ void MapZone::addRoom(const MapRoom* room)
     const MapRoom* dest = map->room(exit.dest);
     if (dest && dest->zone != name && !exits.value(dest->zone).contains(room->id)) {
       exits[dest->zone] << room->id;
-      map->zoneConnections[name] << dest->zone;
 
       // Check for a reverse link too
       MapZone* otherZone = map->mutableZone(dest->zone);

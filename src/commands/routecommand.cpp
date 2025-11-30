@@ -50,7 +50,7 @@ void RouteCommand::handleInvoke(const QStringList& args, const KWArgs& kwargs)
       return;
     }
     destName = zone->name;
-    route = map->search()->findRoute(startRoomId, destName);
+    route = map->search()->findRoute(startRoomId, destName, map->routeAvoidZones());
   } else {
     int endRoomId = args.last().toInt();
     if (endRoomId) {
@@ -68,7 +68,7 @@ void RouteCommand::handleInvoke(const QStringList& args, const KWArgs& kwargs)
       showError("Start room and destination room are the same");
       return;
     }
-    route = map->search()->findRoute(startRoomId, endRoomId);
+    route = map->search()->findRoute(startRoomId, endRoomId, map->routeAvoidZones());
   }
   if (route.isEmpty()) {
     showError(QStringLiteral("Could not find route from %1 to %2").arg(startRoomId).arg(destName));

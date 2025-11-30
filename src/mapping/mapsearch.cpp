@@ -14,7 +14,7 @@ QDebug operator<<(QDebug debug, const MapSearch::Grid& grid)
 
 QDebug operator<<(QDebug debug, const MapSearch::Clique& clique)
 {
-  return debug << clique.zone;
+  return debug << (clique.zone ? clique.zone->name : "[null zone]");
 }
 
 QDebug operator<<(QDebug debug, const Clique::Ref& clique)
@@ -22,7 +22,7 @@ QDebug operator<<(QDebug debug, const Clique::Ref& clique)
   if (!clique) {
     return debug << "[null clique]";
   }
-  return debug << clique->zone;
+  return debug << (clique->zone ? clique->zone->name : "[null zone]");
 }
 
 QDebug operator<<(QDebug debug, const MapZone* zone)
@@ -39,9 +39,9 @@ MapSearch::MapSearch(MapManager* map)
 void MapSearch::reset()
 {
   cliques.clear();
+  deadEnds.clear();
   cliqueStore.clear();
   pendingRoomIds.clear();
-  deadEnds.clear();
   incremental.clear();
   dirtyZones.clear();
   dirtyZones << nullptr;

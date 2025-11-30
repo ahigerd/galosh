@@ -40,10 +40,9 @@ public:
   bool removeWaypoint(const QString& name);
 
   QStringList roomTypes() const;
-  void removeRoomType(const QString& roomType);
-
   QString roomType(int roomId) const;
   inline QString roomType(const MapRoom* room) const { return room ? room->roomType : QString(); }
+  void removeRoomType(const QString& roomType);
 
   inline int roomCost(int roomId) const { return roomCost(roomType(roomId)); }
   inline int roomCost(const MapRoom* room) const { return roomCost(roomType(room)); }
@@ -54,6 +53,9 @@ public:
   inline QColor roomColor(const MapRoom* room) const { return roomColor(roomType(room)); }
   QColor roomColor(const QString& roomType) const;
   void setRoomColor(const QString& roomType, const QColor& color);
+
+  QStringList routeAvoidZones() const;
+  void setRouteAvoidZones(const QStringList& zones);
 
   QSettings* mapProfile() const;
 
@@ -79,8 +81,6 @@ private:
   QMap<QString, QColor> roomColors;
   QMap<int, MapRoom> rooms;
   std::map<QString, MapZone> zones;
-  QMap<QString, QSet<QString>> zoneConnections;
-  QMap<QString, QMap<QString, QMap<QString, int>>> zoneTransits;
   bool gmcpMode;
   bool logRoomLegacy;
   bool logRoomDescription;

@@ -35,6 +35,9 @@ SOURCES += src/galoshterm.cpp src/roomview.cpp src/commandline.cpp
 HEADERS += src/triggertab.h   src/appearancetab.h   src/waypointstab.h
 SOURCES += src/triggertab.cpp src/appearancetab.cpp src/waypointstab.cpp
 
+HEADERS += src/dropdowndelegate.h
+SOURCES += src/dropdowndelegate.cpp
+
 # models
 HEADERS += src/triggermanager.h   src/infomodel.h   src/itemdatabase.h
 SOURCES += src/triggermanager.cpp src/infomodel.cpp src/itemdatabase.cpp

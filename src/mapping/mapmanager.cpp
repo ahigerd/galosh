@@ -94,18 +94,14 @@ void MapManager::loadMap(const QString& mapFileName)
   endRoomCapture();
   autoRoomId = mapFile->value("autoID", 1).toInt();
 
-  roomCosts.clear();
-  roomColors.clear();
-  for (const QString& key : mapFile->childKeys()) {
-    if (key.startsWith("cost_")) {
-      int cost = mapFile->value(key).toInt();
-      if (cost < 1) {
-        cost = 1;
-      }
-      roomCosts[key.mid(5)] = cost;
-    } else if (key.startsWith("color_")) {
-      QString colorName = mapFile->value(key).toString();
-      roomColors[key.mid(6)] = QColor(colorName);
+  {
+    SettingsGroup sg(mapFile, " RoomTypes");
+    roomCosts.clear();
+    roomColors.clear();
+    for (const QString& roomType : mapFile->childKeys()) {
+      SettingsGroup rt(mapFile, roomType);
+      roomCosts[roomType] = qMax(mapFile->value("cost").toInt(), 1);
+      roomColors[roomType] = QColor(mapFile->value("color").toString());
     }
   }
 
@@ -719,7 +715,7 @@ void MapManager::setRoomCost(const QString& roomType, int cost)
   }
   roomCosts[roomType] = cost;
   if (mapFile) {
-    mapFile->setValue("cost_" + roomType, cost);
+    mapFile->setValue(QStringLiteral(" RoomTypes/%1/cost").arg(roomType), cost);
   }
 }
 
@@ -754,10 +750,11 @@ void MapManager::setRoomColor(const QString& roomType, const QColor& color)
 {
   roomColors[roomType] = color;
   if (mapFile) {
+    QString key = QStringLiteral(" RoomTypes/%1/color").arg(roomType);
     if (color.isValid()) {
-      mapFile->setValue("color_" + roomType, color.name());
+      mapFile->setValue(key, color.name());
     } else {
-      mapFile->remove("color_" + roomType);
+      mapFile->remove(key);
     }
   }
 }
@@ -779,8 +776,34 @@ void MapManager::removeRoomType(const QString& roomType)
   roomColors.remove(roomType);
 
   if (mapFile) {
-    mapFile->remove("cost_" + roomType);
-    mapFile->remove("color_" + roomType);
+    mapFile->remove(QStringLiteral(" RoomTypes/%1").arg(roomType));
+  }
+}
+
+QStringList MapManager::routeAvoidZones() const
+{
+  if (!mapFile) {
+    return {};
+  }
+
+  QStringList result;
+  SettingsGroup sg(mapFile, " Routing/avoid");
+  for (const QString& key : mapFile->childKeys()) {
+    result << mapFile->value(key).toString();
+  }
+  return result;
+}
+
+void MapManager::setRouteAvoidZones(const QStringList& zones)
+{
+  if (!mapFile) {
+    qWarning() << "No map file to save to";
+    return;
+  }
+  mapFile->remove(" Routing/avoid");
+  SettingsGroup sg(mapFile, " Routing/avoid");
+  for (auto [index, zone] : enumerate(zones)) {
+    mapFile->setValue(QString::number(index), zone);
   }
 }
 

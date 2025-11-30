@@ -3,6 +3,7 @@
 
 #include <QDialog>
 class MapManager;
+class QListWidget;
 class QTableWidget;
 class QTableWidgetItem;
 
@@ -23,12 +24,16 @@ private slots:
   void onCellChanged(int row, int col);
   void onItemDoubleClicked(QTableWidgetItem* item);
 
+  void addAvoid();
+  void removeAvoids();
+
 private:
   QWidget* makeColorTab(QWidget* parent);
   QWidget* makeRoutingTab(QWidget* parent);
 
   MapManager* map;
   QTableWidget* table;
+  QListWidget* avoid;
   bool isDirty;
 };
 

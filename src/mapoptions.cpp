@@ -1,10 +1,13 @@
 #include "mapoptions.h"
 #include "mapmanager.h"
+#include "dropdowndelegate.h"
 #include <QSettings>
+#include <QBoxLayout>
 #include <QTabWidget>
 #include <QDialogButtonBox>
-#include <QBoxLayout>
+#include <QGroupBox>
 #include <QTableWidget>
+#include <QListWidget>
 #include <QHeaderView>
 #include <QPushButton>
 #include <QMessageBox>
@@ -47,8 +50,13 @@ MapOptions::MapOptions(MapManager* map, QWidget* parent)
     table->setItem(row, 1, costItem);
     table->setItem(row, 2, colorItem);
   }
-
   table->resizeColumnsToContents();
+
+  for (const QString& zone : map->routeAvoidZones())
+  {
+    QListWidgetItem* item = new QListWidgetItem(zone, avoid);
+    item->setFlags(Qt::ItemIsSelectable | Qt::ItemIsEditable | Qt::ItemIsEnabled);
+  }
 
   QObject::connect(table, SIGNAL(cellChanged(int,int)), this, SLOT(onCellChanged(int,int)));
   QObject::connect(table, SIGNAL(itemDoubleClicked(QTableWidgetItem*)), this, SLOT(onItemDoubleClicked(QTableWidgetItem*)));
@@ -88,7 +96,28 @@ QWidget* MapOptions::makeRoutingTab(QWidget* parent)
 {
   QWidget* tRouting = new QWidget(parent);
 
-  // list of zones to avoid
+  QHBoxLayout* lRouting = new QHBoxLayout(tRouting);
+
+  QGroupBox* gAvoid = new QGroupBox("A&void Zones:", tRouting);
+  QVBoxLayout* lAvoid = new QVBoxLayout(gAvoid);
+  lRouting->addWidget(gAvoid, 1);
+
+  avoid = new QListWidget(tRouting);
+  avoid->setItemDelegate(new DropdownDelegate(QStringList{""} + map->zoneNames(), avoid));
+  lAvoid->addWidget(avoid, 1);
+
+  QHBoxLayout* lButtons = new QHBoxLayout;
+  lButtons->addStretch(1);
+  lAvoid->addLayout(lButtons, 0);
+
+  QPushButton* addButton = new QPushButton("&Add", this);
+  QObject::connect(addButton, SIGNAL(clicked()), this, SLOT(addAvoid()));
+  lButtons->addWidget(addButton);
+
+  QPushButton* delButton = new QPushButton("&Delete", this);
+  QObject::connect(delButton, SIGNAL(clicked()), this, SLOT(removeAvoids()));
+  lButtons->addWidget(delButton);
+
   // prioritize cost vs prioritize distance
   // disable automapping
 
@@ -140,6 +169,16 @@ bool MapOptions::save()
   for (const QString& roomType : toDelete) {
     map->removeRoomType(roomType);
   }
+
+  QStringList avoidZones;
+  for (int i = 0; i < avoid->count(); i++) {
+    QString zoneName = avoid->item(i)->data(Qt::EditRole).toString();
+    if (!zoneName.isEmpty()) {
+      avoidZones << zoneName;
+    }
+  }
+  map->setRouteAvoidZones(avoidZones);
+
   return true;
 }
 
@@ -224,5 +263,27 @@ void MapOptions::onItemDoubleClicked(QTableWidgetItem* item)
   QColor color = dlg.selectedColor();
   item->setData(Qt::DecorationRole, color.isValid() ? color : Qt::white);
   item->setData(Qt::DisplayRole, color.isValid() ? color.name() : "");
+  isDirty = true;
+}
+
+void MapOptions::addAvoid()
+{
+  QListWidgetItem* item = new QListWidgetItem("", avoid);
+  item->setFlags(Qt::ItemIsSelectable | Qt::ItemIsEditable | Qt::ItemIsEnabled);
+  avoid->setCurrentItem(item);
+  isDirty = true;
+}
+
+void MapOptions::removeAvoids()
+{
+  QSet<int> rows;
+  for (QListWidgetItem* item : avoid->selectedItems()) {
+    rows << avoid->row(item);
+  }
+  QList<int> sorted = rows.values();
+  std::sort(sorted.rbegin(), sorted.rend());
+  for (int row : sorted) {
+    delete avoid->takeItem(row);
+  }
   isDirty = true;
 }
