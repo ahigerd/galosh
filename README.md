@@ -18,29 +18,27 @@ descriptions, and it can keep more information about the current room visible at
 ## Features
 
 * Cross-platform (Windows, macOS, X11, Wayland)
-* ANSI/VT100/VT102 formatting support
-* Works with Telnet and plain text connections and local text-based programs
+* ANSI/VT100/VT102 formatting support with configurable colors
+* Works with Telnet, plain text connections, and local text-based programs
 * [MSSP](https://mudstandards.org/mud/mssp) protocol support
 * [GMCP](https://mudstandards.org/mud/gmcp) protocol support
 * Multiple saved profiles
 * Triggers
-* Automapping _(partial)_
+* Automapping, automatic pathfinding, and speedwalking
 * Environment and status displays
 * Command history
 * Tab completion
 * Mudlet map importing
 * Offline map exploration
+* Item database
 
 ## Roadmap
 
 * Context-aware tab completion (spellcasting, etc.)
-* Map visualization
-* Item database
 * Smart aliases / custom commands
-* Speedwalking / autowalking
 * Simple scripting
 * Split-screen
-* Prebuilt releases for Windows and macOS
+* Prebuilt releases for macOS
 
 ## License
 
