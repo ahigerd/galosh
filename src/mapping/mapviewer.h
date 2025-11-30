@@ -34,6 +34,9 @@ public slots:
 signals:
   void exploreMap(int roomId);
 
+protected slots:
+  void repositionHeader();
+
 protected:
   // TODO: explore on double-click
   // TODO: menu on right-click

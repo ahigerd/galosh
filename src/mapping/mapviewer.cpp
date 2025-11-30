@@ -156,6 +156,8 @@ MapViewer::MapViewer(MapViewer::MapType mapType, MapManager* map, ExploreHistory
 
   QObject::connect(zone, SIGNAL(currentTextChanged(QString)), this, SLOT(loadZone(QString)));
   QObject::connect(history, SIGNAL(currentRoomChanged(int)), this, SLOT(setCurrentRoom(int)));
+  QObject::connect(scrollArea->horizontalScrollBar(), SIGNAL(valueChanged(int)), this, SLOT(repositionHeader()));
+  QObject::connect(scrollArea->verticalScrollBar(), SIGNAL(valueChanged(int)), this, SLOT(repositionHeader()));
 
   reload();
 }
@@ -239,16 +241,20 @@ void MapViewer::loadZone(const QString& name, bool force)
   view->update();
 }
 
-void MapViewer::resizeEvent(QResizeEvent* event)
+void MapViewer::repositionHeader()
 {
   if (mapType == MiniMap) {
-    int w = width();
-    if (scrollArea->verticalScrollBar()->isVisible()) {
-      w -= scrollArea->verticalScrollBar()->width();
+    int w = scrollArea->width();
+    int sw = scrollArea->verticalScrollBar()->sizeHint().width() + 2;
+    if (view->width() + sw > w) {
+      w -= sw;
     }
-    header->setGeometry(0, 0, w, header->sizeHint().height());
+    header->setGeometry(scrollArea->horizontalScrollBar()->value(), scrollArea->verticalScrollBar()->value(), w, header->sizeHint().height());
   }
+}
 
+void MapViewer::resizeEvent(QResizeEvent* event)
+{
   view->resize(view->sizeHint());
 
   if (event) {
@@ -259,12 +265,15 @@ void MapViewer::resizeEvent(QResizeEvent* event)
       settings.setValue("map", saveGeometry());
     }
   }
+
+  repositionHeader();
 }
 
 void MapViewer::showEvent(QShowEvent*)
 {
   QPointF pos = mapLayout->roomPos(view->currentRoomId).center() * view->zoomLevel;
   scrollArea->ensureVisible(pos.x(), pos.y(), width() / 3, height() / 3);
+  repositionHeader();
 }
 
 void MapViewer::moveEvent(QMoveEvent*)
