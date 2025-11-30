@@ -52,3 +52,15 @@ SOURCES += src/main.cpp
 include(src/mapping/mapping.pri)
 include(src/commands/commands.pri)
 include(src/qtermwidget/qtermwidget.pri)
+
+VERSION = 0.0.1
+
+# If git commands can be run without errors, grab the commit hash
+system(git log -1 --pretty=format:) {
+  BUILD_HASH = -$$system(git log -1 --pretty=format:%h)
+}
+else {
+  BUILD_HASH =
+}
+
+DEFINES += GALOSH_VERSION=$${VERSION}$${BUILD_HASH}

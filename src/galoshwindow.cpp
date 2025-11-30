@@ -400,7 +400,9 @@ void GaloshWindow::about()
 {
   QFile html(":/about.html");
   html.open(QIODevice::ReadOnly);
-  QMessageBox::about(this, "About Galosh", QString::fromUtf8(html.readAll()));
+  QString content = QString::fromUtf8(html.readAll());
+  content = content.replace("{VERSION}", qApp->applicationVersion());
+  QMessageBox::about(this, "About Galosh", content);
 }
 
 bool GaloshWindow::msspAvailable() const

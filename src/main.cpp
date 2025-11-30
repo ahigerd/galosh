@@ -1,13 +1,15 @@
 #include <QApplication>
-#include <QDir>
 #include <QIcon>
 #include "galoshwindow.h"
-#include "galoshterm.h"
-#include "mudletimport.h"
+
+#define STRINGIFY_(x) #x
+#define STRINGIFY(x) STRINGIFY_(x)
+#define GALOSH_VERSION_STRING STRINGIFY(GALOSH_VERSION)
 
 int main(int argc, char** argv)
 {
   QApplication::setApplicationName("Galosh");
+  QApplication::setApplicationVersion(GALOSH_VERSION_STRING);
   QApplication::setApplicationDisplayName("Galosh");
   QApplication::setOrganizationName("Alkahest");
   QApplication::setOrganizationDomain("com.alkahest");
