@@ -35,7 +35,7 @@ void RouteCommand::handleInvoke(const QStringList& args, const KWArgs& kwargs)
     }
     startRoomId = history->currentRoom()->id;
   }
-  map->search()->precompute();
+  map->search()->precompute(true);
   map->search()->precomputeRoutes();
   QList<int> route;
   QString destName;

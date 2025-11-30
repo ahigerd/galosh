@@ -786,8 +786,23 @@ QList<Clique::Ref> MapSearch::collectCliques(const QStringList& zones) const
   return result;
 }
 
+struct StackCounter
+{
+  StackCounter(int* depth) : depth(depth), indent(*depth, ' ') {
+    indent += indent;
+    ++(*depth);
+  }
+  ~StackCounter() { --(*depth); }
+  operator const char*() const { return indent.constData(); }
+  int* depth;
+  QByteArray indent;
+};
+
 MapSearch::CliqueRoute MapSearch::findCliqueRoute(Clique::RefR fromClique, Clique::RefR toClique, QList<Clique::Ref> avoid) const
 {
+  // static int depth = 0;
+  // StackCounter sc(&depth);
+
   // Step 1: direct connection
   for (const CliqueExit& exit : fromClique->exits) {
     if (exit.toClique == toClique) {
