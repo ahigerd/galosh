@@ -6,6 +6,7 @@
 #include "msspview.h"
 #include "exploredialog.h"
 #include "mapviewer.h"
+#include "mapoptions.h"
 #include "commands/textcommand.h"
 #include "commands/identifycommand.h"
 #include "commands/slotcommand.h"
@@ -80,12 +81,11 @@ GaloshWindow::GaloshWindow(QWidget* parent)
 
   QMenu* viewMenu = new QMenu("&View", mb);
   viewMenu->addAction("&Profiles...", this, SLOT(openProfileDialog()));
+  profileActions << viewMenu->addAction("&Map Settings...", this, SLOT(openMapOptions()));
   viewMenu->addSeparator();
-  msspMenu = viewMenu->addAction("View &MSSP Info...", this, SLOT(openMsspDialog()));
-  mapAction = viewMenu->addAction("&View Map...", this, SLOT(showMap()));
-  mapAction->setEnabled(false);
-  exploreAction = viewMenu->addAction("E&xplore Map...", this, SLOT(exploreMap()));
-  exploreAction->setEnabled(false);
+  msspMenu = viewMenu->addAction("View MSSP &Info...", this, SLOT(openMsspDialog()));
+  profileActions << viewMenu->addAction("&View Map...", this, SLOT(showMap()));
+  profileActions << viewMenu->addAction("E&xplore Map...", this, SLOT(exploreMap()));
   viewMenu->addSeparator();
   roomAction = viewMenu->addAction("&Room Description", this, SLOT(toggleRoomDock(bool)));
   roomAction->setCheckable(true);
@@ -112,10 +112,8 @@ GaloshWindow::GaloshWindow(QWidget* parent)
   tb->addAction("Profiles", this, SLOT(openProfileDialog()));
   tb->addSeparator();
   tb->addAction("Triggers", [this]{ openProfileDialog(ProfileDialog::TriggersTab); });
-  mapActionTB = tb->addAction("Map", [this]{ showMap(); });
-  mapActionTB->setEnabled(false);
-  exploreActionTB = tb->addAction("Explore", [this]{ exploreMap(); });
-  exploreActionTB->setEnabled(false);
+  profileActions << tb->addAction("Map", [this]{ showMap(); });
+  profileActions << tb->addAction("Explore", [this]{ exploreMap(); });
   tb->addSeparator();
   msspButton = tb->addAction("MSSP", this, SLOT(openMsspDialog()));
   addToolBar(tb);
@@ -127,6 +125,10 @@ GaloshWindow::GaloshWindow(QWidget* parent)
   sbStatus = new QLabel("Disconnected", bar);
   sbStatus->setFrameStyle(QFrame::Sunken | QFrame::Panel);
   bar->addWidget(sbStatus, 1);
+
+  for (QAction* action : profileActions) {
+    action->setEnabled(false);
+  }
 
   resize(800, 600);
   fixGeometry = true;
@@ -260,6 +262,12 @@ void GaloshWindow::openProfileDialog(ProfileDialog::Tab tab)
   dlg->show();
 }
 
+void GaloshWindow::openMapOptions()
+{
+  MapOptions* o = new MapOptions(&map, this);
+  o->open();
+}
+
 void GaloshWindow::connectToProfile(const QString& path, bool online)
 {
   currentProfile = path;
@@ -271,10 +279,11 @@ void GaloshWindow::connectToProfile(const QString& path, bool online)
   map.loadProfile(path);
   exploreHistory.reset();
   itemDB.loadProfile(path);
-  mapAction->setEnabled(true);
-  mapActionTB->setEnabled(true);
-  exploreAction->setEnabled(true);
-  exploreActionTB->setEnabled(true);
+
+  for (QAction* action : profileActions) {
+    action->setEnabled(true);
+  }
+
   if (mapView) {
     mapView->reload();
   }

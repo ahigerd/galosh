@@ -29,6 +29,7 @@ public:
 public slots:
   void openConnectDialog();
   void openProfileDialog(ProfileDialog::Tab tab = ProfileDialog::ServerTab);
+  void openMapOptions();
   void openMsspDialog();
   void openConfigFolder();
   void openWebsite();
@@ -71,10 +72,7 @@ private:
   ExploreHistory exploreHistory;
   ItemDatabase itemDB;
   GaloshTerm* term;
-  QAction* exploreAction;
-  QAction* exploreActionTB;
-  QAction* mapAction;
-  QAction* mapActionTB;
+  QList<QAction*> profileActions;
   QDockWidget* infoDock;
   QAction* infoAction;
   QTreeView* infoView;
