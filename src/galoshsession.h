@@ -39,13 +39,18 @@ public:
   void startOffline();
   void reload();
 
+  bool hasUnread() const;
+
   InfoModel* infoModel;
+
+  bool eventFilter(QObject* obj, QEvent* event);
 
 signals:
   void msspReceived();
   void statusUpdated();
   void currentRoomUpdated();
   void openProfileDialog(ProfileDialog::Tab);
+  void unreadUpdated();
 
 public slots:
   void exploreMap(int roomId = -1, const QString& movement = QString());
@@ -62,14 +67,15 @@ private slots:
   void abortSpeedwalk();
   void setLastRoom(int roomId);
   void gmcpEvent(const QString& key, const QVariant& value);
+  void setUnread();
 
 private:
-
   AutoMapper autoMap;
   ExploreHistory exploreHistory;
   QStringList speedPath;
   QString statusBar;
   QPointer<ExploreDialog> explore;
+  bool unread;
 };
 
 #endif

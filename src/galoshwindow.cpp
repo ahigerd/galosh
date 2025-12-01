@@ -27,9 +27,28 @@
 #include <QEvent>
 #include <QtDebug>
 
+enum class TabStatus {
+  Disconnected,
+  Idle,
+  Updated,
+};
+
+static QMap<TabStatus, QIcon> loadTabIcons()
+{
+  QMap<TabStatus, QIcon> icons;
+  icons[TabStatus::Disconnected].addFile(":/red.png");
+  icons[TabStatus::Idle].addFile(":/gray.png");
+  icons[TabStatus::Updated].addFile(":/green.png");
+  return icons;
+}
+
+static QMap<TabStatus, QIcon> tabIcons;
+
 GaloshWindow::GaloshWindow(QWidget* parent)
 : QMainWindow(parent), mapDockView(nullptr), geometryReady(false), shouldRestoreDocks(false)
 {
+  tabIcons = loadTabIcons();
+
   setCorner(Qt::TopLeftCorner, Qt::LeftDockWidgetArea);
   setCorner(Qt::BottomLeftCorner, Qt::LeftDockWidgetArea);
   setCorner(Qt::TopRightCorner, Qt::RightDockWidgetArea);
@@ -39,7 +58,10 @@ GaloshWindow::GaloshWindow(QWidget* parent)
   setCentralWidget(stackedWidget);
 
   tabs = new QTabWidget(stackedWidget);
+  tabs->setIconSize(QSize(12, 12));
   tabs->setTabsClosable(true);
+  tabs->setMovable(true);
+  tabs->setDocumentMode(true);
   QObject::connect(tabs, SIGNAL(currentChanged(int)), this, SLOT(updateStatus()));
   QObject::connect(tabs, SIGNAL(tabCloseRequested(int)), this, SLOT(closeSession(int)));
   stackedWidget->addWidget(tabs);
@@ -252,6 +274,17 @@ void GaloshWindow::updateStatus()
   msspButton->setEnabled(mssp);
   updateActions();
   mapDockView->setSession(sess);
+
+  for (int i = 0; i < tabs->count(); i++) {
+    TabStatus status = TabStatus::Idle;
+    GaloshSession* s = sessions[tabs->widget(i)];
+    if (s->hasUnread()) {
+      status = TabStatus::Updated;
+    } else if (!s->isConnected()) {
+      status = TabStatus::Disconnected;
+    }
+    tabs->setTabIcon(i, tabIcons[status]);
+  }
 }
 
 void GaloshWindow::msspReceived()
@@ -314,6 +347,7 @@ void GaloshWindow::connectToProfile(const QString& path, bool online)
     QObject::connect(sess, SIGNAL(msspReceived()), this, SLOT(msspReceived()));
     QObject::connect(sess, SIGNAL(statusUpdated()), this, SLOT(updateStatus()));
     QObject::connect(sess, SIGNAL(currentRoomUpdated()), this, SLOT(updateStatus()));
+    QObject::connect(sess, SIGNAL(unreadUpdated()), this, SLOT(updateStatus()));
     QObject::connect(sess, SIGNAL(openProfileDialog(ProfileDialog::Tab)), this, SLOT(openProfileDialog(ProfileDialog::Tab)));
 
     updateActions();
@@ -324,6 +358,7 @@ void GaloshWindow::connectToProfile(const QString& path, bool online)
   } else {
     sess->startOffline();
   }
+  sess->term->setFocus();
 }
 
 void GaloshWindow::reloadProfile(const QString& path)

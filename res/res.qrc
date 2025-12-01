@@ -5,5 +5,12 @@
     <file>icon32.png</file>
     <file>icon48.png</file>
     <file>icon64.png</file>
+
+    <file>gray@2x.png</file>
+    <file>gray.png</file>
+    <file>green@2x.png</file>
+    <file>green.png</file>
+    <file>red@2x.png</file>
+    <file>red.png</file>
   </qresource>
 </RCC>

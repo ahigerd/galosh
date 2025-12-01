@@ -14,6 +14,7 @@ int main(int argc, char** argv)
   QApplication::setOrganizationName("Alkahest");
   QApplication::setOrganizationDomain("com.alkahest");
   QApplication app(argc, argv);
+  app.setAttribute(Qt::AA_UseHighDpiPixmaps);
 
   QIcon icon;
   icon.addFile(":/icon16.png");

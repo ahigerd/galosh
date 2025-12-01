@@ -12,12 +12,13 @@
 #include <QSettings>
 
 GaloshSession::GaloshSession(UserProfile* profile, QWidget* parent)
-: QObject(parent), TextCommandProcessor("/"), profile(profile), autoMap(map()), exploreHistory(map())
+: QObject(parent), TextCommandProcessor("/"), profile(profile), autoMap(map()), exploreHistory(map()), unread(false)
 {
   term = new GaloshTerm(parent);
   QObject::connect(term, SIGNAL(lineReceived(QString)), &autoMap, SLOT(processLine(QString)));
   QObject::connect(term, SIGNAL(lineReceived(QString)), itemDB(), SLOT(processLine(QString)));
   QObject::connect(term, SIGNAL(lineReceived(QString)), triggers(), SLOT(processLine(QString)), Qt::QueuedConnection);
+  QObject::connect(term, SIGNAL(lineReceived(QString)), this, SLOT(setUnread()));
   QObject::connect(term, SIGNAL(commandEntered(QString, bool)), &autoMap, SLOT(commandEntered(QString, bool)), Qt::QueuedConnection);
   QObject::connect(term, SIGNAL(speedwalk(QStringList)), this, SLOT(speedwalk(QStringList)));
 
@@ -45,7 +46,8 @@ GaloshSession::GaloshSession(UserProfile* profile, QWidget* parent)
   QObject::connect(triggers(), SIGNAL(executeCommand(QString, bool)), term, SLOT(executeCommand(QString, bool)), Qt::QueuedConnection);
 
   QObject::connect(&autoMap, SIGNAL(currentRoomUpdated(int)), this, SLOT(setLastRoom(int)));
-  //QObject::connect(map(), SIGNAL(currentRoomUpdated(MapManager*, int)), roomView, SLOT(setRoom(MapManager*, int)));
+
+  term->installEventFilter(this);
 }
 
 GaloshSession::~GaloshSession()
@@ -219,6 +221,7 @@ void GaloshSession::showCommandMessage(TextCommand* command, const QString& mess
   } else {
     term->writeColorLine("96", formatted.toUtf8());
   }
+  setUnread();
 }
 
 void GaloshSession::exploreMap(int roomId, const QString& movement)
@@ -240,4 +243,27 @@ void GaloshSession::exploreMap(int roomId, const QString& movement)
     QObject::connect(explore, SIGNAL(openProfileDialog(ProfileDialog::Tab)), this, SIGNAL(openProfileDialog(ProfileDialog::Tab)));
     explore->show();
   }
+}
+
+void GaloshSession::setUnread()
+{
+  bool newUnread = !term->isVisible();
+  if (unread != newUnread) {
+    unread = newUnread;
+    emit unreadUpdated();
+  }
+}
+
+bool GaloshSession::hasUnread() const
+{
+  return unread;
+}
+
+bool GaloshSession::eventFilter(QObject* obj, QEvent* event)
+{
+  if (obj == term && event->type() == QEvent::Show)
+  {
+    setUnread();
+  }
+  return false;
 }
