@@ -1,5 +1,6 @@
 #include <QApplication>
 #include <QIcon>
+#include <QSettings>
 #include "galoshwindow.h"
 
 #define STRINGIFY_(x) #x
@@ -25,7 +26,14 @@ int main(int argc, char** argv)
   app.setWindowIcon(icon);
 
   GaloshWindow win;
-  win.show();
+  {
+    QSettings settings;
+    if (settings.value("maximized").toBool()) {
+      win.showMaximized();
+    } else {
+      win.show();
+    }
+  }
   win.openConnectDialog();
 
   return app.exec();

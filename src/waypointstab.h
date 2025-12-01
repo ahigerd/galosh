@@ -3,6 +3,7 @@
 
 #include <QWidget>
 #include <QMap>
+class QLabel;
 class QTableWidget;
 class QTableWidgetItem;
 
@@ -24,6 +25,7 @@ private slots:
   void onCellChanged(int row, int col);
 
 private:
+  QLabel* serverProfile;
   QTableWidget* table;
   QString mapFile;
 };

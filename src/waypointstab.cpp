@@ -1,10 +1,13 @@
 #include "waypointstab.h"
 #include "mapmanager.h"
+#include "userprofile.h"
+#include "serverprofile.h"
 #include "algorithms.h"
 #include <QSettings>
 #include <QBoxLayout>
 #include <QTableWidget>
 #include <QHeaderView>
+#include <QLabel>
 #include <QPushButton>
 #include <QDir>
 #include <QStandardPaths>
@@ -17,6 +20,9 @@ WaypointsTab::WaypointsTab(QWidget* parent)
 : QWidget(parent)
 {
   QVBoxLayout* layout = new QVBoxLayout(this);
+
+  serverProfile = new QLabel(this);
+  layout->addWidget(serverProfile);
 
   table = new QTableWidget(0, 3, this);
   table->setHorizontalHeaderLabels({ "Waypoint", "Room ID", "Description" });
@@ -41,8 +47,11 @@ WaypointsTab::WaypointsTab(QWidget* parent)
 
 void WaypointsTab::load(const QString& profile)
 {
+  UserProfile user(profile);
   mapFile = MapManager::mapForProfile(profile);
   QSettings settings(mapFile, QSettings::IniFormat);
+
+  serverProfile->setText(QStringLiteral("<html>Waypoints for <b>%1</b>:</html>").arg(user.serverProfile->host));
 
   settings.beginGroup(" Waypoints");
   table->clearContents();

@@ -201,7 +201,10 @@ void GaloshWindow::paintEvent(QPaintEvent* event)
 {
   if (fixGeometry) {
     QSettings settings;
-    restoreGeometry(settings.value("window").toByteArray());
+    if (!settings.value("maximized").toBool()) {
+      restoreGeometry(settings.value("window").toByteArray());
+    }
+
     QStringList sizes = settings.value("infoColumns").toStringList();
     for (int i = 0; i < sizes.size(); i++) {
       infoView->setColumnWidth(i, sizes[i].toInt());
@@ -216,6 +219,7 @@ void GaloshWindow::paintEvent(QPaintEvent* event)
     fixGeometry = false;
     geometryReady = true;
     shouldRestoreDocks = true;
+    QTimer::singleShot(16, [this]{ resizeEvent(nullptr); });
   }
   QMainWindow::paintEvent(event);
 }
@@ -426,7 +430,7 @@ void GaloshWindow::moveEvent(QMoveEvent*)
 
 void GaloshWindow::resizeEvent(QResizeEvent*)
 {
-  if (shouldRestoreDocks) {
+  if (geometryReady && shouldRestoreDocks) {
     QSettings settings;
     restoreState(settings.value("docks").toByteArray());
     shouldRestoreDocks = false;
@@ -451,8 +455,13 @@ void GaloshWindow::updateGeometry(bool queue)
   }
   if (isVisible()) {
     QSettings settings;
+    if (isMaximized()) {
+      settings.setValue("maximized", true);
+    } else {
+      settings.remove("maximized");
+    }
     settings.setValue("window", saveGeometry());
-    if (!shouldRestoreDocks) {
+    if (geometryReady && !shouldRestoreDocks) {
       settings.setValue("docks", saveState());
     }
 

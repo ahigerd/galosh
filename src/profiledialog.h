@@ -2,6 +2,7 @@
 #define GALOSH_PROFILEDIALOG_H
 
 #include <QDialog>
+#include <QModelIndex>
 class QTabWidget;
 class QFormLayout;
 class QListView;
@@ -60,6 +61,7 @@ private:
   QListView* knownProfiles;
   QStandardItemModel* profileList;
   QTabWidget* tabs;
+  QModelIndex selectedProfile;
 
   QLineEdit* profileName;
   QRadioButton* oServer;

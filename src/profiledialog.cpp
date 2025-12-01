@@ -134,6 +134,7 @@ ProfileDialog::ProfileDialog(bool forConnection, QWidget* parent)
 
   loadProfiles();
   QObject::connect(knownProfiles->selectionModel(), SIGNAL(currentChanged(QModelIndex,QModelIndex)), this, SLOT(profileSelected(QModelIndex)));
+  QObject::connect(knownProfiles, SIGNAL(doubleClicked(QModelIndex)), this, SLOT(accept()));
 
   resize(minimumSizeHint());
 
@@ -153,6 +154,7 @@ ProfileDialog::ProfileDialog(bool forConnection, QWidget* parent)
 
   QObject::connect(msspButton, SIGNAL(clicked()), this, SLOT(checkMssp()));
   toggleServerOrProgram();
+  dirty = false;
 }
 
 ProfileDialog::ProfileDialog(ProfileDialog::Tab openTab, QWidget* parent)
@@ -196,6 +198,23 @@ void ProfileDialog::loadProfiles()
 
 void ProfileDialog::profileSelected(const QModelIndex& current)
 {
+  if (current == selectedProfile) {
+    return;
+  }
+  if (dirty) {
+    QString message = QStringLiteral("There are unsaved changes to the profile \"%1\". Save them now?").arg(profileName->text());
+    int button = QMessageBox::question(this, "Galosh", message, QMessageBox::Save | QMessageBox::Discard | QMessageBox::Cancel);
+    bool cancel = (button == QMessageBox::Cancel);
+    if (button == QMessageBox::Save) {
+      cancel = !save();
+    }
+    if (cancel) {
+      auto sel = knownProfiles->selectionModel();
+      sel->setCurrentIndex(selectedProfile, QItemSelectionModel::ClearAndSelect);
+      return;
+    }
+  }
+  selectedProfile = current;
   tabs->setEnabled(current.isValid());
   buttons->button(QDialogButtonBox::Ok)->setEnabled(current.isValid());
   loadProfile(current.data(Qt::UserRole).toString());
@@ -215,13 +234,12 @@ void ProfileDialog::closePromptUnsaved()
 
 void ProfileDialog::loadProfileOffline()
 {
-  QModelIndex idx = knownProfiles->currentIndex();
-  if (idx.isValid() && save()) {
+  if (selectedProfile.isValid() && save()) {
     QSettings settings;
-    QDir dir(idx.data(Qt::UserRole).toString());
+    QDir dir(selectedProfile.data(Qt::UserRole).toString());
     lastProfile = dir.dirName().replace(".galosh", "");
     settings.setValue("lastProfile", lastProfile);
-    emit connectToProfile(idx.data(Qt::UserRole).toString(), false);
+    emit connectToProfile(selectedProfile.data(Qt::UserRole).toString(), false);
     reject();
   }
 }
@@ -236,7 +254,7 @@ bool ProfileDialog::save()
     QMessageBox::critical(this, "Galosh", "Profile name is required.");
     return false;
   }
-  QStandardItem* item = profileList->itemFromIndex(knownProfiles->selectionModel()->currentIndex());
+  QStandardItem* item = profileList->itemFromIndex(selectedProfile);
   QString path = item->data(Qt::UserRole).toString();
   bool saveError = false;
   if (path.isEmpty()) {
@@ -306,15 +324,14 @@ void ProfileDialog::done(int r)
       return;
     }
     if (emitConnect) {
-      QModelIndex idx = knownProfiles->currentIndex();
-      if (!idx.isValid()) {
+      if (!selectedProfile.isValid()) {
         qDebug() << "No profile selected";
       } else {
         QSettings settings;
-        QDir dir(idx.data(Qt::UserRole).toString());
+        QDir dir(selectedProfile.data(Qt::UserRole).toString());
         lastProfile = dir.dirName().replace(".galosh", "");
         settings.setValue("lastProfile", lastProfile);
-        emit connectToProfile(idx.data(Qt::UserRole).toString());
+        emit connectToProfile(selectedProfile.data(Qt::UserRole).toString());
       }
     }
   }
@@ -343,7 +360,7 @@ void ProfileDialog::newProfile()
   passwordPrompt->setText(defaultPasswordPrompt);
 
   profileName->setFocus();
-  dirty = true;
+  markDirty();
 }
 
 void ProfileDialog::deleteProfile()
@@ -373,6 +390,7 @@ bool ProfileDialog::loadProfile(const QString& path)
   QSettings settings(path, QSettings::IniFormat);
   if (settings.status() != QSettings::NoError) {
     QMessageBox::critical(this, "Galosh", "Error reading profile from " + path);
+    dirty = false;
     return false;
   }
   settings.beginGroup("Profile");
@@ -396,6 +414,7 @@ bool ProfileDialog::loadProfile(const QString& path)
   tTriggers->load(path);
   tAppearance->load(path);
   tWaypoints->load(path);
+  dirty = false;
   return true;
 }
 
@@ -424,5 +443,5 @@ void ProfileDialog::toggleServerOrProgram()
   port->setEnabled(server);
   portLabel->setEnabled(server);
   msspButton->setEnabled(server);
-  dirty = true;
+  markDirty();
 }

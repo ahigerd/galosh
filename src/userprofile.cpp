@@ -21,7 +21,6 @@ UserProfile::UserProfile(const QString& profilePath)
 {
   reload();
   serverProfile = getServerProfile(host.isEmpty() ? profilePath : host);
-  //exploreHistory.reset(new ExploreHistory(&serverProfile->map));
 }
 
 void UserProfile::setLastRoomId(int roomId)
