@@ -1,5 +1,7 @@
 #include "galoshwindow.h"
+#include "galoshsession.h"
 #include "galoshterm.h"
+#include "userprofile.h"
 #include "telnetsocket.h"
 #include "infomodel.h"
 #include "roomview.h"
@@ -7,17 +9,14 @@
 #include "exploredialog.h"
 #include "mapviewer.h"
 #include "mapoptions.h"
-#include "commands/textcommand.h"
-#include "commands/identifycommand.h"
-#include "commands/slotcommand.h"
-#include "commands/routecommand.h"
-#include "commands/waypointcommand.h"
 #include <QDesktopServices>
 #include <QApplication>
 #include <QFontDatabase>
 #include <QMessageBox>
 #include <QSettings>
 #include <QDockWidget>
+#include <QTabWidget>
+#include <QStackedWidget>
 #include <QTreeView>
 #include <QHeaderView>
 #include <QMenuBar>
@@ -29,26 +28,37 @@
 #include <QtDebug>
 
 GaloshWindow::GaloshWindow(QWidget* parent)
-: QMainWindow(parent), TextCommandProcessor("/"), exploreHistory(&map), explore(nullptr), lastRoomId(-1), geometryReady(false), shouldRestoreDocks(false)
+: QMainWindow(parent), mapDockView(nullptr), geometryReady(false), shouldRestoreDocks(false)
 {
   setCorner(Qt::TopLeftCorner, Qt::LeftDockWidgetArea);
   setCorner(Qt::BottomLeftCorner, Qt::LeftDockWidgetArea);
   setCorner(Qt::TopRightCorner, Qt::RightDockWidgetArea);
   setCorner(Qt::BottomRightCorner, Qt::RightDockWidgetArea);
 
-  term = new GaloshTerm(this);
-  QObject::connect(term, SIGNAL(slashCommand(QString, QStringList)), this, SLOT(handleCommand(QString, QStringList)));
-  setCentralWidget(term);
+  stackedWidget = new QStackedWidget(this);
+  setCentralWidget(stackedWidget);
 
-  infoModel = new InfoModel(this);
-  QObject::connect(term->socket(), SIGNAL(msspEvent(QString, QString)), this, SLOT(msspEvent(QString, QString)));
-  QObject::connect(term->socket(), SIGNAL(gmcpEvent(QString, QVariant)), this, SLOT(gmcpEvent(QString, QVariant)));
+  tabs = new QTabWidget(stackedWidget);
+  tabs->setTabsClosable(true);
+  QObject::connect(tabs, SIGNAL(currentChanged(int)), this, SLOT(updateStatus()));
+  QObject::connect(tabs, SIGNAL(tabCloseRequested(int)), this, SLOT(closeSession(int)));
+  stackedWidget->addWidget(tabs);
+
+  background = new QWidget(stackedWidget);
+  {
+    QPalette p = palette();
+    p.setBrush(QPalette::Window, ColorSchemes::scheme(ColorSchemes::defaultScheme())[ColorScheme::Background]);
+    background->setBackgroundRole(QPalette::Window);
+    background->setAutoFillBackground(true);
+    background->setPalette(p);
+  }
+  stackedWidget->addWidget(background);
+  stackedWidget->setCurrentWidget(background);
 
   infoDock = new QDockWidget(this);
   infoDock->setWindowTitle("Character Stats");
   infoDock->setObjectName("infoView");
   infoView = new QTreeView(infoDock);
-  infoView->setModel(infoModel);
   infoView->setItemsExpandable(false);
   infoView->header()->setStretchLastSection(true);
   infoDock->setWidget(infoView);
@@ -58,14 +68,14 @@ GaloshWindow::GaloshWindow(QWidget* parent)
   roomDock->setObjectName("roomView");
   roomView = new RoomView(this);
   roomDock->setWidget(roomView);
-  QObject::connect(roomView, SIGNAL(roomUpdated(QString, int)), this, SLOT(setLastRoom(QString, int)));
+  QObject::connect(roomView, SIGNAL(roomUpdated(QString,int,QString)), roomDock, SLOT(setWindowTitle(QString)));
   QObject::connect(roomView, SIGNAL(exploreRoom(int, QString)), this, SLOT(exploreMap(int, QString)));
   addDockWidget(Qt::TopDockWidgetArea, roomDock);
 
   mapDock = new QDockWidget(this);
   mapDock->setObjectName("mapView");
   mapDock->setWindowTitle("Mini-Map");
-  mapDockView = new MapViewer(MapViewer::MiniMap, &map, &exploreHistory, this);
+  mapDockView = new MapViewer(MapViewer::MiniMap, this);
   mapDock->setWidget(mapDockView);
   addDockWidget(Qt::TopDockWidgetArea, mapDock);
 
@@ -73,8 +83,10 @@ GaloshWindow::GaloshWindow(QWidget* parent)
   setMenuBar(mb);
 
   QMenu* fileMenu = new QMenu("&File", mb);
-  fileMenu->addAction("&Connect...", this, SLOT(openConnectDialog()));
-  fileMenu->addAction("&Disconnect", term->socket(), SLOT(disconnectFromHost()));
+  fileMenu->addAction("C&onnect...", this, SLOT(openConnectDialog()));
+  disconnectedActions << fileMenu->addAction("&Reconnect", this, SLOT(reconnectSession()));
+  connectedActions << fileMenu->addAction("&Disconnect", this, SLOT(disconnectSession()));
+  profileActions << fileMenu->addAction("&Close", this, SLOT(closeSession()), QKeySequence::Close);
   fileMenu->addSeparator();
   fileMenu->addAction("E&xit", qApp, SLOT(quit()));
   mb->addMenu(fileMenu);
@@ -84,7 +96,6 @@ GaloshWindow::GaloshWindow(QWidget* parent)
   profileActions << viewMenu->addAction("&Map Settings...", this, SLOT(openMapOptions()));
   viewMenu->addSeparator();
   msspMenu = viewMenu->addAction("View MSSP &Info...", this, SLOT(openMsspDialog()));
-  profileActions << viewMenu->addAction("&View Map...", this, SLOT(showMap()));
   profileActions << viewMenu->addAction("E&xplore Map...", this, SLOT(exploreMap()));
   viewMenu->addSeparator();
   roomAction = viewMenu->addAction("&Room Description", this, SLOT(toggleRoomDock(bool)));
@@ -99,7 +110,7 @@ GaloshWindow::GaloshWindow(QWidget* parent)
 
   QMenu* helpMenu = new QMenu("&Help", mb);
   helpMenu->addAction("Open &Website...", this, SLOT(openWebsite()));
-  helpMenu->addAction("Show Command &Help", this, SLOT(help()));
+  profileActions << helpMenu->addAction("Show Command &Help", this, SLOT(help()));
   helpMenu->addSeparator();
   helpMenu->addAction("&About...", this, SLOT(about()));
   helpMenu->addAction("About &Qt...", qApp, SLOT(aboutQt()));
@@ -108,12 +119,12 @@ GaloshWindow::GaloshWindow(QWidget* parent)
   QToolBar* tb = new QToolBar(this);
   tb->setObjectName("toolbar");
   tb->addAction("Connect", this, SLOT(openConnectDialog()));
-  tb->addAction("Disconnect", term->socket(), SLOT(disconnectFromHost()));
+  disconnectedActions << tb->addAction("Reconnect", this, SLOT(reconnectSession()));
+  connectedActions << tb->addAction("Disconnect", this, SLOT(disconnectSession()));
   tb->addAction("Profiles", this, SLOT(openProfileDialog()));
   tb->addSeparator();
   tb->addAction("Triggers", [this]{ openProfileDialog(ProfileDialog::TriggersTab); });
-  profileActions << tb->addAction("Map", [this]{ showMap(); });
-  profileActions << tb->addAction("Explore", [this]{ exploreMap(); });
+  profileActions << tb->addAction("Map", this, SLOT(exploreMap()));
   tb->addSeparator();
   msspButton = tb->addAction("MSSP", this, SLOT(openMsspDialog()));
   addToolBar(tb);
@@ -126,27 +137,10 @@ GaloshWindow::GaloshWindow(QWidget* parent)
   sbStatus->setFrameStyle(QFrame::Sunken | QFrame::Panel);
   bar->addWidget(sbStatus, 1);
 
-  for (QAction* action : profileActions) {
-    action->setEnabled(false);
-  }
+  updateActions();
 
   resize(800, 600);
   fixGeometry = true;
-
-  QObject::connect(term, SIGNAL(lineReceived(QString)), &map, SLOT(processLine(QString)));
-  QObject::connect(term, SIGNAL(lineReceived(QString)), &itemDB, SLOT(processLine(QString)));
-  QObject::connect(term, SIGNAL(lineReceived(QString)), &triggers, SLOT(processLine(QString)), Qt::QueuedConnection);
-  QObject::connect(term, SIGNAL(commandEntered(QString, bool)), &map, SLOT(commandEntered(QString, bool)), Qt::QueuedConnection);
-  QObject::connect(term, SIGNAL(speedwalk(QStringList)), this, SLOT(speedwalk(QStringList)));
-
-  QObject::connect(term->socket(), SIGNAL(connected()), this, SLOT(updateStatus()));
-  QObject::connect(term->socket(), SIGNAL(disconnected()), this, SLOT(updateStatus()));
-  QObject::connect(term->socket(), SIGNAL(promptWaiting()), &map, SLOT(promptWaiting()));
-  QObject::connect(term->socket(), SIGNAL(gmcpEvent(QString, QVariant)), &map, SLOT(gmcpEvent(QString, QVariant)));
-
-  QObject::connect(&triggers, SIGNAL(executeCommand(QString, bool)), term, SLOT(executeCommand(QString, bool)), Qt::QueuedConnection);
-
-  QObject::connect(&map, SIGNAL(currentRoomUpdated(MapManager*, int)), roomView, SLOT(setRoom(MapManager*, int)));
 
   for (QAction* action : tb->actions()) {
     QToolButton* b = qobject_cast<QToolButton*>(tb->widgetForAction(action));
@@ -164,23 +158,21 @@ GaloshWindow::GaloshWindow(QWidget* parent)
   QObject::connect(infoView->header(), &QHeaderView::sectionResized, [this](int, int, int){ updateGeometry(true); });
 
   updateStatus();
-
-  addCommand(new IdentifyCommand(&itemDB));
-  addCommand(new SlotCommand(".", this, SLOT(abortSpeedwalk()), "Aborts a speedwalk path in progress"));
-  addCommand(new SlotCommand("DC", term->socket(), SLOT(disconnectFromHost()), "Disconnects from the game"))->addKeyword("DISCONNECT");
-  addCommand(new SlotCommand("EXPLORE", this, SLOT(exploreMap()), "Opens the map exploration window"))->addKeyword("MAP");
-
-  RouteCommand* routeCommand = addCommand(new RouteCommand(&map, &exploreHistory));
-  QObject::connect(routeCommand, SIGNAL(speedwalk(QStringList)), this, SLOT(speedwalk(QStringList)));
-
-  WaypointCommand* waypointCommand = addCommand(new WaypointCommand(&map, &exploreHistory));
-  QObject::connect(waypointCommand, SIGNAL(speedwalk(QStringList)), this, SLOT(speedwalk(QStringList)));
 }
 
 void GaloshWindow::showEvent(QShowEvent* event)
 {
   QMainWindow::showEvent(event);
   fixGeometry = true;
+}
+
+void GaloshWindow::closeEvent(QCloseEvent* event)
+{
+  if (!confirmClose()) {
+    event->ignore();
+  } else {
+    QMainWindow::closeEvent(event);
+  }
 }
 
 void GaloshWindow::paintEvent(QPaintEvent* event)
@@ -206,46 +198,66 @@ void GaloshWindow::paintEvent(QPaintEvent* event)
   QMainWindow::paintEvent(event);
 }
 
-void GaloshWindow::updateStatus()
+void GaloshWindow::updateActions()
 {
-  if (term->socket()->isConnected()) {
-    QString host = term->socket()->hostname();
-    sbStatus->setText(QStringLiteral("Connected to %1.").arg(host));
-  } else {
-    sbStatus->setText("Disconnected.");
+  bool hasProfile = !!session();
+  bool hasConnection = hasProfile && session()->isConnected();
+  for (QAction* action : profileActions) {
+    action->setEnabled(hasProfile);
   }
-  msspMenu->setEnabled(msspAvailable());
-  msspButton->setEnabled(msspAvailable());
+  for (QAction* action : connectedActions) {
+    action->setEnabled(hasConnection);
+  }
+  for (QAction* action : disconnectedActions) {
+    action->setEnabled(hasProfile && !hasConnection);
+  }
 }
 
-void GaloshWindow::msspEvent(const QString&, const QString&)
+GaloshSession* GaloshWindow::session() const
+{
+  return sessions.value(tabs->currentWidget());
+}
+
+void GaloshWindow::help()
+{
+  GaloshSession* sess = session();
+  if (!sess) {
+    return;
+  }
+  sess->help();
+}
+
+void GaloshWindow::updateStatus()
+{
+  GaloshSession* sess = session();
+  bool mssp = false;
+  if (sess) {
+    mssp = !sess->msspData().isEmpty();
+    setWindowTitle(sess->name());
+    sbStatus->setText(sess->statusBarText());
+    if (sess->currentRoom()) {
+      roomView->setRoom(sess->map(), sess->currentRoom()->id);
+    } else {
+      roomView->setRoom(sess->map(), -1);
+    }
+    infoView->setModel(sess->infoModel);
+    infoView->expandAll();
+  } else {
+    sbStatus->setText("Disconnected.");
+    roomView->setRoom(nullptr, 0);
+    infoView->setModel(nullptr);
+  }
+
+  msspMenu->setEnabled(mssp);
+  msspButton->setEnabled(mssp);
+  updateActions();
+  mapDockView->setSession(sess);
+}
+
+void GaloshWindow::msspReceived()
 {
   msspMenu->setEnabled(true);
   msspButton->setEnabled(true);
-}
-
-void GaloshWindow::gmcpEvent(const QString& key, const QVariant& value)
-{
-  if (key.toUpper() == "CHAR") {
-    infoModel->loadTree(value);
-    infoView->expandAll();
-  } else if (key.toUpper() == "EXTERNAL.DISCORD.STATUS") {
-    QVariantMap map = value.toMap();
-    QString state = map["state"].toString();
-    QString details = map["details"].toString();
-    QStringList parts;
-    if (!state.isEmpty()) {
-      parts << state;
-    }
-    if( !details.isEmpty()) {
-      parts << details;
-    }
-    if (!parts.isEmpty()) {
-      sbStatus->setText(parts.join(" - "));
-    }
-  } else if (key.toUpper() != "ROOM") {
-    qDebug() << key << value;
-  }
 }
 
 void GaloshWindow::openConnectDialog()
@@ -264,68 +276,112 @@ void GaloshWindow::openProfileDialog(ProfileDialog::Tab tab)
 
 void GaloshWindow::openMapOptions()
 {
-  MapOptions* o = new MapOptions(&map, this);
+  GaloshSession* sess = session();
+  if (!sess) {
+    return;
+  }
+  MapOptions* o = new MapOptions(sess->map(), this);
   o->open();
+}
+
+GaloshSession* GaloshWindow::findSession(const QString& profilePath) const
+{
+  for (GaloshSession* sess : sessions) {
+    if (sess->profile->profilePath == profilePath) {
+      return sess;
+    }
+  }
+  return nullptr;
 }
 
 void GaloshWindow::connectToProfile(const QString& path, bool online)
 {
-  currentProfile = path;
-  reloadProfile(path);
+  GaloshSession* sess = findSession(path);
+  if (sess) {
+    tabs->setCurrentWidget(sess->term);
+    if (sess->isConnected()) {
+      return;
+    }
+  } else {
+    UserProfile* profile = new UserProfile(path);
+    // Session takes ownership of profile
+    sess = new GaloshSession(profile, this);
+    sessions[sess->term] = sess;
+    tabs->addTab(sess->term, sess->name());
+    tabs->setCurrentWidget(sess->term);
+    stackedWidget->setCurrentWidget(tabs);
+    updateStatus();
+    QObject::connect(sess, SIGNAL(msspReceived()), this, SLOT(msspReceived()));
+    QObject::connect(sess, SIGNAL(statusUpdated()), this, SLOT(updateStatus()));
+    QObject::connect(sess, SIGNAL(currentRoomUpdated()), this, SLOT(updateStatus()));
+    QObject::connect(sess, SIGNAL(openProfileDialog(ProfileDialog::Tab)), this, SLOT(openProfileDialog(ProfileDialog::Tab)));
 
-  QSettings settings(path, QSettings::IniFormat);
-
-  settings.beginGroup("Profile");
-  map.loadProfile(path);
-  exploreHistory.reset();
-  itemDB.loadProfile(path);
-
-  for (QAction* action : profileActions) {
-    action->setEnabled(true);
-  }
-
-  if (mapView) {
-    mapView->reload();
-  }
-  if (mapDockView) {
-    mapDockView->reload();
+    updateActions();
   }
 
   if (online) {
-    QString command = settings.value("commandLine").toString();
-    if (command.isEmpty()) {
-      term->socket()->connectToHost(settings.value("host").toString(), settings.value("port").toInt());
-    } else {
-      term->socket()->connectCommand(command);
-    }
+    sess->connect();
   } else {
-    term->socket()->setHost(settings.value("host").toString(), settings.value("port").toInt());
-    roomView->setRoom(&map, settings.value("lastRoom", -1).toInt());
+    sess->startOffline();
   }
 }
 
 void GaloshWindow::reloadProfile(const QString& path)
 {
-  if (path != currentProfile) {
+  GaloshSession* sess = findSession(path);
+  if (sess) {
+    sess->reload();
+    updateStatus();
+  }
+}
+
+bool GaloshWindow::confirmClose(GaloshSession* sess)
+{
+  QStringList names;
+  if (sess) {
+    if (sess->isConnected()) {
+      names << sess->name();
+    }
+  } else {
+    for (const GaloshSession* sess : sessions) {
+      if (sess->isConnected()) {
+        names << sess->name();
+      }
+    }
+  }
+  QString message;
+  if (names.length() == 1) {
+    message = QStringLiteral("Closing this tab will disconnect the session \"%1\". Close it anyway?").arg(names.first());
+  } else if (names.length() > 1) {
+    message = QStringLiteral("Closing the window will disconnect these sessions:\n\t%1\nClose it anyway?").arg(names.join("\n\t"));
+  } else {
+    return true;
+  }
+  int button = QMessageBox::question(this, "Galosh", message, QMessageBox::Ok | QMessageBox::Cancel);
+  if (button != QMessageBox::Ok) {
+    return false;
+  }
+  return true;
+}
+
+void GaloshWindow::closeSession(int index)
+{
+  GaloshSession* sess;
+  if (index < 0) {
+    sess = session();
+  } else {
+    sess = sessions.value(tabs->widget(index));
+  }
+  if (!confirmClose(sess)) {
     return;
   }
-  triggers.loadProfile(path);
-
-  QSettings globalSettings;
-  QSettings settings(path, QSettings::IniFormat);
-
-  settings.beginGroup("Profile");
-  setWindowTitle(settings.value("name").toString());
-  settings.endGroup();
-
-  settings.beginGroup("Appearance");
-  QString colors = settings.value("colors", ColorSchemes::defaultScheme()).toString();
-  term->setColorScheme(ColorSchemes::scheme(colors));
-  if (globalSettings.value("Defaults/fontGlobal").toBool() || !settings.contains("font")) {
-    term->setTermFont(globalSettings.value("Defaults/font", QFontDatabase::systemFont(QFontDatabase::FixedFont)).value<QFont>());
-  } else {
-    term->setTermFont(settings.value("font").value<QFont>());
+  sessions.remove(sess->term);
+  tabs->removeTab(tabs->indexOf(sess->term));
+  delete sess;
+  if (tabs->count() == 0) {
+    stackedWidget->setCurrentWidget(background);
   }
+  updateStatus();
 }
 
 void GaloshWindow::moveEvent(QMoveEvent*)
@@ -336,9 +392,9 @@ void GaloshWindow::moveEvent(QMoveEvent*)
 void GaloshWindow::resizeEvent(QResizeEvent*)
 {
   if (shouldRestoreDocks) {
-      QSettings settings;
-      restoreState(settings.value("docks").toByteArray());
-      shouldRestoreDocks = false;
+    QSettings settings;
+    restoreState(settings.value("docks").toByteArray());
+    shouldRestoreDocks = false;
   } else {
     updateGeometry(true);
   }
@@ -365,11 +421,14 @@ void GaloshWindow::updateGeometry(bool queue)
       settings.setValue("docks", saveState());
     }
 
-    QStringList sizes;
-    for (int i = 0; i < infoModel->columnCount(); i++) {
-      sizes << QString::number(infoView->columnWidth(i));
+    QAbstractItemModel* infoModel = infoView->model();
+    if (infoModel) {
+      QStringList sizes;
+      for (int i = 0; i < infoModel->columnCount(); i++) {
+        sizes << QString::number(infoView->columnWidth(i));
+      }
+      settings.setValue("infoColumns", sizes);
     }
-    settings.setValue("infoColumns", sizes);
 
     infoAction->setChecked(infoView->isVisible());
     roomAction->setChecked(roomView->isVisible());
@@ -414,108 +473,39 @@ void GaloshWindow::about()
   QMessageBox::about(this, "About Galosh", content);
 }
 
-bool GaloshWindow::msspAvailable() const
-{
-  if (!term->socket()) {
-    return false;
-  }
-
-  return !term->socket()->hostname().isEmpty() && !term->socket()->mssp.isEmpty();
-}
-
 void GaloshWindow::openMsspDialog()
 {
-  if (!msspAvailable()) {
+  GaloshSession* sess = session();
+  if (!sess) {
     return;
   }
-
-  (new MsspView(term->socket(), this))->open();
-}
-
-void GaloshWindow::speedwalk(const QStringList& steps)
-{
-  if (!speedPath.isEmpty()) {
-    term->showError("Another speedwalk is in progress.");
-    return;
+  auto mssp = sess->msspData();
+  if (!mssp.isEmpty()) {
+    (new MsspView(sess->term->socket(), this))->open();
   }
-  term->writeColorLine("96", "Starting speedwalk...");
-  speedPath = steps;
-  term->executeCommand(speedPath.takeFirst());
-}
-
-void GaloshWindow::setLastRoom(const QString& title, int roomId)
-{
-  roomDock->setWindowTitle(title);
-  QSettings settings(currentProfile, QSettings::IniFormat);
-  settings.beginGroup("Profile");
-  settings.value("lastRoom", roomId);
-  lastRoomId = roomId;
-  exploreHistory.goTo(roomId);
-  if (!speedPath.isEmpty()) {
-    QString dir = speedPath.takeFirst();
-    if (dir == "done") {
-      term->writeColorLine("93", "Speedwalk complete.");
-      return;
-    }
-    term->executeCommand(dir);
-    if (speedPath.isEmpty()) {
-      speedPath << "done";
-    }
-  }
-}
-
-void GaloshWindow::showMap()
-{
-  if (!mapView) {
-    mapView = new MapViewer(MapViewer::StandaloneMap, &map, &exploreHistory, this);
-    mapView->setWindowFlags(Qt::Window);
-    QObject::connect(mapView, SIGNAL(exploreMap(int)), this, SLOT(exploreMap(int)));
-  }
-  const MapRoom* room = exploreHistory.currentRoom();
-  QStringList zoneNames = map.zoneNames();
-  if (room) {
-    mapView->loadZone(room->zone);
-  } else if (zoneNames.size() == 1) {
-    mapView->loadZone(zoneNames.first(), true);
-  }
-  mapView->show();
-  mapView->raise();
-  mapView->setFocus();
 }
 
 void GaloshWindow::exploreMap(int roomId, const QString& movement)
 {
-  if (explore) {
-    explore->roomView()->setRoom(&map, roomId, movement);
-    explore->refocus();
-  } else {
-    explore = new ExploreDialog(&map, roomId, lastRoomId, movement, this);
-    QObject::connect(explore, SIGNAL(exploreRoom(int, QString)), this, SLOT(exploreMap(int, QString)));
-    QObject::connect(explore, SIGNAL(openProfileDialog(ProfileDialog::Tab)), this, SLOT(openProfileDialog(ProfileDialog::Tab)));
-    explore->show();
+  GaloshSession* sess = session();
+  if (!sess) {
+    return;
+  }
+  sess->exploreMap(roomId, movement);
+}
+
+void GaloshWindow::reconnectSession()
+{
+  GaloshSession* sess = session();
+  if (sess) {
+    sess->connect();
   }
 }
 
-void GaloshWindow::abortSpeedwalk()
+void GaloshWindow::disconnectSession()
 {
-  if (speedPath.isEmpty()) {
-    term->showError("No speedwalk to abort.");
-  } else {
-    speedPath.clear();
-    term->writeColorLine("96", "Speedwalk aborted.");
-  }
-}
-
-void GaloshWindow::showCommandMessage(TextCommand* command, const QString& message, bool isError)
-{
-  QString formatted = QString(message).replace("\n", "\r\n").replace("\r\r", "\r");
-  if (isError) {
-    if (command) {
-      term->showError(command->name() + ": " + formatted);
-    } else {
-      term->showError(formatted);
-    }
-  } else {
-    term->writeColorLine("96", formatted.toUtf8());
+  GaloshSession* sess = session();
+  if (sess) {
+    sess->term->socket()->disconnectFromHost();
   }
 }

@@ -4,6 +4,7 @@
 #include <QMainWindow>
 #include <QPointer>
 #include <QTimer>
+#include <QMap>
 #include "commands/textcommandprocessor.h"
 #include "triggermanager.h"
 #include "mapmanager.h"
@@ -12,13 +13,14 @@
 #include "explorehistory.h"
 class QLabel;
 class QTreeView;
-class GaloshTerm;
+class QStackedWidget;
+class GaloshSession;
 class InfoModel;
 class RoomView;
 class MapViewer;
 class ExploreDialog;
 
-class GaloshWindow : public QMainWindow, public TextCommandProcessor
+class GaloshWindow : public QMainWindow
 {
 Q_OBJECT
 public:
@@ -33,50 +35,47 @@ public slots:
   void openMsspDialog();
   void openConfigFolder();
   void openWebsite();
-  void showMap();
   void exploreMap(int roomId = -1, const QString& movement = QString());
   void about();
 
 protected:
   void showEvent(QShowEvent* event) override;
+  void closeEvent(QCloseEvent* event) override;
   void paintEvent(QPaintEvent* event) override;
   void moveEvent(QMoveEvent*) override;
   void resizeEvent(QResizeEvent*) override;
 
 private slots:
+  void help();
+  void reconnectSession();
+  void disconnectSession();
   void connectToProfile(const QString& profilePath, bool online);
   void reloadProfile(const QString& profilePath);
+  void closeSession(int index = -1);
   void updateStatus();
-  void msspEvent(const QString&, const QString&);
-  void gmcpEvent(const QString& key, const QVariant& value);
-  void setLastRoom(const QString& title, int roomId);
+  void msspReceived();
   void updateGeometry(bool queue = false);
-#ifdef Q_MOC_RUN
-  void help();
-  void handleCommand(const QString& command, const QStringList& args);
-#endif
-  void speedwalk(const QStringList& steps);
   void toggleRoomDock(bool checked);
   void toggleInfoDock(bool checked);
   void toggleMapDock(bool checked);
-  void abortSpeedwalk();
-  void showCommandMessage(TextCommand* command, const QString& message, bool isError) override;
 
 private:
-  bool msspAvailable() const;
+  GaloshSession* session() const;
+  GaloshSession* findSession(const QString& profilePath) const;
+  bool confirmClose(GaloshSession* sess = nullptr);
+  void updateActions();
 
   QTimer stateThrottle;
-  QString currentProfile;
-  TriggerManager triggers;
-  MapManager map;
-  ExploreHistory exploreHistory;
-  ItemDatabase itemDB;
-  GaloshTerm* term;
+  QStackedWidget* stackedWidget;
+  QTabWidget* tabs;
+  QWidget* background;
+  QMap<QWidget*, GaloshSession*> sessions;
   QList<QAction*> profileActions;
+  QList<QAction*> disconnectedActions;
+  QList<QAction*> connectedActions;
   QDockWidget* infoDock;
   QAction* infoAction;
   QTreeView* infoView;
-  InfoModel* infoModel;
   QDockWidget* roomDock;
   QAction* roomAction;
   RoomView* roomView;
@@ -86,10 +85,6 @@ private:
   QAction* msspButton;
   QAction* msspMenu;
   QLabel* sbStatus;
-  QPointer<ExploreDialog> explore;
-  QPointer<MapViewer> mapView;
-  QStringList speedPath;
-  int lastRoomId;
   bool fixGeometry;
   bool geometryReady;
   bool shouldRestoreDocks;

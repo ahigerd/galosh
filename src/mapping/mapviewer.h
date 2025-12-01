@@ -3,12 +3,13 @@
 
 #include <QWidget>
 #include <memory>
-#include "maplayout.h"
 class QScrollArea;
 class QComboBox;
 class MapManager;
 class MapWidget;
+class MapLayout;
 class ExploreHistory;
+class GaloshSession;
 
 class MapViewer : public QWidget
 {
@@ -20,7 +21,9 @@ public:
     StandaloneMap,
   };
 
-  MapViewer(MapType mapType, MapManager* map, ExploreHistory* history, QWidget* parent = nullptr);
+  MapViewer(MapType mapType, QWidget* parent = nullptr);
+
+  void setSession(GaloshSession* session);
 
 public slots:
   void reload();
@@ -29,7 +32,7 @@ public slots:
   void zoomIn();
   void zoomOut();
 
-  void setCurrentRoom(int roomId);
+  void setCurrentRoom(int roomId = -1);
 
 signals:
   void exploreMap(int roomId);
@@ -47,8 +50,9 @@ protected:
 private:
   friend class MapWidget;
 
-  std::unique_ptr<MapLayout> mapLayout;
+  GaloshSession* session;
   MapManager* map;
+  MapLayout* mapLayout;
   QWidget* header;
   QScrollArea* scrollArea;
   MapWidget* view;

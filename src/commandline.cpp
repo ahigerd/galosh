@@ -178,6 +178,10 @@ void CommandLine::keyPressEvent(QKeyEvent* event)
 {
   int oldIndex = historyIndex;
   if (event->key() == Qt::Key_Tab || event->key() == Qt::Key_Backtab) {
+    if (event->modifiers() & (Qt::ControlModifier | Qt::AltModifier | Qt::MetaModifier)) {
+      event->ignore();
+      return;
+    }
     checkCompletion(event->key() == Qt::Key_Backtab ? -1 : 1);
     return;
   } else if (event->key() == Qt::Key_Right && completionVisible()) {

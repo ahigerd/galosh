@@ -5,6 +5,7 @@
 #include "commands/textcommandprocessor.h"
 #include "explorehistory.h"
 #include "profiledialog.h"
+class GaloshSession;
 class MapManager;
 class MapViewer;
 class RoomView;
@@ -17,7 +18,7 @@ class ExploreDialog : public QMainWindow, public TextCommandProcessor
 {
 Q_OBJECT
 public:
-  ExploreDialog(MapManager* map, int roomId, int lastRoomId, const QString& movement, QWidget* parent = nullptr);
+  ExploreDialog(GaloshSession* session, int roomId, int lastRoomId, const QString& movement, QWidget* parent = nullptr);
 
   inline RoomView* roomView() const { return room; }
 
@@ -53,6 +54,7 @@ protected:
 private:
 
   QSplitter* splitter;
+  GaloshSession* session;
   MapManager* map;
   MapViewer* mapView;
   QLabel* roomTitle;

@@ -79,6 +79,8 @@ private:
   QDialogButtonBox* buttons;
   bool emitConnect;
   bool dirty;
+
+  static QString lastProfile;
 };
 
 #endif

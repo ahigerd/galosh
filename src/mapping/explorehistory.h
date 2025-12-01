@@ -19,6 +19,7 @@ public:
   inline int length() const { return steps.length(); }
 
   const MapRoom* currentRoom() const;
+  const MapRoom* previousRoom() const;
 
 public slots:
   void reset();

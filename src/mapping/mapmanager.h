@@ -10,6 +10,7 @@
 #include <map>
 #include "mapzone.h"
 #include "mapsearch.h"
+#include "maplayout.h"
 class QSettings;
 
 class MapManager : public QObject
@@ -21,8 +22,7 @@ public:
 
   MapManager(QObject* parent = nullptr);
 
-  const MapRoom* room();
-  const MapRoom* room(int id);
+  const MapRoom* room(int id) const;
   MapRoom* mutableRoom(int id);
   QList<const MapRoom*> searchForRooms(const QStringList& args, bool namesOnly, const QString& zone = QString()) const;
   void saveRoom(MapRoom* room);
@@ -33,6 +33,7 @@ public:
   const MapZone* searchForZone(const QString& name) const;
 
   MapSearch* search();
+  MapLayout* layout();
 
   int waypoint(const QString& name, QString* canonicalName = nullptr) const;
   QStringList waypoints() const;
@@ -60,21 +61,18 @@ public:
   QSettings* mapProfile() const;
 
 signals:
-  void currentRoomUpdated(MapManager* map, int roomId);
+  void roomUpdated(int roomId);
+  void reset();
 
 public slots:
   void loadProfile(const QString& profile);
   void loadMap(const QString& filename);
-  void processLine(const QString& line);
-  void gmcpEvent(const QString& key, const QVariant& value);
-  void promptWaiting();
-  void commandEntered(const QString& command, bool echo);
 
 private:
+  friend class AutoMapper;
   friend class MapZone;
   void downloadMap(const QString& url);
   void updateRoom(const QVariantMap& info);
-  void endRoomCapture();
 
   QSettings* mapFile;
   QMap<QString, int> roomCosts;
@@ -82,19 +80,10 @@ private:
   QMap<int, MapRoom> rooms;
   std::map<QString, MapZone> zones;
   bool gmcpMode;
-  bool logRoomLegacy;
-  bool logRoomDescription;
-  bool logExits;
-  bool roomDirty;
-  QString pendingDescription;
-  QStringList pendingLines;
   int autoRoomId;
-  int currentRoom;
-  int destinationRoom;
-  int previousRoom;
-  QString destinationDir;
 
   std::unique_ptr<MapSearch> mapSearch;
+  std::unique_ptr<MapLayout> mapLayout;
 };
 
 #endif

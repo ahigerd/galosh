@@ -1,4 +1,5 @@
 #include "exploredialog.h"
+#include "galoshsession.h"
 #include "mapmanager.h"
 #include "mapzone.h"
 #include "roomview.h"
@@ -24,11 +25,13 @@
 #include <QMetaObject>
 #include <algorithm>
 
-ExploreDialog::ExploreDialog(MapManager* map, int roomId, int lastRoomId, const QString& movement, QWidget* parent)
-: QMainWindow(parent), map(map), history(map)
+ExploreDialog::ExploreDialog(GaloshSession* session, int roomId, int lastRoomId, const QString& movement, QWidget* parent)
+: QMainWindow(parent), session(session), map(session->map()), history(map)
 {
   setAttribute(Qt::WA_WindowPropagation, true);
   setAttribute(Qt::WA_DeleteOnClose, true);
+
+  setWindowTitle("Map Explorer: " + session->name());
 
   QWidget* widget = new QWidget(this);
   setCentralWidget(widget);
@@ -40,7 +43,8 @@ ExploreDialog::ExploreDialog(MapManager* map, int roomId, int lastRoomId, const 
   QObject::connect(splitter, SIGNAL(splitterMoved(int,int)), this, SLOT(saveState()));
   vbox->addWidget(splitter, 1);
 
-  mapView = new MapViewer(MapViewer::EmbedMap, map, &history, widget);
+  mapView = new MapViewer(MapViewer::EmbedMap, widget);
+  mapView->setSession(session);
   QObject::connect(mapView, SIGNAL(exploreMap(int)), this, SIGNAL(exploreRoom(int)));
   splitter->addWidget(mapView);
 
@@ -81,7 +85,7 @@ ExploreDialog::ExploreDialog(MapManager* map, int roomId, int lastRoomId, const 
   mMap->addAction("&Waypoints...", [this]{ emit openProfileDialog(ProfileDialog::WaypointsTab); });
   mMap->addAction("&Settings...", this, SLOT(openMapOptions()));
   mMap->addSeparator();
-  mMap->addAction("&Close", this, SLOT(close()));
+  mMap->addAction("&Close", this, SLOT(close()), QKeySequence::Close);
   mb->addMenu(mMap);
 
   QMenu* mView = new QMenu("&View", mb);
@@ -100,6 +104,7 @@ ExploreDialog::ExploreDialog(MapManager* map, int roomId, int lastRoomId, const 
   QObject::connect(room, SIGNAL(exploreRoom(int, QString)), this, SIGNAL(exploreRoom(int, QString)));
   QObject::connect(backButton, SIGNAL(clicked()), this, SLOT(goBack()));
   QObject::connect(line, SIGNAL(returnPressed()), this, SLOT(doCommand()));
+  QObject::connect(this, SIGNAL(exploreRoom(int, QString)), mapView, SLOT(setCurrentRoom(int)));
 
   const MapRoom* room = nullptr;
   if (lastRoomId != -1) {
@@ -112,10 +117,8 @@ ExploreDialog::ExploreDialog(MapManager* map, int roomId, int lastRoomId, const 
   }
   if (room) {
     roomTitle->setText(room->name);
-    setWindowTitle(room->name);
   } else {
     roomTitle->setText("Unknown location");
-    setWindowTitle("Unknown location");
   }
 
   line->setFocus();
@@ -146,7 +149,6 @@ ExploreDialog::ExploreDialog(MapManager* map, int roomId, int lastRoomId, const 
 void ExploreDialog::roomUpdated(const QString& title, int id, const QString& movement)
 {
   roomTitle->setText(title);
-  setWindowTitle(title);
   history.travel(movement, id);
   backButton->setEnabled(history.canGoBack());
 }

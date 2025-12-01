@@ -34,18 +34,9 @@ QVariant ItemDatabase::data(const QModelIndex& index, int role) const
   }
 }
 
-void ItemDatabase::loadProfile(const QString& profile)
+void ItemDatabase::load(const QString& path)
 {
-  QSettings settings(profile, QSettings::IniFormat);
-  settings.beginGroup("Profile");
-  QString dbFileName = settings.value("host").toString();
-  if (dbFileName.isEmpty()) {
-    dbFileName = profile + "_items";
-  } else {
-    QDir dir = QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation);
-    dbFileName = dir.absoluteFilePath(dbFileName + ".galosh_items");
-  }
-  dbFile = new QSettings(dbFileName, QSettings::IniFormat);
+  dbFile = new QSettings(path, QSettings::IniFormat);
   dbFile->beginGroup("Items");
   keys = dbFile->childKeys();
   std::sort(keys.begin(), keys.end());

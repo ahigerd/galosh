@@ -62,14 +62,24 @@ quint16 TelnetSocket::port() const
   return connectedPort;
 }
 
+void TelnetSocket::setCommand(const QString& command)
+{
+  commandArgs = QProcess::splitCommand(command);
+  if (commandArgs.isEmpty()) {
+    connectedHost = commandArgs.takeFirst();
+    connectedPort = 65535;
+  } else {
+    connectedHost.clear();
+    connectedPort = 0;
+  }
+}
+
 void TelnetSocket::connectCommand(const QString& command, bool darkBackground)
 {
-  QStringList args = QProcess::splitCommand(command);
-  if (args.isEmpty()) {
+  setCommand(command);
+  if (connectedHost.isEmpty()) {
     return;
   }
-  connectedHost = args.takeFirst();
-  connectedPort = 65535;
 
   QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
   env.insert("TERM", "xterm-256color");
@@ -89,7 +99,7 @@ void TelnetSocket::connectCommand(const QString& command, bool darkBackground)
   KPtyProcess* p = new KPtyProcess(this);
   p->setPtyChannels(KPtyProcess::AllChannels);
   p->setUseUtmp(true);
-  p->setProgram(connectedHost, args);
+  p->setProgram(connectedHost, commandArgs);
   program = p;
   pty = p->pty();
 

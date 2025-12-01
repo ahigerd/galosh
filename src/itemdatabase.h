@@ -19,7 +19,7 @@ public:
   QString itemStats(const QString& name) const;
 
 public slots:
-  void loadProfile(const QString& profile);
+  void load(const QString& path);
   void processLine(const QString& line);
 
 private:

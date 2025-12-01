@@ -1,6 +1,8 @@
 #include "mapviewer.h"
 #include "mapmanager.h"
 #include "explorehistory.h"
+#include "userprofile.h"
+#include "galoshsession.h"
 #include <QSettings>
 #include <QScrollArea>
 #include <QHBoxLayout>
@@ -16,8 +18,8 @@
 class MapWidget : public QWidget
 {
 public:
-  MapWidget(MapLayout* mapLayout, MapViewer* parent)
-  : QWidget(parent), mapViewer(parent), mapLayout(mapLayout), zoomLevel(5), currentRoomId(-1)
+  MapWidget(MapViewer* parent)
+  : QWidget(parent), mapViewer(parent), mapLayout(nullptr), zoomLevel(5), currentRoomId(-1)
   {
     setMouseTracking(true);
   }
@@ -29,12 +31,26 @@ public:
 
   QSize sizeHint() const
   {
+    if (!mapLayout) {
+      return QSize();
+    }
     return mapLayout->displaySize() * zoomLevel;
+  }
+
+  void setMap(MapLayout* map)
+  {
+    mapLayout = map;
+    update();
   }
 
 protected:
   void mouseMoveEvent(QMouseEvent* event)
   {
+    if (!mapLayout) {
+      QToolTip::hideText();
+      return;
+    }
+
     QPointF pt = event->pos();
     pt /= zoomLevel;
     const MapRoom* room = mapLayout->roomAt(pt);
@@ -51,6 +67,10 @@ protected:
 
   void mouseDoubleClickEvent(QMouseEvent* event)
   {
+    if (!mapLayout) {
+      return;
+    }
+
     QPointF pt = event->pos();
     pt /= zoomLevel;
     const MapRoom* room = mapLayout->roomAt(pt);
@@ -65,6 +85,10 @@ protected:
 
   void paintEvent(QPaintEvent* event)
   {
+    if (!mapLayout) {
+      return;
+    }
+
     QPainter p(this);
     p.scale(zoomLevel, zoomLevel);
     QRect vp = event->rect();
@@ -81,8 +105,8 @@ protected:
   }
 };
 
-MapViewer::MapViewer(MapViewer::MapType mapType, MapManager* map, ExploreHistory* history, QWidget* parent)
-: QWidget(parent), map(map), mapType(mapType)
+MapViewer::MapViewer(MapViewer::MapType mapType, QWidget* parent)
+: QWidget(parent), session(nullptr), map(nullptr), mapLayout(nullptr), mapType(mapType)
 {
   if (mapType == StandaloneMap) {
     setAttribute(Qt::WA_WindowPropagation, true);
@@ -96,8 +120,7 @@ MapViewer::MapViewer(MapViewer::MapType mapType, MapManager* map, ExploreHistory
   }
   setPalette(p);
 
-  mapLayout.reset(new MapLayout(map));
-  view = new MapWidget(mapLayout.get(), this);
+  view = new MapWidget(this);
 
   QVBoxLayout* mainLayout = new QVBoxLayout(this);
   mainLayout->setContentsMargins(0, 0, 0, 0);
@@ -155,7 +178,6 @@ MapViewer::MapViewer(MapViewer::MapType mapType, MapManager* map, ExploreHistory
   }
 
   QObject::connect(zone, SIGNAL(currentTextChanged(QString)), this, SLOT(loadZone(QString)));
-  QObject::connect(history, SIGNAL(currentRoomChanged(int)), this, SLOT(setCurrentRoom(int)));
   QObject::connect(scrollArea->horizontalScrollBar(), SIGNAL(valueChanged(int)), this, SLOT(repositionHeader()));
   QObject::connect(scrollArea->verticalScrollBar(), SIGNAL(valueChanged(int)), this, SLOT(repositionHeader()));
 
@@ -166,8 +188,10 @@ void MapViewer::reload()
 {
   zone->blockSignals(true);
   zone->clear();
-  for (const QString& name : map->zoneNames()) {
-    zone->addItem(name);
+  if (map) {
+    for (const QString& name : map->zoneNames()) {
+      zone->addItem(name);
+    }
   }
   zone->blockSignals(false);
 }
@@ -177,7 +201,9 @@ void MapViewer::setZoom(double level)
   QPointF center(scrollArea->horizontalScrollBar()->value(), scrollArea->verticalScrollBar()->value());
   center /= view->zoomLevel;
   view->zoomLevel = level;
-  view->resize(mapLayout->displaySize() * view->zoomLevel);
+  if (mapLayout) {
+    view->resize(mapLayout->displaySize() * view->zoomLevel);
+  }
   center *= view->zoomLevel;
   scrollArea->horizontalScrollBar()->setValue(center.x());
   scrollArea->verticalScrollBar()->setValue(center.y());
@@ -205,7 +231,18 @@ void MapViewer::zoomOut()
 
 void MapViewer::setCurrentRoom(int roomId)
 {
-  const MapRoom* room = map->room(roomId);
+  if (!mapLayout) {
+    return;
+  }
+  const MapRoom* room;
+  if (roomId < 0 && session) {
+    room = session->currentRoom();
+    if (room) {
+      roomId = room->id;
+    }
+  } else {
+    room = map->room(roomId);
+  }
   if (!room) {
     qDebug() << "Unknown room" << roomId;
     return;
@@ -221,6 +258,9 @@ void MapViewer::setCurrentRoom(int roomId)
 
 void MapViewer::loadZone(const QString& name, bool force)
 {
+  if (!mapLayout) {
+    return;
+  }
   if (zone->currentText() != name) {
     zone->blockSignals(true);
     if (zone->findText(name) < 0) {
@@ -271,9 +311,11 @@ void MapViewer::resizeEvent(QResizeEvent* event)
 
 void MapViewer::showEvent(QShowEvent*)
 {
-  QPointF pos = mapLayout->roomPos(view->currentRoomId).center() * view->zoomLevel;
-  scrollArea->ensureVisible(pos.x(), pos.y(), width() / 3, height() / 3);
-  repositionHeader();
+  if (mapLayout) {
+    QPointF pos = mapLayout->roomPos(view->currentRoomId).center() * view->zoomLevel;
+    scrollArea->ensureVisible(pos.x(), pos.y(), width() / 3, height() / 3);
+    repositionHeader();
+  }
 }
 
 void MapViewer::moveEvent(QMoveEvent*)
@@ -282,4 +324,30 @@ void MapViewer::moveEvent(QMoveEvent*)
     QSettings settings;
     settings.setValue("map", saveGeometry());
   }
+}
+
+void MapViewer::setSession(GaloshSession* sess)
+{
+  if (sess == session) {
+    return;
+  }
+  if (session) {
+    QObject::disconnect(session, 0, this, 0);
+  }
+  session = sess;
+  if (session) {
+    if (mapType == MiniMap) {
+      QObject::connect(session, SIGNAL(currentRoomUpdated()), this, SLOT(setCurrentRoom()));
+    }
+
+    map = session->map();
+    mapLayout = map->layout();
+    view->setMap(mapLayout);
+    setCurrentRoom();
+  } else {
+    map = nullptr;
+    mapLayout = nullptr;
+    view->setMap(nullptr);
+  }
+  reload();
 }

@@ -232,3 +232,11 @@ const MapRoom* ExploreHistory::currentRoom() const
 {
   return map->room(currentRoomId);
 }
+
+const MapRoom* ExploreHistory::previousRoom() const
+{
+  if (!canGoBack()) {
+    return nullptr;
+  }
+  return map->room(steps.last().dest);
+}

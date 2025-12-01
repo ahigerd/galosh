@@ -29,6 +29,8 @@
 static const char* defaultLoginPrompt = "By what name do you wish to be known?";
 static const char* defaultPasswordPrompt = "Password:";
 
+QString ProfileDialog::lastProfile;
+
 QFrame* ProfileDialog::horizontalLine(QWidget* parent)
 {
   QFrame* line = new QFrame(parent);
@@ -100,7 +102,6 @@ ProfileDialog::ProfileDialog(bool forConnection, QWidget* parent)
   lServer->addRow(portLabel = new QLabel("Por&t:", tServer), portLayout);
   portLabel->setBuddy(port);
 
-  //lServer->addRow("&Command:", commandLine = new QLineEdit(tServer));
   lServer->addRow(horizontalLine(tServer));
 
   lServer->addRow("&Username:", username = new QLineEdit(tServer));
@@ -163,10 +164,10 @@ ProfileDialog::ProfileDialog(ProfileDialog::Tab openTab, QWidget* parent)
 void ProfileDialog::loadProfiles()
 {
   QSettings settings;
-  QString lastProfile = settings.value("lastProfile").toString();
-  if (!lastProfile.isEmpty()) {
-    lastProfile = "/" + lastProfile + ".galosh";
+  if (lastProfile.isEmpty()) {
+    lastProfile = settings.value("lastProfile").toString();
   }
+  QString mruProfile = QStringLiteral("/%1.galosh").arg(lastProfile);
 
   QDir dir = QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation);
   QModelIndex lastIdx;
@@ -180,7 +181,7 @@ void ProfileDialog::loadProfiles()
       item->setData(settings.value("name", "[invalid profile]"), Qt::DisplayRole);
       item->setData(path, Qt::UserRole);
       profileList->appendRow(item);
-      if (path.endsWith(lastProfile)) {
+      if (path.endsWith(mruProfile)) {
         lastIdx = profileList->indexFromItem(item);
       }
     }
@@ -218,7 +219,8 @@ void ProfileDialog::loadProfileOffline()
   if (idx.isValid() && save()) {
     QSettings settings;
     QDir dir(idx.data(Qt::UserRole).toString());
-    settings.setValue("lastProfile", dir.dirName().replace(".galosh", ""));
+    lastProfile = dir.dirName().replace(".galosh", "");
+    settings.setValue("lastProfile", lastProfile);
     emit connectToProfile(idx.data(Qt::UserRole).toString(), false);
     reject();
   }
@@ -310,7 +312,8 @@ void ProfileDialog::done(int r)
       } else {
         QSettings settings;
         QDir dir(idx.data(Qt::UserRole).toString());
-        settings.setValue("lastProfile", dir.dirName().replace(".galosh", ""));
+        lastProfile = dir.dirName().replace(".galosh", "");
+        settings.setValue("lastProfile", lastProfile);
         emit connectToProfile(idx.data(Qt::UserRole).toString());
       }
     }
