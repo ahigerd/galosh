@@ -196,6 +196,17 @@ void ProfileDialog::loadProfiles()
   profileSelected(lastIdx);
 }
 
+void ProfileDialog::selectProfile(const QString& path)
+{
+  for (int i = 0; i < profileList->rowCount(); i++) {
+    QModelIndex idx = profileList->index(i, 0);
+    if (idx.data(Qt::UserRole).toString() == path) {
+      knownProfiles->selectionModel()->setCurrentIndex(idx, QItemSelectionModel::ClearAndSelect);
+      return;
+    }
+  }
+}
+
 void ProfileDialog::profileSelected(const QModelIndex& current)
 {
   if (current == selectedProfile) {

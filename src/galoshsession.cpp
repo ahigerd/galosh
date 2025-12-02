@@ -43,7 +43,7 @@ GaloshSession::GaloshSession(UserProfile* profile, QWidget* parent)
   QObject::connect(waypointCommand, SIGNAL(speedwalk(QStringList)), this, SLOT(speedwalk(QStringList)));
 
   QObject::connect(term, SIGNAL(slashCommand(QString, QStringList)), this, SLOT(handleCommand(QString, QStringList)));
-  QObject::connect(triggers(), SIGNAL(executeCommand(QString, bool)), term, SLOT(executeCommand(QString, bool)), Qt::QueuedConnection);
+  QObject::connect(triggers(), SIGNAL(executeCommand(QString, bool)), term, SLOT(processCommand(QString, bool)), Qt::QueuedConnection);
 
   QObject::connect(&autoMap, SIGNAL(currentRoomUpdated(int)), this, SLOT(setLastRoom(int)));
 
@@ -178,7 +178,7 @@ void GaloshSession::speedwalk(const QStringList& steps)
   }
   term->writeColorLine("96", "Starting speedwalk...");
   speedPath = steps;
-  term->executeCommand(speedPath.takeFirst());
+  term->processCommand(speedPath.takeFirst());
 }
 
 void GaloshSession::abortSpeedwalk()
@@ -201,7 +201,7 @@ void GaloshSession::setLastRoom(int roomId)
       term->writeColorLine("93", "Speedwalk complete.");
       return;
     }
-    term->executeCommand(dir);
+    term->processCommand(dir);
     if (speedPath.isEmpty()) {
       speedPath << "done";
     }

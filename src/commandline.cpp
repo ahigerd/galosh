@@ -117,15 +117,26 @@ void CommandLine::onReturnPressed()
     return;
   }
   bool echo = (echoMode() == QLineEdit::Normal);
-  QString command = text();
+  processCommand(text(), echo);
+  selectAll();
+  history.removeAll(text());
+  if (echo) {
+    // don't store passwords in command history
+    history.append(text());
+  }
+  historyIndex = -1;
+  if (history.length() > historyLimit) {
+    history.removeFirst();
+  }
+}
+
+void CommandLine::processCommand(const QString& command, bool echo)
+{
   if (isParsing()) {
     if (command.startsWith('/') && command != "/" && !command.startsWith("//")) {
-      command = command.mid(1);
-      if (!command.startsWith('/')) {
-        QStringList args = parseSlashCommand(command);
-        QString slash = args.takeFirst();
-        emit slashCommand(slash, args);
-      }
+      QStringList args = parseSlashCommand(command.mid(1));
+      QString slash = args.takeFirst();
+      emit slashCommand(slash, args);
     } else if (command.startsWith('.') && command != ".") {
       // TODO: customizable speedwalk prefix
       QStringList dirs = parseSpeedwalk(command.mid(1));
@@ -135,10 +146,10 @@ void CommandLine::onReturnPressed()
         emit speedwalk(dirs);
       }
     } else {
-      if (command.startsWith("//")) {
-        command = command.mid(1);
-      }
       QStringList lines = command.split('|');
+      if (command.startsWith("//")) {
+        lines[0] = lines[0].mid(1);
+      }
       if (command.endsWith('\\')) {
         lines.last() += '\\';
       }
@@ -162,16 +173,6 @@ void CommandLine::onReturnPressed()
   } else {
     emit commandEntered(command, echo);
   }
-  selectAll();
-  history.removeAll(text());
-  if (echo) {
-    // don't store passwords in command history
-    history.append(text());
-  }
-  historyIndex = -1;
-  if (history.length() > historyLimit) {
-    history.removeFirst();
-  }
 }
 
 void CommandLine::keyPressEvent(QKeyEvent* event)
@@ -186,6 +187,14 @@ void CommandLine::keyPressEvent(QKeyEvent* event)
     return;
   } else if (event->key() == Qt::Key_Right && completionVisible()) {
     checkCompletion(0, true);
+    return;
+  } else if ((event->modifiers() & Qt::ControlModifier) && (event->key() == Qt::Key_Backspace || event->key() == Qt::Key_Delete)) {
+    if (hasSelectedText()) {
+      insert("");
+      event->ignore();
+    } else {
+      QLineEdit::keyPressEvent(event);
+    }
     return;
   } else if (event->key() == Qt::Key_Down) {
     historyIndex--;
@@ -228,6 +237,12 @@ void CommandLine::keyPressEvent(QKeyEvent* event)
   } else {
     setText(history[history.size() - historyIndex - 1]);
   }
+  selectAll();
+}
+
+void CommandLine::focusInEvent(QFocusEvent* event)
+{
+  QLineEdit::focusInEvent(event);
   selectAll();
 }
 

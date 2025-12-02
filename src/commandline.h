@@ -12,6 +12,7 @@ Q_OBJECT
 public:
   static QStringList parseSpeedwalk(const QString& dirs);
   static QStringList parseSlashCommand(const QString& command);
+  static QStringList parseMultilineCommand(const QString& command);
 
   CommandLine(QWidget* parent = nullptr);
 
@@ -29,6 +30,7 @@ signals:
 public slots:
   void setParsing(bool on);
   void onLineReceived(const QString& line);
+  void processCommand(const QString& command, bool echo);
 
 private slots:
   void onReturnPressed();
@@ -36,6 +38,7 @@ private slots:
 protected:
   bool focusNextPrevChild(bool) override;
   void keyPressEvent(QKeyEvent* event) override;
+  void focusInEvent(QFocusEvent* event) override;
 
 private:
   bool completionVisible() const;

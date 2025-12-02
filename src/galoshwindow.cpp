@@ -282,6 +282,10 @@ void GaloshWindow::updateStatus()
   for (int i = 0; i < tabs->count(); i++) {
     TabStatus status = TabStatus::Idle;
     GaloshSession* s = sessions[tabs->widget(i)];
+    if (!s) {
+      qDebug() << "XXX: tabs contains bogus widget";
+      continue;
+    }
     if (s->hasUnread()) {
       status = TabStatus::Updated;
     } else if (!s->isConnected()) {
@@ -307,6 +311,10 @@ void GaloshWindow::openConnectDialog()
 void GaloshWindow::openProfileDialog(ProfileDialog::Tab tab)
 {
   ProfileDialog* dlg = new ProfileDialog(tab, this);
+  GaloshSession* sess = session();
+  if (sess) {
+    dlg->selectProfile(sess->profile->profilePath);
+  }
   QObject::connect(dlg, SIGNAL(profileUpdated(QString)), this, SLOT(reloadProfile(QString)));
   dlg->show();
 }
@@ -414,9 +422,11 @@ void GaloshWindow::closeSession(int index)
   if (!confirmClose(sess)) {
     return;
   }
+  tabs->blockSignals(true);
   sessions.remove(sess->term);
   tabs->removeTab(tabs->indexOf(sess->term));
   delete sess;
+  tabs->blockSignals(false);
   if (tabs->count() == 0) {
     stackedWidget->setCurrentWidget(background);
   }

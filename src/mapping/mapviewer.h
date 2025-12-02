@@ -2,6 +2,7 @@
 #define GALOSH_MAPVIEWER_H
 
 #include <QWidget>
+#include <QPointer>
 #include <memory>
 class QScrollArea;
 class QComboBox;
@@ -50,7 +51,7 @@ protected:
 private:
   friend class MapWidget;
 
-  GaloshSession* session;
+  QPointer<GaloshSession> session;
   MapManager* map;
   MapLayout* mapLayout;
   QWidget* header;

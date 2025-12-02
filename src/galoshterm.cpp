@@ -98,6 +98,11 @@ void GaloshTerm::onSlashCommand(const QString& command, const QStringList& args)
   emit slashCommand(command, args);
 }
 
+void GaloshTerm::processCommand(const QString& command, bool echo)
+{
+  line->processCommand(command, echo);
+}
+
 void GaloshTerm::executeCommand(const QString& command, bool echo)
 {
   QByteArray payload = command.toUtf8();

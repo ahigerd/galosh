@@ -94,7 +94,7 @@ void TelnetSocket::connectCommand(const QString& command, bool darkBackground)
   pty = p;
   p->setProcessChannelMode(QProcess::MergedChannels);
   p->setProgram(connectedHost);
-  p->setArguments(args);
+  p->setArguments(commandArgs);
 #else
   KPtyProcess* p = new KPtyProcess(this);
   p->setPtyChannels(KPtyProcess::AllChannels);

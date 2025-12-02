@@ -38,9 +38,10 @@ public slots:
   void setTermFont(const QFont& font);
   void setColorScheme(const ColorScheme& scheme);
   void showError(const QString& message);
-  void executeCommand(const QString& command, bool echo = true);
+  void processCommand(const QString& command, bool echo = true);
 
 private slots:
+  void executeCommand(const QString& command, bool echo = true);
   void onConnected();
   void onDisconnected();
   void onSocketError(QAbstractSocket::SocketError err);

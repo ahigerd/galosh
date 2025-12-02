@@ -16,18 +16,26 @@ QString RouteCommand::helpMessage(bool brief) const
     return "Calculates the path to a specified room";
   }
   // TODO: better docs
-  return "/ROUTE [-q] [-g] [-z] <id|waypoint>\n"
+  return "/ROUTE [-q] [-g] [-z] [start] <id|waypoint>\n"
     "Calculates a route to the specified room or waypoint and shows the steps to reach it.\n"
-    "    -z    Routes to a zone instead of a room or waypoint\n"
-    "    -q    Show as a speedwalking path\n"
-    "    -g    Immediately run the speedwalking path";
+    "    -z        Routes to a zone instead of a room or waypoint\n"
+    "    -q        Show as a speedwalking path\n"
+    "    -g        Immediately run the speedwalking path\n"
+    "    start     (Optional) The room ID to start routing from\n"
+    "    id        The room ID to route to\n"
+    "    waypoint  A predefined waypoint to route to";
 }
 
 void RouteCommand::handleInvoke(const QStringList& args, const KWArgs& kwargs)
 {
   int startRoomId;
   if (args.length() > 1) {
-    startRoomId = args.first().toInt();
+    bool ok = false;
+    startRoomId = args.first().toInt(&ok);
+    if (!ok) {
+      showError("Could not identify start room");
+      return;
+    }
   } else {
     if (!history->currentRoom()) {
       showError("Could not find current room");

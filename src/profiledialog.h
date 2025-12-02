@@ -32,6 +32,8 @@ public:
   ProfileDialog(bool forConnection, QWidget* parent = nullptr);
   ProfileDialog(ProfileDialog::Tab openTab, QWidget* parent = nullptr);
 
+  void selectProfile(const QString& path);
+
   void done(int r) override;
 
 protected:
