@@ -134,7 +134,7 @@ void GaloshSession::startOffline()
     term->socket()->setCommand(profile->command);
   }
   setLastRoom(profile->lastRoomId);
-  //roomView->setRoom(&map, settings.value("lastRoom", -1).toInt());
+  reload();
 }
 
 void GaloshSession::reload()

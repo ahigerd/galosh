@@ -58,6 +58,9 @@ void UserProfile::reload()
   triggers.loadProfile(profilePath);
 }
 
+/*
 bool UserProfile::save()
 {
+  // TODO: refactor to use this instead of having the profile dialog do it
 }
+*/

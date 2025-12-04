@@ -30,7 +30,7 @@ public:
   void setLastRoomId(int roomId);
 
   void reload();
-  bool save();
+  // bool save();
 };
 
 #endif

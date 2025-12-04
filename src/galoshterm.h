@@ -36,6 +36,7 @@ public:
 signals:
   void lineReceived(const QString& line);
   void commandEntered(const QString& command, bool echo = true);
+  void commandEnteredForProfile(const QString& profile, const QString& command);
   void slashCommand(const QString& command, const QStringList& args);
   void speedwalk(const QStringList& steps);
 

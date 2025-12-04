@@ -361,6 +361,7 @@ void GaloshWindow::connectToProfile(const QString& path, bool online)
     QObject::connect(sess, SIGNAL(currentRoomUpdated()), this, SLOT(updateStatus()));
     QObject::connect(sess, SIGNAL(unreadUpdated()), this, SLOT(updateStatus()));
     QObject::connect(sess, SIGNAL(openProfileDialog(ProfileDialog::Tab)), this, SLOT(openProfileDialog(ProfileDialog::Tab)));
+    QObject::connect(sess->term, SIGNAL(commandEnteredForProfile(QString,QString)), this, SLOT(sendCommandToProfile(QString,QString)));
 
     updateActions();
   }
@@ -379,6 +380,30 @@ void GaloshWindow::reloadProfile(const QString& path)
   if (sess) {
     sess->reload();
     updateStatus();
+  }
+}
+
+void GaloshWindow::sendCommandToProfile(const QString& profile, const QString& command)
+{
+  GaloshSession* origin = sessions.value(qobject_cast<QWidget*>(sender()));
+  if (!origin) {
+    origin = session();
+  }
+  QString prefix = profile.toLower();
+  for (GaloshSession* sess : sessions) {
+    if (!sess) {
+      continue;
+    }
+    QString name = sess->profile->profileName;
+    if (name.toLower().startsWith(prefix)) {
+      origin->term->writeColorLine("100;93", QStringLiteral("[:%1> %2").arg(name).arg(command).toUtf8());
+      sess->term->processCommand(command);
+      return;
+    }
+  }
+  if (origin) {
+    origin->term->writeColorLine("100;93", QStringLiteral("[:%1> %2").arg(profile).arg(command).toUtf8());
+    origin->term->showError(QStringLiteral("Could not find window for profile \"%1\".").arg(profile));
   }
 }
 

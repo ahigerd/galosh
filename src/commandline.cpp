@@ -176,8 +176,19 @@ void CommandLine::processCommand(const QString& command, bool echo)
       }
     } else {
       QStringList lines = parseMultilineCommand(command);
-      for (const QString& line : lines) {
-        emit commandEntered(line, true);
+      for (QString line : lines) {
+        if (line.startsWith(':')) {
+          int space = line.indexOf(' ');
+          if (space < 2) {
+            emit commandEntered(line, true);
+          } else {
+            emit commandEnteredForProfile(line.mid(1, space - 1), line.mid(space + 1));
+          }
+        } else if (line.startsWith("\\:")) {
+          emit commandEntered(line.mid(1), true);
+        } else {
+          emit commandEntered(line, true);
+        }
         onLineReceived(line);
       }
     }

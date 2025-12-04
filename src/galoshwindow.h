@@ -36,6 +36,7 @@ public slots:
   void openConfigFolder();
   void openWebsite();
   void exploreMap(int roomId = -1, const QString& movement = QString());
+  void sendCommandToProfile(const QString& profile, const QString& command);
   void about();
 
 protected:

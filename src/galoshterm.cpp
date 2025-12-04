@@ -89,6 +89,7 @@ GaloshTerm::GaloshTerm(QWidget* parent)
   QObject::connect(line, &CommandLine::commandEntered, [this](const QString&, bool) { screen->clearSelection(); });
   QObject::connect(line, SIGNAL(commandEntered(QString, bool)), this, SLOT(executeCommand(QString, bool)));
   QObject::connect(line, SIGNAL(commandEntered(QString, bool)), this, SIGNAL(commandEntered(QString, bool)));
+  QObject::connect(line, SIGNAL(commandEnteredForProfile(QString, QString)), this, SIGNAL(commandEnteredForProfile(QString, QString)));
   QObject::connect(line, SIGNAL(showError(QString)), this, SLOT(showError(QString)));
   QObject::connect(line, SIGNAL(slashCommand(QString, QStringList)), this, SLOT(onSlashCommand(QString, QStringList)));
   QObject::connect(line, SIGNAL(speedwalk(QStringList)), this, SIGNAL(speedwalk(QStringList)));
@@ -98,8 +99,7 @@ GaloshTerm::GaloshTerm(QWidget* parent)
   multilineStatus = new QLabel(lineStack);
   multilineStatus->setText(multiline->statusMessage());
   QObject::connect(multiline, SIGNAL(statusUpdated(QString)), multilineStatus, SLOT(setText(QString)));
-  QObject::connect(multiline, SIGNAL(commandEntered(QString, bool)), this, SLOT(executeCommand(QString, bool)));
-  QObject::connect(multiline, SIGNAL(commandEntered(QString, bool)), this, SIGNAL(commandEntered(QString, bool)));
+  QObject::connect(multiline, SIGNAL(commandEntered(QString, bool)), line, SLOT(processCommand(QString, bool)));
   lineStack->addWidget(multilineStatus);
 
   QToolButton* bParse = new QToolButton(this);

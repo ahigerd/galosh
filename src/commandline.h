@@ -23,6 +23,7 @@ public:
 
 signals:
   void commandEntered(const QString& command, bool echo);
+  void commandEnteredForProfile(const QString& profile, const QString& command);
   void showError(const QString& message);
   void slashCommand(const QString& command, const QStringList& args);
   void speedwalk(const QStringList& steps);
