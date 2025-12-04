@@ -391,7 +391,7 @@ bool GaloshWindow::confirmClose(GaloshSession* sess)
     }
   } else {
     for (const GaloshSession* sess : sessions) {
-      if (sess->isConnected()) {
+      if (sess && sess->isConnected()) {
         names << sess->name();
       }
     }

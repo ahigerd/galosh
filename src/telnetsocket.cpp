@@ -304,7 +304,7 @@ void TelnetSocket::telnetWill(quint8 option, bool wont)
 void TelnetSocket::telnetSB(quint8 option, const QByteArray& payload)
 {
   if (option == 24 && payload.size() == 1 && payload[0] == 0x01) {
-    static const char termType[] = "\xff\xfa\x18\x00MUDLET\xff\xf0";
+    static const char termType[] = "\xff\xfa\x18\x00xterm-256color\xff\xf0";
     write(QByteArray(termType, sizeof(termType)));
   } else if (option == 70) {
     QString key, value;

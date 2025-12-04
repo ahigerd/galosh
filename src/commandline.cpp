@@ -72,6 +72,34 @@ QStringList CommandLine::parseSlashCommand(const QString& command)
   return tokens;
 }
 
+QStringList CommandLine::parseMultilineCommand(const QString& command)
+{
+  QStringList result;
+  QStringList lines = command.split('|');
+  if (command.startsWith("//")) {
+    lines[0] = lines[0].mid(1);
+  }
+  if (command.endsWith('\\')) {
+    lines.last() += '\\';
+  }
+  QString partial;
+  for (const QString& line : lines) {
+    partial += line;
+    if (partial.endsWith("\\\\")) {
+      partial.chop(1);
+    } else if (partial.endsWith('\\')) {
+      partial[partial.length() - 1] = '|';
+      continue;
+    }
+    result << partial;
+    partial.clear();
+  }
+  if (!partial.isEmpty()) {
+    qDebug() << "XXX: internal parsing error";
+  }
+  return result;
+}
+
 CommandLine::CommandLine(QWidget* parent)
 : QLineEdit(parent), historyLimit(30), historyIndex(-1), parsing(true)
 {
@@ -117,7 +145,8 @@ void CommandLine::onReturnPressed()
     return;
   }
   bool echo = (echoMode() == QLineEdit::Normal);
-  processCommand(text(), echo);
+  // pasting into a QLineEdit can inject invisible line breaks
+  processCommand(text().replace("\r", "").replace("\n", " "), echo);
   selectAll();
   history.removeAll(text());
   if (echo) {
@@ -146,28 +175,10 @@ void CommandLine::processCommand(const QString& command, bool echo)
         emit speedwalk(dirs);
       }
     } else {
-      QStringList lines = command.split('|');
-      if (command.startsWith("//")) {
-        lines[0] = lines[0].mid(1);
-      }
-      if (command.endsWith('\\')) {
-        lines.last() += '\\';
-      }
-      QString partial;
+      QStringList lines = parseMultilineCommand(command);
       for (const QString& line : lines) {
-        partial += line;
-        if (partial.endsWith("\\\\")) {
-          partial.chop(1);
-        } else if (partial.endsWith('\\')) {
-          partial[partial.length() - 1] = '|';
-          continue;
-        }
-        emit commandEntered(partial, true);
-        onLineReceived(partial);
-        partial.clear();
-      }
-      if (!partial.isEmpty()) {
-        qDebug() << "XXX: internal parsing error";
+        emit commandEntered(line, true);
+        onLineReceived(line);
       }
     }
   } else {
@@ -178,7 +189,9 @@ void CommandLine::processCommand(const QString& command, bool echo)
 void CommandLine::keyPressEvent(QKeyEvent* event)
 {
   int oldIndex = historyIndex;
-  if (event->key() == Qt::Key_Tab || event->key() == Qt::Key_Backtab) {
+  if ((event->key() == Qt::Key_Return || event->key() == Qt::Key_Enter) && (event->modifiers() & Qt::ControlModifier)) {
+    emit multilineRequested();
+  } else if (event->key() == Qt::Key_Tab || event->key() == Qt::Key_Backtab) {
     if (event->modifiers() & (Qt::ControlModifier | Qt::AltModifier | Qt::MetaModifier)) {
       event->ignore();
       return;

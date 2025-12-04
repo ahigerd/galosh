@@ -35,8 +35,8 @@ SOURCES += src/galoshsession.cpp src/galoshterm.cpp src/roomview.cpp
 HEADERS += src/triggertab.h   src/appearancetab.h   src/waypointstab.h
 SOURCES += src/triggertab.cpp src/appearancetab.cpp src/waypointstab.cpp
 
-HEADERS += src/commandline.h   src/dropdowndelegate.h
-SOURCES += src/commandline.cpp src/dropdowndelegate.cpp
+HEADERS += src/commandline.h   src/multicommandline.h   src/dropdowndelegate.h
+SOURCES += src/commandline.cpp src/multicommandline.cpp src/dropdowndelegate.cpp
 
 # models
 HEADERS += src/userprofile.h   src/serverprofile.h

@@ -26,6 +26,7 @@ signals:
   void showError(const QString& message);
   void slashCommand(const QString& command, const QStringList& args);
   void speedwalk(const QStringList& steps);
+  void multilineRequested();
 
 public slots:
   void setParsing(bool on);

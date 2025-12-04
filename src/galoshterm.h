@@ -5,9 +5,14 @@
 #include <QAbstractSocket>
 #include "Vt102Emulation.h"
 #include "colorschemes.h"
+class QLabel;
 class QScrollBar;
+class QStackedWidget;
+class QSplitter;
 class QTimer;
+class QToolButton;
 class CommandLine;
+class MultiCommandLine;
 class TermSocket;
 class TelnetSocket;
 
@@ -50,6 +55,7 @@ private slots:
   void scheduleResizeAndScroll(bool scroll);
   void resizeAndScroll();
   void onSlashCommand(const QString& command, const QStringList& args);
+  void openMultiline(bool on = true);
 
 private:
   QTimer refreshThrottle;
@@ -57,7 +63,12 @@ private:
   Konsole::TerminalDisplay* term;
   Konsole::ScreenWindow* screen;
   TelnetSocket* tel;
+  QSplitter* splitter;
+  QStackedWidget* lineStack;
   CommandLine* line;
+  MultiCommandLine* multiline;
+  QLabel* multilineStatus;
+  QToolButton* bMultiline;
   QScrollBar* scrollBar;
   bool pendingScroll;
   bool darkBackground;

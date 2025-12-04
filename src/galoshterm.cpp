@@ -2,6 +2,7 @@
 #include "telnetsocket.h"
 #include "infomodel.h"
 #include "commandline.h"
+#include "multicommandline.h"
 #include "colorschemes.h"
 #include "TerminalDisplay.h"
 #include "ScreenWindow.h"
@@ -14,6 +15,10 @@
 #include <QFontMetrics>
 #include <QVBoxLayout>
 #include <QScrollBar>
+#include <QSplitter>
+#include <QStackedWidget>
+#include <QLabel>
+#include <QToolButton>
 #include <QShortcut>
 
 using namespace Konsole;
@@ -33,9 +38,12 @@ GaloshTerm::GaloshTerm(QWidget* parent)
   layout->setContentsMargins(0, 0, 0, 0);
   layout->setSpacing(0);
 
-  QFrame* frame = new QFrame(this);
+  splitter = new QSplitter(Qt::Vertical, this);
+  layout->addWidget(splitter, 1);
+
+  QFrame* frame = new QFrame(splitter);
   frame->setFrameStyle(QFrame::StyledPanel | QFrame::Sunken);
-  layout->addWidget(frame, 1);
+  splitter->addWidget(frame);
 
   QHBoxLayout* hLayout = new QHBoxLayout(frame);
   hLayout->setContentsMargins(0, 1, 1, 1);
@@ -51,9 +59,6 @@ GaloshTerm::GaloshTerm(QWidget* parent)
   term->setTripleClickMode(TerminalDisplay::SelectWholeLine);
   term->setTerminalSizeStartup(true);
   term->setKeyboardCursorShape(Emulation::KeyboardCursorShape::NoCursor);
-  setTermFont(QFontDatabase::systemFont(QFontDatabase::FixedFont));
-
-  setColorScheme(ColorSchemes::scheme("Galosh Green"));
 
   hLayout->addWidget(term, 1);
   new QShortcut(QKeySequence::Copy, term, SLOT(copyClipboard()), nullptr, Qt::WidgetWithChildrenShortcut);
@@ -66,7 +71,20 @@ GaloshTerm::GaloshTerm(QWidget* parent)
   scrollBar->setValue(term->scrollBar()->value());
   hLayout->addWidget(scrollBar, 0);
 
-  line = new CommandLine(this);
+  multiline = new MultiCommandLine(splitter);
+  multiline->setVisible(false);
+  QObject::connect(multiline, SIGNAL(toggleMultiline(bool)), this, SLOT(openMultiline(bool)));
+  splitter->addWidget(multiline);
+
+  QHBoxLayout* lBar = new QHBoxLayout;
+  lBar->setContentsMargins(0, 0, 0, 0);
+  lBar->setSpacing(0);
+  layout->addLayout(lBar, 0);
+
+  lineStack = new QStackedWidget;
+  lBar->addWidget(lineStack, 1);
+
+  line = new CommandLine(lineStack);
   QObject::connect(tel, SIGNAL(lineReceived(QString)), line, SLOT(onLineReceived(QString)));
   QObject::connect(line, &CommandLine::commandEntered, [this](const QString&, bool) { screen->clearSelection(); });
   QObject::connect(line, SIGNAL(commandEntered(QString, bool)), this, SLOT(executeCommand(QString, bool)));
@@ -74,9 +92,31 @@ GaloshTerm::GaloshTerm(QWidget* parent)
   QObject::connect(line, SIGNAL(showError(QString)), this, SLOT(showError(QString)));
   QObject::connect(line, SIGNAL(slashCommand(QString, QStringList)), this, SLOT(onSlashCommand(QString, QStringList)));
   QObject::connect(line, SIGNAL(speedwalk(QStringList)), this, SIGNAL(speedwalk(QStringList)));
-  layout->addWidget(line, 0);
+  QObject::connect(line, SIGNAL(multilineRequested()), this, SLOT(openMultiline()));
+  lineStack->addWidget(line);
 
-  line->setFocus();
+  multilineStatus = new QLabel(lineStack);
+  multilineStatus->setText(multiline->statusMessage());
+  QObject::connect(multiline, SIGNAL(statusUpdated(QString)), multilineStatus, SLOT(setText(QString)));
+  QObject::connect(multiline, SIGNAL(commandEntered(QString, bool)), this, SLOT(executeCommand(QString, bool)));
+  QObject::connect(multiline, SIGNAL(commandEntered(QString, bool)), this, SIGNAL(commandEntered(QString, bool)));
+  lineStack->addWidget(multilineStatus);
+
+  QToolButton* bParse = new QToolButton(this);
+  bParse->setText("\uFF0F");
+  bParse->setCheckable(true);
+  bParse->setChecked(true);
+  bParse->setToolTip("Command Parsing");
+  QObject::connect(bParse, SIGNAL(toggled(bool)), line, SLOT(setParsing(bool)));
+  lBar->addWidget(bParse, 0, Qt::AlignBottom);
+
+  bMultiline = new QToolButton(this);
+  bMultiline->setText("\u2026");
+  bMultiline->setCheckable(true);
+  bMultiline->setChecked(false);
+  bMultiline->setToolTip("Multiline Editor");
+  QObject::connect(bMultiline, SIGNAL(toggled(bool)), this, SLOT(openMultiline(bool)));
+  lBar->addWidget(bMultiline, 0, Qt::AlignBottom);
 
   term->installEventFilter(this);
   line->installEventFilter(this);
@@ -84,6 +124,10 @@ GaloshTerm::GaloshTerm(QWidget* parent)
   refreshThrottle.setSingleShot(true);
   refreshThrottle.setInterval(5);
   QObject::connect(&refreshThrottle, SIGNAL(timeout()), this, SLOT(resizeAndScroll()));
+
+  setTermFont(QFontDatabase::systemFont(QFontDatabase::FixedFont));
+  setColorScheme(ColorSchemes::scheme("Galosh Green"));
+  openMultiline(false);
 }
 
 void GaloshTerm::showError(const QString& message)
@@ -96,6 +140,32 @@ void GaloshTerm::onSlashCommand(const QString& command, const QStringList& args)
   QString message = "/" + command + " " + args.join(" ");
   writeColorLine("1;96", message.toUtf8());
   emit slashCommand(command, args);
+}
+
+void GaloshTerm::openMultiline(bool on)
+{
+  bMultiline->blockSignals(true);
+  bMultiline->setChecked(on);
+  bMultiline->blockSignals(false);
+  multiline->setVisible(on);
+  if (on) {
+    splitter->setSizes({ int(height() * 0.8), int(height() * 0.2) });
+    QString content = line->text();
+    if (line->isParsing()) {
+      QStringList lines = CommandLine::parseMultilineCommand(content);
+      content = lines.join("\n");
+    }
+    multiline->setPlainText(content);
+    lineStack->setCurrentWidget(multilineStatus);
+    setFocusProxy(multiline);
+    multiline->setFocus();
+  } else {
+    QString content = multiline->toPlainText().replace("|", "\\|").replace("\n", "|");
+    line->setText(content);
+    lineStack->setCurrentWidget(line);
+    setFocusProxy(line);
+    line->setFocus();
+  }
 }
 
 void GaloshTerm::processCommand(const QString& command, bool echo)
@@ -236,6 +306,7 @@ void GaloshTerm::setTermFont(const QFont& font)
 
   term->setBoldIntense(fm.boundingRect("mmm").width() == fmb.boundingRect("mmm").width());
   term->setVTFont(font);
+  multiline->setFont(font);
 }
 
 void GaloshTerm::setColorScheme(const ColorScheme& scheme)
