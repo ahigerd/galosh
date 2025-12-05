@@ -151,7 +151,32 @@ void TelnetSocket::onConnected()
   if (useTls && !tcp->isEncrypted()) {
     return;
   }
+
+  QSslCertificate cert = tcp->peerCertificate();
+
+  QMap<QString, QString> info;
+  for (const QByteArray& attr : cert.subjectInfoAttributes()) {
+    info[QString::fromUtf8(attr)] = cert.subjectInfo(attr).join("\n\t\t");
+  }
+
+  QStringList issuer = cert.issuerInfo(QSslCertificate::Organization);
+  issuer << cert.issuerDisplayName();
+  info["issuer"] = issuer.first();
+  info["sha256"] = cert.digest(QCryptographicHash::Sha256).toHex();
+
+  bool selfSigned = false;
+  bool nameMismatch = false;
+  for (const QSslError& error : QSslCertificate::verify(tcp->peerCertificateChain(), hostname())) {
+    QSslError::SslError t = error.error();
+    if (t == QSslError::SelfSignedCertificate || t == QSslError::SelfSignedCertificateInChain) {
+      selfSigned = true;
+    } else if (t == QSslError::HostNameMismatch) {
+      nameMismatch = true;
+    }
+  }
+  emit serverCertificate(info, selfSigned, nameMismatch);
 #endif
+
   emit connected();
 }
 
@@ -159,22 +184,23 @@ void TelnetSocket::onConnected()
 void TelnetSocket::onSslErrors(const QList<QSslError>& errors)
 {
   // TODO: cert pinning
-  if (errors.count() > 0) {
-    QSslError::SslError first = errors.first().error();
-    auto cert = errors.first().certificate();
-    qDebug() << cert.issuerDisplayName();
-    for (auto attr : cert.issuerInfoAttributes()) {
-      qDebug() << attr << cert.issuerInfo(attr);
-    }
-
-    if (errors.count() == 1 && (first == QSslError::SelfSignedCertificate || first == QSslError::SelfSignedCertificateInChain)) {
-      tcp->ignoreSslErrors();
-      return;
+  bool ok = true;
+  for (const QSslError& error : errors) {
+    QSslError::SslError errorType = error.error();
+    if (errorType != QSslError::SelfSignedCertificate &&
+        errorType != QSslError::SelfSignedCertificateInChain &&
+        errorType != QSslError::HostNameMismatch) {
+      ok = false;
+      break;
     }
   }
   qDebug() << errors;
-  emit errorOccurred(QAbstractSocket::SslHandshakeFailedError);
-  disconnectFromHost();
+  if (ok) {
+    tcp->ignoreSslErrors();
+  } else {
+    emit errorOccurred(QAbstractSocket::SslHandshakeFailedError);
+    disconnectFromHost();
+  }
 }
 #endif
 

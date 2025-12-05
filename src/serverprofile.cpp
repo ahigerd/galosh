@@ -2,6 +2,7 @@
 #include <QSettings>
 #include <QDir>
 #include <QStandardPaths>
+#include <QtDebug>
 
 static QString cleanHost(const QString& host)
 {
@@ -31,4 +32,19 @@ ServerProfile::ServerProfile(const QString& rawHost)
   }
   map.loadMap(mapFileName);
   itemDB.load(itemsFileName);
+
+  QSettings settings;
+  settings.beginGroup("Certificates");
+  certificateHash = settings.value(host).toString();
+}
+
+void ServerProfile::save()
+{
+  QSettings settings;
+  settings.beginGroup("Certificates");
+  if (certificateHash.isEmpty()) {
+    settings.remove(host);
+  } else {
+    settings.setValue(host, certificateHash);
+  }
 }

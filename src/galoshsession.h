@@ -2,6 +2,7 @@
 #define GALOSH_GALOSHSESSION_H
 
 #include <QPointer>
+#include <QStringList>
 #include <memory>
 #include "galoshterm.h"
 #include "profiledialog.h"
@@ -68,6 +69,7 @@ private slots:
   void setLastRoom(int roomId);
   void gmcpEvent(const QString& key, const QVariant& value);
   void setUnread();
+  void serverCertificate(const QMap<QString, QString>& info, bool selfSigned, bool nameMismatch);
 
 private:
   AutoMapper autoMap;

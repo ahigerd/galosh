@@ -59,6 +59,7 @@ signals:
   void gmcpEvent(const QString& key, const QVariant& value);
   void lineReceived(const QString& line);
   void promptWaiting();
+  void serverCertificate(const QMap<QString, QString>& info, bool selfSigned, bool nameMismatch);
 
 public slots:
   void disconnectFromHost();

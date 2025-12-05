@@ -12,6 +12,9 @@ public:
   const QString host;
   MapManager map;
   ItemDatabase itemDB;
+  QString certificateHash;
+
+  void save();
 };
 
 #endif

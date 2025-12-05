@@ -9,6 +9,7 @@
 #include "commands/slotcommand.h"
 #include "commands/routecommand.h"
 #include "commands/waypointcommand.h"
+#include "algorithms.h"
 #include <QSettings>
 
 GaloshSession::GaloshSession(UserProfile* profile, QWidget* parent)
@@ -28,6 +29,7 @@ GaloshSession::GaloshSession(UserProfile* profile, QWidget* parent)
   QObject::connect(term->socket(), SIGNAL(msspEvent(QString, QString)), this, SIGNAL(msspReceived()));
   QObject::connect(term->socket(), SIGNAL(gmcpEvent(QString, QVariant)), &autoMap, SLOT(gmcpEvent(QString, QVariant)));
   QObject::connect(term->socket(), SIGNAL(gmcpEvent(QString, QVariant)), this, SLOT(gmcpEvent(QString, QVariant)));
+  QObject::connect(term->socket(), SIGNAL(serverCertificate(QMap<QString,QString>,bool,bool)), this, SLOT(serverCertificate(QMap<QString,QString>,bool,bool)));
 
   infoModel = new InfoModel(this);
 
@@ -145,6 +147,44 @@ void GaloshSession::reload()
   QString colors = profile->colorScheme.isEmpty() ? ColorSchemes::defaultScheme() : profile->colorScheme;
   term->setColorScheme(ColorSchemes::scheme(colors));
   term->setTermFont(profile->font);
+}
+
+void GaloshSession::serverCertificate(const QMap<QString, QString>& info, bool selfSigned, bool nameMismatch)
+{
+  QString host = term->socket()->hostname();
+  term->writeColorLine("1;4;95", QStringLiteral("Security certificate for %1:").arg(host).toUtf8());
+  for (auto [key, value] : cpairs(info)) {
+    QString message = QStringLiteral("\t%1\t%2").arg(key).arg(value);
+    if (key == "issuer" && selfSigned) {
+      message = "\tissuer\t\e[31m(self-signed)";
+    } else if (key == "CN" && nameMismatch) {
+      message = "\tCN\t\e[31m" + value;
+    }
+    term->writeColorLine("35", message.toUtf8());
+  }
+
+  bool newHash = profile->serverProfile->certificateHash.isEmpty();
+  bool changedHash = profile->serverProfile->certificateHash != info["sha256"];
+  if (nameMismatch && (newHash || changedHash)) {
+    QString error = QStringLiteral("The certificate does not appear to belong to %1!").arg(host);
+    term->writeColorLine("1;91", QStringLiteral("* \e[5m%1:\e[25m %2 *").arg("WARNING").arg(error).toUtf8());
+    term->writeColorLine("91", "  Proceed with caution.");
+    term->writeColorLine("93", "  This warning will not appear again unless the certificate changes.");
+  }
+  if (newHash) {
+    profile->serverProfile->certificateHash = info["sha256"];
+    profile->serverProfile->save();
+    if (selfSigned) {
+      QString warning = "This certificate is self-signed.";
+      term->writeColorLine("1;93", QStringLiteral("* \e[5m%1:\e[25m %2 *").arg("NOTICE").arg(warning).toUtf8());
+      term->writeColorLine("93", "  The identity of this server cannot be verified.");
+      term->writeColorLine("93", "  This warning will not appear again unless the certificate changes.");
+    }
+  } else if (changedHash) {
+    QString warning = "The certificate has changed since the last connection.";
+    term->writeColorLine("1;93", QStringLiteral("* \e[5m%1:\e[25m %2 *").arg("NOTICE").arg(warning).toUtf8());
+    term->writeColorLine("93", "  This may be normal, but verify that the certificate is correct.");
+  }
 }
 
 void GaloshSession::gmcpEvent(const QString& key, const QVariant& value)
