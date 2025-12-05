@@ -20,13 +20,16 @@ descriptions, and it can keep more information about the current room visible at
 * Cross-platform (Windows, macOS, X11, Wayland)
 * ANSI/VT100/VT102 formatting support with configurable colors
 * Works with Telnet, plain text connections, and local text-based programs
+* SSL/TLS encryption support
 * [MSSP](https://mudstandards.org/mud/mssp) protocol support
 * [GMCP](https://mudstandards.org/mud/gmcp) protocol support
 * Multiple saved profiles
+* Control multiple connected characters
 * Triggers
 * Automapping, automatic pathfinding, and speedwalking
 * Environment and status displays
 * Command history
+* Multi-line command editing
 * Tab completion
 * Mudlet map importing
 * Offline map exploration
@@ -36,7 +39,8 @@ descriptions, and it can keep more information about the current room visible at
 
 * Context-aware tab completion (spellcasting, etc.)
 * Smart aliases / custom commands
-* Simple scripting
+* Trigger variables
+* Conditional triggers
 * Split-screen
 * Prebuilt releases for macOS
 
