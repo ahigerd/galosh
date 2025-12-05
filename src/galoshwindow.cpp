@@ -344,9 +344,11 @@ void GaloshWindow::connectToProfile(const QString& path, bool online)
   GaloshSession* sess = findSession(path);
   if (sess) {
     tabs->setCurrentWidget(sess->term);
+    sess->term->setFocus();
     if (sess->isConnected()) {
       return;
     }
+    sess->reload();
   } else {
     UserProfile* profile = new UserProfile(path);
     // Session takes ownership of profile
