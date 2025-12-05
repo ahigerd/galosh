@@ -40,12 +40,16 @@ TelnetSocket::TelnetSocket(QObject* parent)
 {
   setOpenMode(QIODevice::ReadWrite);
 
-  tcp = new QTcpSocket(this);
+  tcp = new TcpSocket(this);
+#ifndef QT_NO_SSL
+  QObject::connect(tcp, SIGNAL(sslErrors(QList<QSslError>)), this, SLOT(onSslErrors(QList<QSslError>)));
+  QObject::connect(tcp, SIGNAL(encrypted()), this, SLOT(onConnected()));
+#endif
 
   lineTimer.setInterval(250);
   lineTimer.setSingleShot(true);
 
-  QObject::connect(tcp, SIGNAL(connected()), this, SIGNAL(connected()));
+  QObject::connect(tcp, SIGNAL(connected()), this, SLOT(onConnected()));
   QObject::connect(tcp, SIGNAL(disconnected()), this, SIGNAL(disconnected()));
   QObject::connect(tcp, SIGNAL(errorOccurred(QAbstractSocket::SocketError)), this, SIGNAL(errorOccurred(QAbstractSocket::SocketError)));
   QObject::connect(tcp, SIGNAL(readyRead()), this, SLOT(onReadyRead()));
@@ -126,11 +130,53 @@ void TelnetSocket::connectCommand(const QString& command, bool darkBackground)
   p->start();
 }
 
-void TelnetSocket::connectToHost(const QString& host, quint16 port)
+void TelnetSocket::connectToHost(const QString& host, quint16 port, bool tls)
 {
   setHost(host, port);
-  tcp->connectToHost(host, port);
+  useTls = tls;
+  if (tls) {
+#ifdef QT_NO_SSL
+    emit errorOccurred(QAbstractSocket::SslHandshakeFailedError);
+#else
+    tcp->connectToHostEncrypted(host, port);
+#endif
+  } else {
+    tcp->connectToHost(host, port);
+  }
 }
+
+void TelnetSocket::onConnected()
+{
+#ifndef QT_NO_SSL
+  if (useTls && !tcp->isEncrypted()) {
+    return;
+  }
+#endif
+  emit connected();
+}
+
+#ifndef QT_NO_SSL
+void TelnetSocket::onSslErrors(const QList<QSslError>& errors)
+{
+  // TODO: cert pinning
+  if (errors.count() > 0) {
+    QSslError::SslError first = errors.first().error();
+    auto cert = errors.first().certificate();
+    qDebug() << cert.issuerDisplayName();
+    for (auto attr : cert.issuerInfoAttributes()) {
+      qDebug() << attr << cert.issuerInfo(attr);
+    }
+
+    if (errors.count() == 1 && (first == QSslError::SelfSignedCertificate || first == QSslError::SelfSignedCertificateInChain)) {
+      tcp->ignoreSslErrors();
+      return;
+    }
+  }
+  qDebug() << errors;
+  emit errorOccurred(QAbstractSocket::SslHandshakeFailedError);
+  disconnectFromHost();
+}
+#endif
 
 void TelnetSocket::setHost(const QString& host, quint16 port)
 {

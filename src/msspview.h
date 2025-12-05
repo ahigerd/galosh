@@ -15,7 +15,7 @@ class MsspView : public QDialog
 {
 Q_OBJECT
 public:
-  MsspView(const QString& hostname, quint16 port, QWidget* parent = nullptr);
+  MsspView(const QString& hostname, quint16 port, bool tls, QWidget* parent = nullptr);
   MsspView(TelnetSocket* socket, QWidget* parent = nullptr);
 
 public slots:

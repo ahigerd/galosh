@@ -15,6 +15,7 @@
 #include <QFileDialog>
 #include <QDialogButtonBox>
 #include <QRadioButton>
+#include <QCheckBox>
 #include <QButtonGroup>
 #include <QPushButton>
 #include <QFormLayout>
@@ -101,6 +102,10 @@ ProfileDialog::ProfileDialog(bool forConnection, QWidget* parent)
   portLayout->addWidget(msspButton);
   lServer->addRow(portLabel = new QLabel("Por&t:", tServer), portLayout);
   portLabel->setBuddy(port);
+  useTls = new QCheckBox("Use &SSL / TLS", tServer);
+#ifndef QT_NO_SSL
+  lServer->addRow("", useTls);
+#endif
 
   lServer->addRow(horizontalLine(tServer));
 
@@ -145,6 +150,7 @@ ProfileDialog::ProfileDialog(bool forConnection, QWidget* parent)
       }
     }
   }
+  QObject::connect(useTls, SIGNAL(toggled(bool)), this, SLOT(markDirty()));
   QObject::connect(tTriggers, SIGNAL(markDirty()), this, SLOT(markDirty()));
   QObject::connect(tAppearance, SIGNAL(markDirty()), this, SLOT(markDirty()));
   QObject::connect(tWaypoints, SIGNAL(markDirty()), this, SLOT(markDirty()));
@@ -299,10 +305,16 @@ bool ProfileDialog::save()
     if (oServer->isChecked()) {
       settings.setValue("host", hostname->text().trimmed());
       settings.setValue("port", port->text().toInt());
+      if (useTls->isChecked()) {
+        settings.setValue("tls", true);
+      } else {
+        settings.remove("tls");
+      }
       settings.remove("commandLine");
     } else {
       settings.remove("host");
       settings.remove("port");
+      settings.remove("tls");
       settings.setValue("commandLine", hostname->text().trimmed());
     }
     settings.setValue("username", username->text().trimmed());
@@ -365,6 +377,7 @@ void ProfileDialog::newProfile()
   profileName->clear();
   hostname->clear();
   port->setText("4000");
+  useTls->setChecked(false);
   username->clear();
   password->clear();
   loginPrompt->setText(defaultLoginPrompt);
@@ -398,6 +411,7 @@ void ProfileDialog::markDirty()
 
 bool ProfileDialog::loadProfile(const QString& path)
 {
+  // TODO: use UserProfile
   QSettings settings(path, QSettings::IniFormat);
   if (settings.status() != QSettings::NoError) {
     QMessageBox::critical(this, "Galosh", "Error reading profile from " + path);
@@ -411,10 +425,12 @@ bool ProfileDialog::loadProfile(const QString& path)
     oServer->setChecked(true);
     hostname->setText(settings.value("host").toString());
     port->setText(QString::number(settings.value("port").toInt()));
+    useTls->setChecked(settings.value("tls").toBool());
   } else {
     oProgram->setChecked(true);
     hostname->setText(command);
     port->clear();
+    useTls->setChecked(false);
   }
   username->setText(settings.value("username").toString());
   password->setText(settings.value("password").toString());
@@ -444,7 +460,7 @@ void ProfileDialog::resizeEvent(QResizeEvent*)
 
 void ProfileDialog::checkMssp()
 {
-  (new MsspView(hostname->text(), port->text().toInt(), this))->open();
+  (new MsspView(hostname->text(), port->text().toInt(), useTls->isChecked(), this))->open();
 }
 
 void ProfileDialog::toggleServerOrProgram()
@@ -452,6 +468,7 @@ void ProfileDialog::toggleServerOrProgram()
   bool server = oServer->isChecked();
   hostLabel->setText(server ? "&Hostname:" : "Pro&gram:");
   port->setEnabled(server);
+  useTls->setEnabled(server);
   portLabel->setEnabled(server);
   msspButton->setEnabled(server);
   markDirty();

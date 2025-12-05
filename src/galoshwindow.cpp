@@ -548,7 +548,11 @@ void GaloshWindow::about()
   QFile html(":/about.html");
   html.open(QIODevice::ReadOnly);
   QString content = QString::fromUtf8(html.readAll());
-  content = content.replace("{VERSION}", qApp->applicationVersion());
+  QString version = qApp->applicationVersion();
+#ifdef QT_NO_SSL
+  version += " (TLS disabled)";
+#endif
+  content = content.replace("{VERSION}", version);
   QMessageBox::about(this, "About Galosh", content);
 }
 

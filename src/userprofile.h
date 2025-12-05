@@ -17,6 +17,7 @@ public:
   QString profileName;
   QString host;
   quint16 port;
+  bool tls;
   QString command;
   QString username;
   QString password;

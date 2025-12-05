@@ -8,6 +8,7 @@ class QFormLayout;
 class QListView;
 class QLineEdit;
 class QRadioButton;
+class QCheckBox;
 class QLabel;
 class QFrame;
 class QStandardItemModel;
@@ -71,6 +72,7 @@ private:
   QLineEdit* hostname;
   QLabel* hostLabel;
   QLineEdit* port;
+  QCheckBox* useTls;
   QLabel* portLabel;
   QPushButton* msspButton;
   QLineEdit* username;

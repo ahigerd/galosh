@@ -6,12 +6,21 @@
 #include <QTimer>
 #include <QMetaEnum>
 #include <QHash>
+#ifndef QT_NO_SSL
+#include <QSslSocket>
+#endif
 class QProcess;
 
 class TelnetSocket : public QIODevice
 {
 Q_OBJECT
 public:
+#ifdef QT_NO_SSL
+  using TcpSocket = QTcpSocket;
+#else
+  using TcpSocket = QSslSocket;
+#endif
+
   static QString stripVT100(const QByteArray& payload);
 
   enum Telnet : quint8 {
@@ -29,7 +38,7 @@ public:
 
   void connectCommand(const QString& command, bool darkBackground = true);
   void setCommand(const QString& command);
-  void connectToHost(const QString& host, quint16 port);
+  void connectToHost(const QString& host, quint16 port, bool tls);
   void setHost(const QString& host, quint16 port);
   bool isConnected() const;
   QString hostname() const;
@@ -59,6 +68,10 @@ private slots:
   void processLines();
   void checkForPrompts();
   void childStarted();
+  void onConnected();
+#ifndef QT_NO_SSL
+  void onSslErrors(const QList<QSslError>& errors);
+#endif
 
 protected:
   qint64 readData(char* data, qint64 maxSize) override;
@@ -71,7 +84,7 @@ private:
 
   QPointer<QIODevice> pty;
   QPointer<QProcess> program;
-  QTcpSocket* tcp;
+  TcpSocket* tcp;
   QByteArray protocolBuffer;
   QByteArray outputBuffer;
   QByteArray lineBuffer;
@@ -79,6 +92,7 @@ private:
   QString connectedHost;
   QStringList commandArgs;
   quint16 connectedPort;
+  bool useTls;
 };
 
 using Telnet = TelnetSocket::Telnet;

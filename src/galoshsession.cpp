@@ -119,7 +119,7 @@ QString GaloshSession::statusBarText() const
 void GaloshSession::connect()
 {
   if (profile->command.isEmpty()) {
-    term->socket()->connectToHost(profile->host, profile->port);
+    term->socket()->connectToHost(profile->host, profile->port, profile->tls);
   } else {
     term->socket()->connectCommand(profile->command);
   }

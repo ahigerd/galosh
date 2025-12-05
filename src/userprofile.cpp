@@ -41,6 +41,7 @@ void UserProfile::reload()
     profileName = settings.value("name").toString();
     host = settings.value("host").toString();
     port = settings.value("port").value<quint16>();
+    tls = settings.value("tls").toBool();
     command = settings.value("commandLine").toString();
     lastRoomId = settings.value("lastRoom", -1).toInt();
   }

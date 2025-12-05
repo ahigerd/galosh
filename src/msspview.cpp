@@ -9,7 +9,7 @@
 #include <QDialogButtonBox>
 #include <QtDebug>
 
-MsspView::MsspView(const QString& hostname, quint16 port, QWidget* parent)
+MsspView::MsspView(const QString& hostname, quint16 port, bool tls, QWidget* parent)
 : MsspView(nullptr, parent)
 {
   if (hostname.isEmpty() || port < 1) {
@@ -23,7 +23,7 @@ MsspView::MsspView(const QString& hostname, quint16 port, QWidget* parent)
   socket = new TelnetSocket(this);
   QObject::connect(socket, SIGNAL(msspEvent(QString, QString)), &refreshThrottle, SLOT(start()));
   QObject::connect(socket, SIGNAL(errorOccurred(QAbstractSocket::SocketError)), this, SLOT(showError(QAbstractSocket::SocketError)));
-  socket->connectToHost(hostname, port);
+  socket->connectToHost(hostname, port, tls);
 
   showMessage("Loading...");
 
