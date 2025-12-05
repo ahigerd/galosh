@@ -148,33 +148,35 @@ void TelnetSocket::connectToHost(const QString& host, quint16 port, bool tls)
 void TelnetSocket::onConnected()
 {
 #ifndef QT_NO_SSL
-  if (useTls && !tcp->isEncrypted()) {
-    return;
-  }
-
-  QSslCertificate cert = tcp->peerCertificate();
-
-  QMap<QString, QString> info;
-  for (const QByteArray& attr : cert.subjectInfoAttributes()) {
-    info[QString::fromUtf8(attr)] = cert.subjectInfo(attr).join("\n\t\t");
-  }
-
-  QStringList issuer = cert.issuerInfo(QSslCertificate::Organization);
-  issuer << cert.issuerDisplayName();
-  info["issuer"] = issuer.first();
-  info["sha256"] = cert.digest(QCryptographicHash::Sha256).toHex();
-
-  bool selfSigned = false;
-  bool nameMismatch = false;
-  for (const QSslError& error : QSslCertificate::verify(tcp->peerCertificateChain(), hostname())) {
-    QSslError::SslError t = error.error();
-    if (t == QSslError::SelfSignedCertificate || t == QSslError::SelfSignedCertificateInChain) {
-      selfSigned = true;
-    } else if (t == QSslError::HostNameMismatch) {
-      nameMismatch = true;
+  if (useTls) {
+    if (!tcp->isEncrypted()) {
+      return;
     }
+
+    QSslCertificate cert = tcp->peerCertificate();
+
+    QMap<QString, QString> info;
+    for (const QByteArray& attr : cert.subjectInfoAttributes()) {
+      info[QString::fromUtf8(attr)] = cert.subjectInfo(attr).join("\n\t\t");
+    }
+
+    QStringList issuer = cert.issuerInfo(QSslCertificate::Organization);
+    issuer << cert.issuerDisplayName();
+    info["issuer"] = issuer.first();
+    info["sha256"] = cert.digest(QCryptographicHash::Sha256).toHex();
+
+    bool selfSigned = false;
+    bool nameMismatch = false;
+    for (const QSslError& error : QSslCertificate::verify(tcp->peerCertificateChain(), hostname())) {
+      QSslError::SslError t = error.error();
+      if (t == QSslError::SelfSignedCertificate || t == QSslError::SelfSignedCertificateInChain) {
+        selfSigned = true;
+      } else if (t == QSslError::HostNameMismatch) {
+        nameMismatch = true;
+      }
+    }
+    emit serverCertificate(info, selfSigned, nameMismatch);
   }
-  emit serverCertificate(info, selfSigned, nameMismatch);
 #endif
 
   emit connected();
