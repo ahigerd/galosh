@@ -4,28 +4,22 @@
 #include <QDialog>
 #include <QModelIndex>
 class QTabWidget;
-class QFormLayout;
 class QListView;
-class QLineEdit;
-class QRadioButton;
-class QCheckBox;
-class QLabel;
 class QFrame;
 class QStandardItemModel;
 class QDialogButtonBox;
-class TriggerTab;
-class AppearanceTab;
-class WaypointsTab;
+class ServerTab;
+class DialogTabBase;
 
 class ProfileDialog : public QDialog
 {
 Q_OBJECT
 public:
   enum Tab {
-    ServerTab,
-    TriggersTab,
-    AppearanceTab,
-    WaypointsTab,
+    Tab_Server,
+    Tab_Triggers,
+    Tab_Appearance,
+    NumTabs,
   };
 
   static QFrame* horizontalLine(QWidget* parent = nullptr);
@@ -54,8 +48,6 @@ private slots:
   void markDirty();
   void newProfile();
   void deleteProfile();
-  void checkMssp();
-  void toggleServerOrProgram();
 
 private:
   void loadProfiles();
@@ -66,22 +58,8 @@ private:
   QTabWidget* tabs;
   QModelIndex selectedProfile;
 
-  QLineEdit* profileName;
-  QRadioButton* oServer;
-  QRadioButton* oProgram;
-  QLineEdit* hostname;
-  QLabel* hostLabel;
-  QLineEdit* port;
-  QCheckBox* useTls;
-  QLabel* portLabel;
-  QPushButton* msspButton;
-  QLineEdit* username;
-  QLineEdit* password;
-  QLineEdit* loginPrompt;
-  QLineEdit* passwordPrompt;
-  TriggerTab* tTriggers;
-  ::AppearanceTab* tAppearance;
-  ::WaypointsTab* tWaypoints;
+  ServerTab* tServer;
+  QList<DialogTabBase*> tWidgets;
   QDialogButtonBox* buttons;
   bool emitConnect;
   bool dirty;

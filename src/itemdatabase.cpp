@@ -49,17 +49,32 @@ void ItemDatabase::processLine(const QString& line)
   }
   if (!pendingItem.isEmpty()) {
     if (line.trimmed().isEmpty()) {
-      int row = keys.indexOf(pendingItem);
-      bool isNew = row < 0;
-      if (isNew) {
-        QStringList newKeys = keys;
-        newKeys << pendingItem;
-        std::sort(newKeys.begin(), newKeys.end());
-        row = keys.indexOf(pendingItem);
-        beginInsertRows(QModelIndex(), row, row);
-        keys = newKeys;
-      }
-      dbFile->setValue(pendingItem, pendingStats);
+      bool isNew;
+      int row;
+      int dedupe = 1;
+      QString itemName = pendingItem;
+      do {
+        row = keys.indexOf(itemName);
+        isNew = row < 0;
+        if (isNew) {
+          QStringList newKeys = keys;
+          newKeys << itemName;
+          std::sort(newKeys.begin(), newKeys.end());
+          row = keys.indexOf(itemName);
+          beginInsertRows(QModelIndex(), row, row);
+          keys = newKeys;
+        } else {
+          QString existing = dbFile->value(itemName).toString();
+          if (pendingStats == existing) {
+            // no change
+            pendingItem.clear();
+            pendingStats.clear();
+            return;
+          }
+        }
+        itemName = QStringLiteral("%1 (%2)").arg(pendingItem).arg(++dedupe);
+      } while (!isNew);
+      dbFile->setValue(itemName, pendingStats);
       if (isNew) {
         endInsertRows();
       } else {

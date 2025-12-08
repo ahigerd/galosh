@@ -2,6 +2,9 @@
 #include <QSettings>
 #include <QSet>
 
+const QString TriggerManager::UsernameId("\x01username");
+const QString TriggerManager::PasswordId("\x01password");
+
 TriggerDefinition::TriggerDefinition(const QString& id)
 : id(id), echo(true), enabled(true), once(false), triggered(false)
 {
@@ -62,7 +65,7 @@ void TriggerManager::loadProfile(const QString& profile)
   QString username = settings.value("username").toString();
   QString loginPrompt = settings.value("loginPrompt").toString();
   if (!loginPrompt.isEmpty() && !username.isEmpty()) {
-    TriggerDefinition def("\x01username");
+    TriggerDefinition def(UsernameId);
     def.pattern.setPattern(QRegularExpression::escape(loginPrompt));
     def.command = username;
     def.once = true;
@@ -72,7 +75,7 @@ void TriggerManager::loadProfile(const QString& profile)
   QString password = settings.value("password").toString();
   QString passwordPrompt = settings.value("passwordPrompt").toString();
   if (!passwordPrompt.isEmpty() && !password.isEmpty()) {
-    TriggerDefinition def("\x01password");
+    TriggerDefinition def(PasswordId);
     def.pattern.setPattern(QRegularExpression::escape(passwordPrompt));
     def.command = password;
     def.once = true;
@@ -128,12 +131,16 @@ void TriggerManager::processLine(const QString& line)
   }
 }
 
-TriggerDefinition* TriggerManager::findTrigger(const QString& id)
+TriggerDefinition* TriggerManager::findTrigger(const QString& id, bool create)
 {
   for (TriggerDefinition& def : triggers) {
     if (def.id == id) {
       return &def;
     }
+  }
+  if (create) {
+    triggers << TriggerDefinition(id);
+    return &triggers.last();
   }
   return nullptr;
 }

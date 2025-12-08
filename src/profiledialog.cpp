@@ -1,34 +1,27 @@
 #include "profiledialog.h"
+#include "userprofile.h"
+#include "servertab.h"
 #include "triggertab.h"
 #include "appearancetab.h"
 #include "waypointstab.h"
 #include "msspview.h"
 #include "telnetsocket.h"
+#include "algorithms.h"
 #include <QMessageBox>
 #include <QRegularExpression>
 #include <QStandardPaths>
 #include <QSettings>
 #include <QTabWidget>
 #include <QListView>
-#include <QLineEdit>
 #include <QStandardItemModel>
 #include <QFileDialog>
 #include <QDialogButtonBox>
-#include <QRadioButton>
-#include <QCheckBox>
-#include <QButtonGroup>
 #include <QPushButton>
-#include <QFormLayout>
-#include <QGridLayout>
 #include <QBoxLayout>
 #include <QGroupBox>
 #include <QToolButton>
-#include <QLabel>
 #include <QDir>
 #include <QtDebug>
-
-static const char* defaultLoginPrompt = "By what name do you wish to be known?";
-static const char* defaultPasswordPrompt = "Password:";
 
 QString ProfileDialog::lastProfile;
 
@@ -71,55 +64,16 @@ ProfileDialog::ProfileDialog(bool forConnection, QWidget* parent)
   lButtons->addWidget(bDelete, 0);
 
   tabs = new QTabWidget(this);
+  tServer = new ServerTab(tabs);
+  tWidgets << tServer;
+  tWidgets << new TriggerTab(tabs);
+  tWidgets << new AppearanceTab(tabs);
+
+  for (auto [i, tab] : enumerate(tWidgets)) {
+    tabs->addTab(tab, QStringLiteral("&%1. %2").arg(i + 1).arg(tab->label()));
+    QObject::connect(tab, SIGNAL(markDirty()), this, SLOT(markDirty()));
+  }
   layout->addWidget(tabs, 0, 1);
-
-  QWidget* tServer = new QWidget(tabs);
-  QFormLayout* lServer = new QFormLayout(tServer);
-  tabs->addTab(tServer, "&1. Server");
-  tabs->addTab(tTriggers = new TriggerTab(tabs), "&2. Triggers");
-  tabs->addTab(tAppearance = new ::AppearanceTab(tabs), "&3. Appearance");
-  tabs->addTab(tWaypoints = new ::WaypointsTab(tabs), "&4. Waypoints");
-
-  lServer->addRow("Profile &name:", profileName = new QLineEdit(tServer));
-  lServer->addRow(horizontalLine(tServer));
-
-  QHBoxLayout* lRadio = new QHBoxLayout;
-  lRadio->addWidget(oServer = new QRadioButton("Connect to a se&rver", tServer), 1);
-  lRadio->addWidget(oProgram = new QRadioButton("Run a p&rogram", tServer), 1);
-  QButtonGroup* group = new QButtonGroup(this);
-  group->addButton(oServer, 0);
-  group->addButton(oProgram, 1);
-  oServer->setChecked(true);
-  lServer->addRow(lRadio);
-  QObject::connect(oServer, SIGNAL(clicked()), this, SLOT(toggleServerOrProgram()));
-  QObject::connect(oProgram, SIGNAL(clicked()), this, SLOT(toggleServerOrProgram()));
-
-  lServer->addRow(hostLabel = new QLabel("&Hostname:", tServer), hostname = new QLineEdit(tServer));
-  hostLabel->setBuddy(hostname);
-  QHBoxLayout* portLayout = new QHBoxLayout;
-  portLayout->addWidget(port = new QLineEdit("4000", tServer), 1);
-  msspButton = new QPushButton("&MSSP...", this);
-  portLayout->addWidget(msspButton);
-  lServer->addRow(portLabel = new QLabel("Por&t:", tServer), portLayout);
-  portLabel->setBuddy(port);
-  useTls = new QCheckBox("Use &SSL / TLS", tServer);
-#ifndef QT_NO_SSL
-  lServer->addRow("", useTls);
-#endif
-
-  lServer->addRow(horizontalLine(tServer));
-
-  lServer->addRow("&Username:", username = new QLineEdit(tServer));
-  lServer->addRow("&Password:", password = new QLineEdit(tServer));
-  lServer->addRow("", new QLabel("<i>Note: passwords are saved in plaintext</i>"));
-  lServer->addRow(horizontalLine(tServer));
-
-  lServer->addRow("Us&ername prompt:", loginPrompt = new QLineEdit(defaultLoginPrompt, tServer));
-  lServer->addRow("P&assword prompt:", passwordPrompt = new QLineEdit(defaultPasswordPrompt, tServer));
-  tServer->setMinimumWidth(400);
-
-  port->setValidator(new QIntValidator(1, 65535, port));
-  password->setEchoMode(QLineEdit::Password);
 
   buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Apply | QDialogButtonBox::Close, this);
   if (forConnection) {
@@ -143,23 +97,9 @@ ProfileDialog::ProfileDialog(bool forConnection, QWidget* parent)
 
   resize(minimumSizeHint());
 
-  for (int i = 0; i < tabs->count(); i++) {
-    for (QObject* w : tabs->widget(i)->children()) {
-      if (qobject_cast<QLineEdit*>(w)) {
-        QObject::connect(w, SIGNAL(textEdited(QString)), this, SLOT(markDirty()));
-      }
-    }
-  }
-  QObject::connect(useTls, SIGNAL(toggled(bool)), this, SLOT(markDirty()));
-  QObject::connect(tTriggers, SIGNAL(markDirty()), this, SLOT(markDirty()));
-  QObject::connect(tAppearance, SIGNAL(markDirty()), this, SLOT(markDirty()));
-  QObject::connect(tWaypoints, SIGNAL(markDirty()), this, SLOT(markDirty()));
-
   QSettings settings;
   restoreGeometry(settings.value("profiles").toByteArray());
 
-  QObject::connect(msspButton, SIGNAL(clicked()), this, SLOT(checkMssp()));
-  toggleServerOrProgram();
   dirty = false;
 }
 
@@ -219,7 +159,7 @@ void ProfileDialog::profileSelected(const QModelIndex& current)
     return;
   }
   if (dirty) {
-    QString message = QStringLiteral("There are unsaved changes to the profile \"%1\". Save them now?").arg(profileName->text());
+    QString message = QStringLiteral("There are unsaved changes to the profile \"%1\". Save them now?").arg(tServer->profileName());
     int button = QMessageBox::question(this, "Galosh", message, QMessageBox::Save | QMessageBox::Discard | QMessageBox::Cancel);
     bool cancel = (button == QMessageBox::Cancel);
     if (button == QMessageBox::Save) {
@@ -267,17 +207,18 @@ bool ProfileDialog::save()
     return true;
   }
 
-  if (profileName->text().isEmpty()) {
+  QString profileName = tServer->profileName();
+  if (profileName.isEmpty()) {
     QMessageBox::critical(this, "Galosh", "Profile name is required.");
     return false;
   }
   QStandardItem* item = profileList->itemFromIndex(selectedProfile);
   QString path = item->data(Qt::UserRole).toString();
   bool saveError = false;
-  if (path.isEmpty()) {
+  bool isNew = path.isEmpty();
+  if (isNew) {
     QDir dir = QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation);
-    QString name = profileName->text().trimmed();
-    name = name.replace(QRegularExpression("[^A-Za-z0-9 _-]"), "").simplified().replace(" ", "_");
+    QString name = profileName.replace(QRegularExpression("[^A-Za-z0-9 _-]"), "").simplified().replace(" ", "_");
     if (name.isEmpty()) {
       name = "profile";
     }
@@ -300,38 +241,18 @@ bool ProfileDialog::save()
     saveError = !settings.isWritable() || settings.status() != QSettings::NoError;
   }
   if (!saveError) {
-    settings.beginGroup("Profile");
-    settings.setValue("name", profileName->text().trimmed());
-    if (oServer->isChecked()) {
-      settings.setValue("host", hostname->text().trimmed());
-      settings.setValue("port", port->text().toInt());
-      if (useTls->isChecked()) {
-        settings.setValue("tls", true);
-      } else {
-        settings.remove("tls");
-      }
-      settings.remove("commandLine");
-    } else {
-      settings.remove("host");
-      settings.remove("port");
-      settings.remove("tls");
-      settings.setValue("commandLine", hostname->text().trimmed());
-    }
-    settings.setValue("username", username->text().trimmed());
-    settings.setValue("password", password->text());
-    settings.setValue("loginPrompt", loginPrompt->text().trimmed());
-    settings.setValue("passwordPrompt", passwordPrompt->text().trimmed());
-    settings.endGroup();
-    saveError = !settings.isWritable() || settings.status() != QSettings::NoError;
+    UserProfile profile(path);
+    saveError = !tServer->save(&profile);
   }
   if (saveError) {
     QMessageBox::critical(this, "Galosh", QStringLiteral("Could not save %1").arg(path));
   } else {
-    item->setData(profileName->text().trimmed(), Qt::DisplayRole);
+    item->setData(tServer->profileName(), Qt::DisplayRole);
     bool ok = true;
-    ok = tTriggers->save(path) && ok;
-    ok = tAppearance->save(path) && ok;
-    ok = tWaypoints->save(path) && ok;
+    UserProfile profile(path);
+    for (int i = 1; i < tWidgets.length(); i++) {
+      ok = tWidgets[i]->save(&profile) && ok;
+    }
     if (!ok) {
       return false;
     }
@@ -374,16 +295,8 @@ void ProfileDialog::newProfile()
   profileSelected(index);
 
   tabs->setCurrentIndex(0);
-  profileName->clear();
-  hostname->clear();
-  port->setText("4000");
-  useTls->setChecked(false);
-  username->clear();
-  password->clear();
-  loginPrompt->setText(defaultLoginPrompt);
-  passwordPrompt->setText(defaultPasswordPrompt);
-
-  profileName->setFocus();
+  tServer->newProfile();
+  tServer->setFocus();
   markDirty();
 }
 
@@ -411,36 +324,15 @@ void ProfileDialog::markDirty()
 
 bool ProfileDialog::loadProfile(const QString& path)
 {
-  // TODO: use UserProfile
-  QSettings settings(path, QSettings::IniFormat);
-  if (settings.status() != QSettings::NoError) {
+  UserProfile profile(path);
+  if (profile.hasLoadError()) {
     QMessageBox::critical(this, "Galosh", "Error reading profile from " + path);
     dirty = false;
     return false;
   }
-  settings.beginGroup("Profile");
-  profileName->setText(settings.value("name").toString());
-  QString command = settings.value("commandLine").toString();
-  if (command.isEmpty()) {
-    oServer->setChecked(true);
-    hostname->setText(settings.value("host").toString());
-    port->setText(QString::number(settings.value("port").toInt()));
-    useTls->setChecked(settings.value("tls").toBool());
-  } else {
-    oProgram->setChecked(true);
-    hostname->setText(command);
-    port->clear();
-    useTls->setChecked(false);
+  for (DialogTabBase* tab : tWidgets) {
+    tab->load(&profile);
   }
-  username->setText(settings.value("username").toString());
-  password->setText(settings.value("password").toString());
-  loginPrompt->setText(settings.value("loginPrompt").toString());
-  passwordPrompt->setText(settings.value("passwordPrompt").toString());
-  toggleServerOrProgram();
-
-  tTriggers->load(path);
-  tAppearance->load(path);
-  tWaypoints->load(path);
   dirty = false;
   return true;
 }
@@ -456,20 +348,4 @@ void ProfileDialog::resizeEvent(QResizeEvent*)
     QSettings settings;
     settings.setValue("profiles", saveGeometry());
   }
-}
-
-void ProfileDialog::checkMssp()
-{
-  (new MsspView(hostname->text(), port->text().toInt(), useTls->isChecked(), this))->open();
-}
-
-void ProfileDialog::toggleServerOrProgram()
-{
-  bool server = oServer->isChecked();
-  hostLabel->setText(server ? "&Hostname:" : "Pro&gram:");
-  port->setEnabled(server);
-  useTls->setEnabled(server);
-  portLabel->setEnabled(server);
-  msspButton->setEnabled(server);
-  markDirty();
 }

@@ -20,6 +20,7 @@ WaypointsTab::WaypointsTab(QWidget* parent)
 : QWidget(parent)
 {
   QVBoxLayout* layout = new QVBoxLayout(this);
+  layout->setContentsMargins(0, 0, 0, 0);
 
   serverProfile = new QLabel(this);
   layout->addWidget(serverProfile);

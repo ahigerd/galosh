@@ -1,5 +1,5 @@
 #include "appearancetab.h"
-#include "profiledialog.h"
+#include "userprofile.h"
 #include "colorschemes.h"
 #include <QSettings>
 #include <QFormLayout>
@@ -11,7 +11,7 @@
 #include <QFontDatabase>
 
 AppearanceTab::AppearanceTab(QWidget* parent)
-: QWidget(parent)
+: DialogTabBase(tr("Appearance"), parent)
 {
   QFormLayout* layout = new QFormLayout(this);
 
@@ -23,7 +23,7 @@ AppearanceTab::AppearanceTab(QWidget* parent)
   QPushButton* editSchemes = new QPushButton("&Edit Schemes...", this);
   layout->addRow("", editSchemes);
 
-  layout->addRow(ProfileDialog::horizontalLine(this));
+  layout->addRow(horizontalLine(this));
 
   layout->addRow("Font:", fontPreview = new QLabel(this));
   fontPreview->setFrameStyle(QFrame::StyledPanel | QFrame::Sunken);
@@ -41,26 +41,18 @@ AppearanceTab::AppearanceTab(QWidget* parent)
 
   setCurrentFont(QFontDatabase::systemFont(QFontDatabase::FixedFont));
   updateColorScheme();
+
+  autoConnectMarkDirty();
 }
 
-void AppearanceTab::load(const QString& profile)
+void AppearanceTab::load(UserProfile* profile)
 {
   blockSignals(true);
 
-  QSettings globalSettings;
-  QSettings settings(profile, QSettings::IniFormat);
-  settings.beginGroup("Appearance");
+  setCurrentFont(profile->font());
+  useFontForAll->setChecked(profile->setAsGlobalFont);
 
-  bool useGlobalFont = globalSettings.value("Defaults/fontGlobal").toBool();
-  QFont globalFont = globalSettings.value("Defaults/font", QFontDatabase::systemFont(QFontDatabase::FixedFont)).value<QFont>();
-  if (settings.contains("font")) {
-    setCurrentFont(settings.value("font").value<QFont>());
-  } else {
-    setCurrentFont(globalFont);
-  }
-  useFontForAll->setChecked(useGlobalFont && globalFont == currentFont);
-
-  QString colors = settings.value("colors").toString();
+  QString colors = profile->colorScheme;
   int colorIndex = 0;
   if (!colors.isEmpty()) {
     colorIndex = colorScheme->findText(colors);
@@ -73,26 +65,16 @@ void AppearanceTab::load(const QString& profile)
   blockSignals(false);
 }
 
-bool AppearanceTab::save(const QString& profile)
+bool AppearanceTab::save(UserProfile* profile)
 {
-  QSettings settings(profile, QSettings::IniFormat);
-  settings.beginGroup("Appearance");
-
   if (colorScheme->currentIndex() == 0) {
-    settings.remove("colors");
+    profile->colorScheme.clear();
   } else {
-    settings.setValue("colors", colorScheme->currentText());
+    profile->colorScheme = colorScheme->currentText();
   }
 
-  QSettings globalSettings;
-  if (useFontForAll->isChecked()) {
-    globalSettings.setValue("Defaults/font", currentFont);
-    globalSettings.setValue("Defaults/fontGlobal", true);
-    settings.remove("font");
-  } else {
-    globalSettings.setValue("Defaults/fontGlobal", false);
-    settings.setValue("font", currentFont);
-  }
+  profile->setAsGlobalFont = useFontForAll->isChecked();
+  profile->selectedFont = currentFont;
 
   return true;
 }

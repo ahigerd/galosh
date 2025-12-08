@@ -29,10 +29,12 @@ class TriggerManager : public QObject
 {
 Q_OBJECT
 public:
+  static const QString UsernameId, PasswordId;
+
   TriggerManager(QObject* parent = nullptr);
 
   QList<TriggerDefinition> triggers;
-  TriggerDefinition* findTrigger(const QString& id);
+  TriggerDefinition* findTrigger(const QString& id, bool create = false);
 
 signals:
   void executeCommand(const QString& command, bool echo);

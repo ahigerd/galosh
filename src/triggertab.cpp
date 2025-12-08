@@ -1,4 +1,5 @@
 #include "triggertab.h"
+#include "userprofile.h"
 #include <QGridLayout>
 #include <QFormLayout>
 #include <QBoxLayout>
@@ -9,7 +10,7 @@
 #include <QCheckBox>
 
 TriggerTab::TriggerTab(QWidget* parent)
-: QWidget(parent)
+: DialogTabBase(tr("Triggers"), parent)
 {
   QGridLayout* layout = new QGridLayout(this);
 
@@ -53,9 +54,9 @@ TriggerTab::TriggerTab(QWidget* parent)
   selectTrigger(nullptr);
 }
 
-void TriggerTab::load(const QString& profile)
+void TriggerTab::load(UserProfile* profile)
 {
-  manager.loadProfile(profile);
+  manager.loadProfile(profile->profilePath);
   list->clear();
   for (const TriggerDefinition& def : manager.triggers) {
     if (def.isInternal()) {
@@ -65,9 +66,9 @@ void TriggerTab::load(const QString& profile)
   }
 }
 
-bool TriggerTab::save(const QString& profile)
+bool TriggerTab::save(UserProfile* profile)
 {
-  manager.saveProfile(profile);
+  manager.saveProfile(profile->profilePath);
   return true;
 }
 

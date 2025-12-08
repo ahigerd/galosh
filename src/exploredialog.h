@@ -44,6 +44,8 @@ private slots:
   void goToRoom(const QString& id);
   void handleSpeedwalk(const QStringList& dirs);
 
+  void openWaypoints();
+
 protected:
   virtual void showCommandMessage(TextCommand* command, const QString& message, bool isError) override;
   virtual bool commandFilter(const QString& command, const QStringList& args) override;
@@ -52,7 +54,6 @@ protected:
   void resizeEvent(QResizeEvent*);
 
 private:
-
   QSplitter* splitter;
   GaloshSession* session;
   MapManager* map;

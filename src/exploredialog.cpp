@@ -6,6 +6,7 @@
 #include "mapviewer.h"
 #include "mapoptions.h"
 #include "commandline.h"
+#include "waypointstab.h"
 #include "commands/slotcommand.h"
 #include "commands/mapsearchcommand.h"
 #include "commands/maphistorycommand.h"
@@ -22,6 +23,7 @@
 #include <QLabel>
 #include <QTimer>
 #include <QSplitter>
+#include <QDialogButtonBox>
 #include <QMetaObject>
 #include <algorithm>
 
@@ -82,7 +84,7 @@ ExploreDialog::ExploreDialog(GaloshSession* session, int roomId, int lastRoomId,
   setMenuBar(mb);
 
   QMenu* mMap = new QMenu("&Map", mb);
-  mMap->addAction("&Waypoints...", [this]{ emit openProfileDialog(ProfileDialog::WaypointsTab); });
+  mMap->addAction("&Waypoints...", this, SLOT(openWaypoints()));
   mMap->addAction("&Settings...", this, SLOT(openMapOptions()));
   mMap->addSeparator();
   mMap->addAction("&Close", this, SLOT(close()), QKeySequence::Close);
@@ -298,6 +300,7 @@ void ExploreDialog::goToRoom(const QString& id)
 void ExploreDialog::togglePin()
 {
   setWindowFlag(Qt::WindowStaysOnTopHint, pinAction->isChecked());
+  show();
   saveState();
 }
 
@@ -330,4 +333,24 @@ void ExploreDialog::openMapOptions()
 {
   MapOptions* o = new MapOptions(map, this);
   o->open();
+}
+
+void ExploreDialog::openWaypoints()
+{
+  // TODO: this is a quick-and-dirty implementation to take the server-level tab out of the profiles dialog
+  QDialog d;
+  QVBoxLayout* layout = new QVBoxLayout(&d);
+
+  WaypointsTab* t = new WaypointsTab(&d);
+  layout->addWidget(t, 1);
+
+  QDialogButtonBox* buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &d);
+  layout->addWidget(buttons, 0);
+  QObject::connect(buttons, SIGNAL(accepted()), &d, SLOT(accept()));
+  QObject::connect(buttons, SIGNAL(rejected()), &d, SLOT(reject()));
+
+  t->load(session->profile->profilePath);
+  if (d.exec()) {
+    t->save(session->profile->profilePath);
+  }
 }

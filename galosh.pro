@@ -32,6 +32,9 @@ SOURCES += src/msspview.cpp src/exploredialog.cpp src/mapoptions.cpp
 HEADERS += src/galoshsession.h   src/galoshterm.h   src/roomview.h
 SOURCES += src/galoshsession.cpp src/galoshterm.cpp src/roomview.cpp
 
+HEADERS += src/dialogtabbase.h   src/servertab.h
+SOURCES += src/dialogtabbase.cpp src/servertab.cpp
+
 HEADERS += src/triggertab.h   src/appearancetab.h   src/waypointstab.h
 SOURCES += src/triggertab.cpp src/appearancetab.cpp src/waypointstab.cpp
 

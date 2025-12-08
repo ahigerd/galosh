@@ -30,7 +30,7 @@ public:
 
 public slots:
   void openConnectDialog();
-  void openProfileDialog(ProfileDialog::Tab tab = ProfileDialog::ServerTab);
+  void openProfileDialog(ProfileDialog::Tab tab = ProfileDialog::Tab_Server);
   void openMapOptions();
   void openMsspDialog();
   void openConfigFolder();
@@ -59,6 +59,7 @@ private slots:
   void toggleRoomDock(bool checked);
   void toggleInfoDock(bool checked);
   void toggleMapDock(bool checked);
+  void sessionDestroyed(QObject* obj);
 
 private:
   GaloshSession* session() const;
@@ -70,7 +71,7 @@ private:
   QStackedWidget* stackedWidget;
   QTabWidget* tabs;
   QWidget* background;
-  QMap<QWidget*, GaloshSession*> sessions;
+  QMap<QWidget*, QPointer<GaloshSession>> sessions;
   QList<QAction*> profileActions;
   QList<QAction*> disconnectedActions;
   QList<QAction*> connectedActions;

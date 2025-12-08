@@ -146,7 +146,7 @@ void GaloshSession::reload()
 
   QString colors = profile->colorScheme.isEmpty() ? ColorSchemes::defaultScheme() : profile->colorScheme;
   term->setColorScheme(ColorSchemes::scheme(colors));
-  term->setTermFont(profile->font);
+  term->setTermFont(profile->font());
 }
 
 void GaloshSession::serverCertificate(const QMap<QString, QString>& info, bool selfSigned, bool nameMismatch)

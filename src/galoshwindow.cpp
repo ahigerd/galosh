@@ -9,6 +9,7 @@
 #include "exploredialog.h"
 #include "mapviewer.h"
 #include "mapoptions.h"
+#include "algorithms.h"
 #include <QDesktopServices>
 #include <QApplication>
 #include <QFontDatabase>
@@ -145,7 +146,7 @@ GaloshWindow::GaloshWindow(QWidget* parent)
   connectedActions << tb->addAction("Disconnect", this, SLOT(disconnectSession()));
   tb->addAction("Profiles", this, SLOT(openProfileDialog()));
   tb->addSeparator();
-  tb->addAction("Triggers", [this]{ openProfileDialog(ProfileDialog::TriggersTab); });
+  tb->addAction("Triggers", [this]{ openProfileDialog(ProfileDialog::Tab_Triggers); });
   profileActions << tb->addAction("Map", this, SLOT(exploreMap()));
   tb->addSeparator();
   msspButton = tb->addAction("MSSP", this, SLOT(openMsspDialog()));
@@ -332,7 +333,7 @@ void GaloshWindow::openMapOptions()
 GaloshSession* GaloshWindow::findSession(const QString& profilePath) const
 {
   for (GaloshSession* sess : sessions) {
-    if (sess->profile->profilePath == profilePath) {
+    if (sess && sess->profile->profilePath == profilePath) {
       return sess;
     }
   }
@@ -363,6 +364,8 @@ void GaloshWindow::connectToProfile(const QString& path, bool online)
     QObject::connect(sess, SIGNAL(currentRoomUpdated()), this, SLOT(updateStatus()));
     QObject::connect(sess, SIGNAL(unreadUpdated()), this, SLOT(updateStatus()));
     QObject::connect(sess, SIGNAL(openProfileDialog(ProfileDialog::Tab)), this, SLOT(openProfileDialog(ProfileDialog::Tab)));
+    QObject::connect(sess, SIGNAL(destroyed(QObject*)), this, SLOT(sessionDestroyed(QObject*)));
+    QObject::connect(sess->term, SIGNAL(destroyed(QObject*)), this, SLOT(sessionDestroyed(QObject*)));
     QObject::connect(sess->term, SIGNAL(commandEnteredForProfile(QString,QString)), this, SLOT(sendCommandToProfile(QString,QString)));
 
     updateActions();
@@ -458,6 +461,25 @@ void GaloshWindow::closeSession(int index)
     stackedWidget->setCurrentWidget(background);
   }
   updateStatus();
+}
+
+void GaloshWindow::sessionDestroyed(QObject* obj)
+{
+  // If the widget was destroyed, remove the corresponding session
+  QWidget* term = static_cast<QWidget*>(obj);
+  sessions.remove(term);
+
+  // Otherwise, the session will have already been destroyed.
+  // We can't get the pointer but we can clean up the map.
+  QList<QWidget*> toRemove;
+  for (auto [term, sess] : cpairs(sessions)) {
+    if (!sess) {
+      toRemove << term;
+    }
+  }
+  for (QWidget* term : toRemove) {
+    sessions.remove(term);
+  }
 }
 
 void GaloshWindow::moveEvent(QMoveEvent*)

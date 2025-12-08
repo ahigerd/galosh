@@ -6,12 +6,16 @@
 #include <QFont>
 #include "triggermanager.h"
 #include "explorehistory.h"
+#include "colorschemes.h"
+class QSettings;
 class ServerProfile;
 
 class UserProfile
 {
 public:
   UserProfile(const QString& profilePath);
+
+  bool hasLoadError() const;
 
   const QString profilePath;
   QString profileName;
@@ -21,17 +25,31 @@ public:
   QString command;
   QString username;
   QString password;
-  QString colorScheme;
-  QFont font;
   int lastRoomId;
+
+  QString colorScheme;
+  QFont selectedFont;
+  bool setAsGlobalFont;
 
   ServerProfile* serverProfile;
   TriggerManager triggers;
 
+  QFont font() const;
+  static bool useGlobalFont();
+
+  ColorScheme colors() const;
+
   void setLastRoomId(int roomId);
 
   void reload();
-  // bool save();
+  bool save();
+
+private:
+  bool isGlobalFont;
+  bool loadError;
+
+  void saveProfileSection(QSettings& settings);
+  void saveAppearanceSection(QSettings& settings);
 };
 
 #endif

@@ -2,6 +2,7 @@
 #define GALOSH_TRIGGERTAB_H
 
 #include <QWidget>
+#include "dialogtabbase.h"
 #include "triggermanager.h"
 class QTreeWidget;
 class QTreeWidgetItem;
@@ -9,17 +10,14 @@ class QLineEdit;
 class QCheckBox;
 class QPushButton;
 
-class TriggerTab : public QWidget
+class TriggerTab : public DialogTabBase
 {
 Q_OBJECT
 public:
   TriggerTab(QWidget* parent = nullptr);
 
-  void load(const QString& profile);
-  bool save(const QString& profile);
-
-signals:
-  void markDirty();
+  virtual void load(UserProfile* profile) override;
+  virtual bool save(UserProfile* profile) override;
 
 private slots:
   void selectTrigger(QTreeWidgetItem* item);
