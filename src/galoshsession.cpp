@@ -5,6 +5,7 @@
 #include "exploredialog.h"
 #include "roomview.h"
 #include "commands/textcommand.h"
+#include "commands/equipmentcommand.h"
 #include "commands/identifycommand.h"
 #include "commands/slotcommand.h"
 #include "commands/routecommand.h"
@@ -34,6 +35,7 @@ GaloshSession::GaloshSession(UserProfile* profile, QWidget* parent)
   infoModel = new InfoModel(this);
 
   addCommand(new IdentifyCommand(&profile->serverProfile->itemDB));
+  addCommand(new EquipmentCommand(this));
   addCommand(new SlotCommand(".", this, SLOT(abortSpeedwalk()), "Aborts a speedwalk path in progress"));
   addCommand(new SlotCommand("DC", term->socket(), SLOT(disconnectFromHost()), "Disconnects from the game"))->addKeyword("DISCONNECT");
   addCommand(new SlotCommand("EXPLORE", this, SLOT(exploreMap()), "Opens the map exploration window"))->addKeyword("MAP");

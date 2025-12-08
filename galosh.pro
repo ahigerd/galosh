@@ -21,40 +21,18 @@ else {
 
 RESOURCES += res/res.qrc
 
-# windows
-HEADERS += src/galoshwindow.h   src/profiledialog.h   src/colorschemes.h
-SOURCES += src/galoshwindow.cpp src/profiledialog.cpp src/colorschemes.cpp
+defineTest(addClasses) {
+  for (base, CLASSES) {
+    HEADERS += $$PWD/$${base}.h
+    SOURCES += $$PWD/$${base}.cpp
+  }
+  export(HEADERS)
+  export(SOURCES)
+  CLASSES =
+  export(CLASSES)
+}
 
-HEADERS += src/msspview.h   src/exploredialog.h   src/mapoptions.h
-SOURCES += src/msspview.cpp src/exploredialog.cpp src/mapoptions.cpp
-
-# widgets
-HEADERS += src/galoshsession.h   src/galoshterm.h   src/roomview.h
-SOURCES += src/galoshsession.cpp src/galoshterm.cpp src/roomview.cpp
-
-HEADERS += src/dialogtabbase.h   src/servertab.h
-SOURCES += src/dialogtabbase.cpp src/servertab.cpp
-
-HEADERS += src/triggertab.h   src/appearancetab.h   src/waypointstab.h
-SOURCES += src/triggertab.cpp src/appearancetab.cpp src/waypointstab.cpp
-
-HEADERS += src/commandline.h   src/multicommandline.h   src/dropdowndelegate.h
-SOURCES += src/commandline.cpp src/multicommandline.cpp src/dropdowndelegate.cpp
-
-# models
-HEADERS += src/userprofile.h   src/serverprofile.h
-SOURCES += src/userprofile.cpp src/serverprofile.cpp
-
-HEADERS += src/triggermanager.h   src/infomodel.h   src/itemdatabase.h
-SOURCES += src/triggermanager.cpp src/infomodel.cpp src/itemdatabase.cpp
-
-# networking
-HEADERS += src/telnetsocket.h
-SOURCES += src/telnetsocket.cpp
-
-HEADERS += src/algorithms.h src/refable.h src/settingsgroup.h
-SOURCES += src/main.cpp
-
+include(src/src.pri)
 include(src/mapping/mapping.pri)
 include(src/commands/commands.pri)
 include(src/qtermwidget/qtermwidget.pri)

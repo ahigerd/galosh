@@ -7,7 +7,7 @@
 #include <algorithm>
 
 ItemDatabase::ItemDatabase(QObject* parent)
-: QAbstractListModel(parent), dbFile(nullptr)
+: QAbstractListModel(parent), dbFile(nullptr), captureState(0)
 {
   // initializers only
 }
@@ -44,6 +44,40 @@ void ItemDatabase::load(const QString& path)
 
 void ItemDatabase::processLine(const QString& line)
 {
+  if (captureState == 1) {
+    if (line.trimmed().isEmpty()) {
+      return;
+    }
+    captureState = 2;
+  } else if (captureState == 2) {
+    if (line.trimmed().isEmpty()) {
+      captureState = 0;
+      for (auto slot : equipment) {
+        qDebug() << slot.location << slot.displayName;
+      }
+      emit capturedEquipment(equipment);
+      return;
+    }
+    int bracket = line.indexOf('<');
+    if (bracket >= 0) {
+      int endBracket = line.indexOf('>', bracket);
+      if (endBracket < 0) {
+        return;
+      }
+      EquipSlot slot;
+      slot.location = line.mid(bracket + 1, endBracket - bracket - 1);
+      slot.displayName = line.mid(endBracket + 1);
+      slot.displayName = slot.displayName.replace("(glowing)", "");
+      slot.displayName = slot.displayName.replace("(humming)", "");
+      slot.displayName = slot.displayName.replace("(magic)", "");
+      slot.displayName = slot.displayName.replace("(good)", "");
+      slot.displayName = slot.displayName.replace("(neutral)", "");
+      slot.displayName = slot.displayName.replace("(evil)", "");
+      slot.displayName = slot.displayName.replace("(invisible)", "");
+      slot.displayName = slot.displayName.trimmed();
+      equipment << slot;
+    }
+  }
   if (!dbFile) {
     return;
   }
@@ -138,4 +172,15 @@ QString ItemDatabase::itemStats(const QString& name) const
     return QString();
   }
   return dbFile->value(name).toString();
+}
+
+void ItemDatabase::captureEquipment()
+{
+  captureState = 1;
+  equipment.clear();
+}
+
+QList<ItemDatabase::EquipSlot> ItemDatabase::lastCapturedEquipment() const
+{
+  return equipment;
 }
