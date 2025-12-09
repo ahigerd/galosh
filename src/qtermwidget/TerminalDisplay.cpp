@@ -2675,7 +2675,7 @@ void TerminalDisplay::mouseDoubleClickEvent(QMouseEvent* ev)
   {
      // find the start of the word
      int x = bgnSel.x();
-     while ( ((x>0) || (bgnSel.y()>0 && (_lineProperties[bgnSel.y()-1] & LINE_WRAPPED) ))
+     while ( ((x>0) || (bgnSel.y()>0 && bgnSel.y()-1<_lineProperties.size() && (_lineProperties[bgnSel.y()-1] & LINE_WRAPPED) ))
                      && charClass(_image[i-1]) == selClass )
      {
        i--;
