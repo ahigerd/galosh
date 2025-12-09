@@ -4,6 +4,7 @@
 #include "infomodel.h"
 #include "exploredialog.h"
 #include "roomview.h"
+#include "equipmentview.h"
 #include "commands/textcommand.h"
 #include "commands/equipmentcommand.h"
 #include "commands/identifycommand.h"
@@ -11,6 +12,8 @@
 #include "commands/routecommand.h"
 #include "commands/waypointcommand.h"
 #include "algorithms.h"
+#include <QVBoxLayout>
+#include <QDialogButtonBox>
 #include <QSettings>
 
 GaloshSession::GaloshSession(UserProfile* profile, QWidget* parent)
@@ -308,4 +311,20 @@ bool GaloshSession::eventFilter(QObject* obj, QEvent* event)
     setUnread();
   }
   return false;
+}
+
+void GaloshSession::equipmentReceived(const QList<ItemDatabase::EquipSlot>& equipment)
+{
+  QDialog dlg;
+  QVBoxLayout* layout = new QVBoxLayout(&dlg);
+
+  EquipmentView* ev = new EquipmentView(itemDB(), &dlg);
+  ev->setItems(equipment);
+  layout->addWidget(ev, 1);
+
+  QDialogButtonBox* buttons = new QDialogButtonBox(QDialogButtonBox::Ok, &dlg);
+  QObject::connect(buttons, SIGNAL(accepted()), &dlg, SLOT(accept()));
+  layout->addWidget(buttons, 0);
+
+  dlg.exec();
 }

@@ -1,4 +1,5 @@
 #include "itemdatabase.h"
+#include "algorithms.h"
 #include <QSettings>
 #include <QStandardPaths>
 #include <QDir>
@@ -7,7 +8,7 @@
 #include <algorithm>
 
 ItemDatabase::ItemDatabase(QObject* parent)
-: QAbstractListModel(parent), dbFile(nullptr), captureState(0)
+: QAbstractListModel(parent), dbFile(nullptr)
 {
   // initializers only
 }
@@ -37,6 +38,24 @@ QVariant ItemDatabase::data(const QModelIndex& index, int role) const
 void ItemDatabase::load(const QString& path)
 {
   dbFile = new QSettings(path, QSettings::IniFormat);
+  dbFile->beginGroup("Equipment");
+  QMap<int, QString> order;
+  for (const QString& location : dbFile->childGroups()) {
+    dbFile->beginGroup(location);
+    EquipSlotType slot;
+    slot.location = location;
+    slot.keyword = dbFile->value("keyword").toString();
+    slot.count = dbFile->value("count", 1).toInt();
+    slotTypes[location] = slot;
+    if (!slot.keyword.isEmpty()) {
+      slotKeywords[slot.keyword] = location;
+    }
+    order[dbFile->value("order").toInt()] = location;
+    dbFile->endGroup();
+  }
+  slotOrder = order.values();
+  dbFile->endGroup();
+
   dbFile->beginGroup("Items");
   keys = dbFile->childKeys();
   std::sort(keys.begin(), keys.end());
@@ -44,6 +63,13 @@ void ItemDatabase::load(const QString& path)
 
 void ItemDatabase::processLine(const QString& line)
 {
+  QObject* source = sender();
+  if (!pendingCaptures.contains(source)) {
+    return;
+  }
+
+  auto& [pendingItem, pendingStats, captureState, equipment, equipCallback] = pendingCaptures[source];
+
   if (captureState == 1) {
     if (line.trimmed().isEmpty()) {
       return;
@@ -52,10 +78,8 @@ void ItemDatabase::processLine(const QString& line)
   } else if (captureState == 2) {
     if (line.trimmed().isEmpty()) {
       captureState = 0;
-      for (auto slot : equipment) {
-        qDebug() << slot.location << slot.displayName;
-      }
-      emit capturedEquipment(equipment);
+      updateSlotMetadata(equipment);
+      equipCallback(equipment);
       return;
     }
     int bracket = line.indexOf('<');
@@ -66,7 +90,7 @@ void ItemDatabase::processLine(const QString& line)
       }
       EquipSlot slot;
       slot.location = line.mid(bracket + 1, endBracket - bracket - 1);
-      slot.displayName = line.mid(endBracket + 1);
+      slot.displayName = line.mid(endBracket + 1).split("[").first();
       slot.displayName = slot.displayName.replace("(glowing)", "");
       slot.displayName = slot.displayName.replace("(humming)", "");
       slot.displayName = slot.displayName.replace("(magic)", "");
@@ -75,6 +99,9 @@ void ItemDatabase::processLine(const QString& line)
       slot.displayName = slot.displayName.replace("(evil)", "");
       slot.displayName = slot.displayName.replace("(invisible)", "");
       slot.displayName = slot.displayName.trimmed();
+      if (slot.displayName == "Nothing.") {
+        slot.displayName.clear();
+      }
       equipment << slot;
     }
   }
@@ -174,13 +201,130 @@ QString ItemDatabase::itemStats(const QString& name) const
   return dbFile->value(name).toString();
 }
 
-void ItemDatabase::captureEquipment()
+QString ItemDatabase::itemKeyword(const QString& name) const
 {
-  captureState = 1;
-  equipment.clear();
+  if (!dbFile) {
+    return QString();
+  }
+  return dbFile->value(name + "/keyword").toString();
 }
 
-QList<ItemDatabase::EquipSlot> ItemDatabase::lastCapturedEquipment() const
+void ItemDatabase::setItemKeyword(const QString& name, const QString& keyword)
 {
-  return equipment;
+  if (!dbFile) {
+    qWarning() << "ItemDatabase::setItemKeyword called with no database file";
+    return;
+  }
+  if (keyword.isEmpty()) {
+    dbFile->remove(name + "/keyword");
+  } else {
+    dbFile->setValue(name + "/keyword", keyword);
+  }
+}
+
+void ItemDatabase::captureEquipment(QObject* context, std::function<void(const QList<EquipSlot>&)> callback)
+{
+  QObject::connect(context, SIGNAL(destroyed(QObject*)), this, SLOT(abort(QObject*)));
+  pendingCaptures[context].equipCallback = callback;
+  pendingCaptures[context].captureState = 1;
+  pendingCaptures[context].equipment.clear();
+}
+
+void ItemDatabase::abort(QObject* source)
+{
+  pendingCaptures.remove(source);
+}
+
+ItemDatabase::EquipSlotType ItemDatabase::equipmentSlotType(const QString& labelOrKeyword) const
+{
+  if (slotKeywords.contains(labelOrKeyword)) {
+    return slotTypes[slotKeywords[labelOrKeyword]];
+  }
+  return slotTypes[labelOrKeyword];
+}
+
+void ItemDatabase::setSlotKeyword(const QString& location, const QString& keyword)
+{
+  QString oldKeyword = slotTypes[location].keyword;
+  if (!oldKeyword.isEmpty() && slotKeywords.contains(oldKeyword)) {
+    slotKeywords.remove(oldKeyword);
+  }
+  slotKeywords[keyword] = location;
+  slotTypes[location].keyword = keyword;
+
+  if (dbFile) {
+    dbFile->endGroup();
+    dbFile->beginGroup("Equipment");
+    dbFile->setValue(QStringLiteral("Equipment/%1/keyword").arg(location), keyword);
+    dbFile->endGroup();
+    dbFile->beginGroup("Items");
+  }
+}
+
+void ItemDatabase::updateSlotMetadata(const QList<EquipSlot>& equipment)
+{
+  if (equipment.isEmpty()) {
+    return;
+  }
+
+  QMap<QString, int> slotCount;
+  QStringList newSlotOrder;
+  bool updatedCount = false;
+  for (const auto& slot : equipment) {
+    int ct = ++slotCount[slot.location];
+    if (ct == 1) {
+      newSlotOrder << slot.location;
+    }
+    if (slotTypes[slot.location].count < ct) {
+      updatedCount = updatedCount || (ct > 1);
+      slotTypes[slot.location].count = ct;
+    }
+  }
+  if (!slotOrder.isEmpty()) {
+    int last = slotOrder.length() - 1;
+    QString prev = slotOrder[0];
+    for (int i = 1; i <= last; i++) {
+      QString slot = slotOrder[i];
+      if (!newSlotOrder.contains(slot)) {
+        int after = newSlotOrder.indexOf(prev);
+        if (after >= 0) {
+          newSlotOrder.insert(after + 1, slot);
+        }
+      }
+      prev = slot;
+    }
+    QString next = slotOrder[last];
+    if (!newSlotOrder.contains(next)) {
+      newSlotOrder << next;
+    }
+    for (int i = last - 1; i >= 0; --i) {
+      QString slot = slotOrder[i];
+      if (!newSlotOrder.contains(slot)) {
+        int before = newSlotOrder.indexOf(next);
+        if (before >= 0) {
+          newSlotOrder.insert(before, slot);
+        }
+      }
+      next = slot;
+    }
+  }
+  if (slotOrder == newSlotOrder && !updatedCount) {
+    return;
+  }
+  slotOrder = newSlotOrder;
+
+  if (dbFile) {
+    dbFile->endGroup();
+    dbFile->beginGroup("Equipment");
+    for (auto [i, slot] : enumerate(slotOrder)) {
+      dbFile->setValue(slot + "/order", i + 1);
+      int ct = slotTypes[slot].count;
+      qDebug() << slot << ct;
+      if (ct > 1) {
+        dbFile->setValue(slot + "/count", ct);
+      }
+    }
+    dbFile->endGroup();
+    dbFile->beginGroup("Items");
+  }
 }

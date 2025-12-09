@@ -9,10 +9,10 @@
 #include "explorehistory.h"
 #include "automapper.h"
 #include "userprofile.h"
+#include "itemdatabase.h"
 #include "commands/textcommandprocessor.h"
 class MapManager;
 class MapRoom;
-class ItemDatabase;
 class TriggerManager;
 class InfoModel;
 class ExploreDialog;
@@ -45,6 +45,7 @@ public:
   InfoModel* infoModel;
 
   bool eventFilter(QObject* obj, QEvent* event);
+  void equipmentReceived(const QList<ItemDatabase::EquipSlot>& equipment);
 
 signals:
   void msspReceived();
