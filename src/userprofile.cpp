@@ -62,7 +62,7 @@ void UserProfile::reload()
   QSettings settings(profilePath, QSettings::IniFormat);
   loadError = (settings.status() != QSettings::NoError);
   if (loadError) {
-    qDebug() << "XXX: loadError" << settings.status();
+    qWarning() << "XXX: loadError" << settings.status();
     return;
   }
 
@@ -93,6 +93,7 @@ bool UserProfile::save()
 {
   QSettings settings(profilePath, QSettings::IniFormat);
   if (!settings.isWritable() || settings.status() != QSettings::NoError) {
+    qWarning() << "XXX: save error" << settings.status();
     return false;
   }
   saveProfileSection(settings);
@@ -106,7 +107,6 @@ bool UserProfile::save()
 void UserProfile::saveProfileSection(QSettings& settings)
 {
   SettingsGroup sg(&settings, "Profile");
-  settings.beginGroup("Profile");
   settings.setValue("name", profileName);
   if (command.isEmpty()) {
     settings.setValue("host", host);

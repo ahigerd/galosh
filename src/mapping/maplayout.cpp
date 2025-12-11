@@ -226,7 +226,10 @@ void MapLayout::loadZone(const MapZone* zone, bool force)
   for (LayerData& layer : layers) {
     for (auto [ fromId, toId ] : layer.layerExits) {
       LayerData* other = findLayer(toId);
-      Q_ASSERT(other);
+      if (!other) {
+        qWarning() << "XXX: no layer for " << toId;
+        continue;
+      }
       other->layerExits << qMakePair(toId, fromId);
     }
   }

@@ -16,6 +16,12 @@ EquipmentView::EquipmentView(ItemDatabase* db, QWidget* parent)
     for (int i = 0; i < slot.count; i++) {
       QComboBox* dropdown = new QComboBox(this);
       dropdown->addItem("");
+      QString keyword = db->equipmentSlotType(location).keyword;
+      if (!keyword.isEmpty()) {
+        for (const auto& stats : db->searchForItem({{ "worn", keyword }})) {
+          dropdown->addItem(stats.name);
+        }
+      }
       layout->addRow(location, dropdown);
       if (i > 0) {
         suffix = "." + QString::number(i + 1);
@@ -33,6 +39,8 @@ void EquipmentView::setItems(const QList<ItemDatabase::EquipSlot>& equipment)
   for (QComboBox* dropdown : slotItems) {
     dropdown->setCurrentIndex(-1);
   }
+  QFont bold = font();
+  bold.setBold(true);
   for (const ItemDatabase::EquipSlot& item : equipment) {
     QString suffix;
     if (item.location == lastSlot) {
@@ -49,8 +57,9 @@ void EquipmentView::setItems(const QList<ItemDatabase::EquipSlot>& equipment)
     }
     dropdown->setCurrentText(item.displayName);
     if (dropdown->currentIndex() < 0) {
-      dropdown->addItem(item.displayName);
-      dropdown->setCurrentText(item.displayName);
+      dropdown->addItem(item.displayName + " *");
+      dropdown->setCurrentText(item.displayName + " *");
     }
+    dropdown->setItemData(dropdown->currentIndex(), QVariant::fromValue(bold), Qt::FontRole);
   }
 }

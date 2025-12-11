@@ -161,5 +161,7 @@ bool ServerTab::save(UserProfile* profile)
   passwordTrigger->once = true;
   passwordTrigger->echo = false;
 
+  profile->save();
+
   return true;
 }

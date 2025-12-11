@@ -27,7 +27,6 @@ void EquipmentCommand::handleInvoke(const QStringList& args, const KWArgs& kwarg
     showError("Not connected to server");
     return;
   }
-  qDebug() << session->term;
   session->itemDB()->captureEquipment(session->term, [this](const QList<ItemDatabase::EquipSlot>& eq){ session->equipmentReceived(eq); });
   QStringList command = args;
   if (!kwargs.contains("-c")) {

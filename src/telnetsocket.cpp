@@ -69,7 +69,7 @@ quint16 TelnetSocket::port() const
 void TelnetSocket::setCommand(const QString& command)
 {
   commandArgs = QProcess::splitCommand(command);
-  if (commandArgs.isEmpty()) {
+  if (!commandArgs.isEmpty()) {
     connectedHost = commandArgs.takeFirst();
     connectedPort = 65535;
   } else {
