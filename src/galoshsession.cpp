@@ -313,6 +313,17 @@ bool GaloshSession::eventFilter(QObject* obj, QEvent* event)
   return false;
 }
 
+void GaloshSession::openEquipment()
+{
+  // TODO
+}
+
+void GaloshSession::switchEquipment(const QString& set)
+{
+  // TODO
+  Q_UNUSED(set);
+}
+
 void GaloshSession::equipmentReceived(const QList<ItemDatabase::EquipSlot>& equipment)
 {
   QDialog dlg;

@@ -49,7 +49,13 @@ void IdentifyCommand::handleInvoke(const QStringList& args, const KWArgs&)
   } else if (matches.isEmpty()) {
     showError("No matching items found.");
   } else {
-    showMessage(db->itemStats(db->itemName(matches[0])).replace("\n", "\r\n"));
+    QString name = db->itemName(matches[0]);
+    QString keyword = db->itemKeyword(name);
+    showMessage(QStringLiteral("Object name: %1").arg(name));
+    if (!keyword.isEmpty()) {
+      showMessage(QStringLiteral("Assigned keyword: %1").arg(keyword));
+    }
+    showMessage(db->itemStats(name).replace("\n", "\r\n"));
   }
   showMessage("");
 }

@@ -45,6 +45,9 @@ public:
   InfoModel* infoModel;
 
   bool eventFilter(QObject* obj, QEvent* event);
+
+  void openEquipment();
+  void switchEquipment(const QString& set);
   void equipmentReceived(const QList<ItemDatabase::EquipSlot>& equipment);
 
 signals:

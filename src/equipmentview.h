@@ -14,6 +14,8 @@ public:
   void setItems(const QList<ItemDatabase::EquipSlot>& equipment);
 
 private:
+  void showStats(QString name);
+
   ItemDatabase* db;
   QMap<QString, QComboBox*> slotItems;
 };

@@ -7,16 +7,20 @@
 #include <QtDebug>
 #include <algorithm>
 
+static QRegularExpression standardName("Object '(.*)'");
+
 ItemParsers ItemParsers::defaultCircleMudParser = {
-  QRegularExpression("(?:Object '(.+)',|You closely examine (.+) \\()"),
+  QRegularExpression("(?:Object '(.+)', ?|You closely examine (.+) \\(.*$)"),
   QRegularExpression("Item type: (\\w+)"),
-  QRegularExpression("Item is worn: (.*)"),
+  QRegularExpression("Item is (?:worn|wielded): (.*)"),
   QRegularExpression("Item is: (.*)"),
   QRegularExpression("Weight: ([.\\d]+)"),
   QRegularExpression("Value: (\\d+)"),
   QRegularExpression("Level: (\\d+)"),
   QRegularExpression("AC-apply is (\\d+)"),
   QRegularExpression("Apply: (?<mod>[+-]\\d+) to (?<stat>[\\w_]+)"),
+  QRegularExpression("Damage Dice is '(?<range>[D\\d]+)' for an average per-round damage of (?<average>[.\\d]+)."),
+  QRegularExpression("Damage Type is (\\w+)."),
   "NO FLAGS",
   // this includes FieryMUD types in addition to basic
   // CircleMUD and some predictable variations
@@ -50,7 +54,11 @@ ItemParsers ItemParsers::defaultCircleMudParser = {
     {"worn on hands", "HANDS"},
     {"worn on head", "HEAD"},
     {"worn on legs", "LEGS"},
+    {"wielded", "ONE-HANDED"},
+    {"wielded secondary", "ONE-HANDED"},
+    {"wielded two-handed", "TWO-HANDED"},
   },
+  { "WEAPON" },
 };
 
 template <typename T>
@@ -139,7 +147,11 @@ void ItemDatabase::processLine(const QString& line)
     if (match.hasMatch()) {
       Capture capture;
       capture.pendingItem = match.captured(match.lastCapturedIndex());
-      capture.pendingStats = line;
+      capture.pendingStats = QStringLiteral("Object '%1'").arg(capture.pendingItem);
+      QString remaining = QString(line).replace(match.captured(0), "").trimmed();
+      if (!remaining.isEmpty()) {
+        capture.pendingStats += "\n" + remaining;
+      }
       pendingCaptures[source] = capture;
     }
     return;
@@ -193,6 +205,7 @@ void ItemDatabase::processLine(const QString& line)
       int row;
       int dedupe = 1;
       QString itemName = pendingItem;
+      pendingStats = pendingStats.trimmed();
       do {
         row = keys.indexOf(itemName);
         isNew = row < 0;
@@ -210,8 +223,24 @@ void ItemDatabase::processLine(const QString& line)
             pendingCaptures.remove(source);
             return;
           }
+          QString firstLine = existing.section('\n', 0, 0);
+          QRegularExpressionMatch match = parsers.objectName.match(firstLine);
+          if (!match.hasMatch()) {
+            match = standardName.match(firstLine);
+          }
+          if (match.hasMatch()) {
+            QString remaining = QString(existing).replace(match.captured(0), "").trimmed();
+            QString normalized = QStringLiteral("Object '%1'").arg(match.captured(match.lastCapturedIndex()));
+            if (!remaining.isEmpty()) {
+              normalized += "\n" + remaining;
+            }
+            if (pendingStats == normalized) {
+              // update legacy data structure
+              break;
+            }
+          }
+          itemName = QStringLiteral("%1 (%2)").arg(pendingItem).arg(++dedupe);
         }
-        itemName = QStringLiteral("%1 (%2)").arg(pendingItem).arg(++dedupe);
       } while (!isNew);
       saveItem(itemName, pendingStats);
       if (isNew) {
@@ -336,6 +365,10 @@ void ItemDatabase::updateSlotMetadata(const QList<EquipSlot>& equipment)
   QMap<QString, int> slotCount;
   QStringList newSlotOrder;
   bool updatedCount = false;
+  for (auto [location, slot] : cpairs(parsers.slotLocations)) {
+    slotTypes[location].location = location;
+    slotTypes[location].keyword = slot;
+  }
   for (const auto& slot : equipment) {
     int ct = ++slotCount[slot.location];
     if (ct == 1) {
@@ -408,30 +441,55 @@ ItemStats ItemDatabase::parsedItemStats(const QString& name) const
   if (stats.isEmpty()) {
     return ItemStats();
   }
-  return ItemStats::parse(stats, parsers);
+  ItemStats item = ItemStats::parse(stats, parsers);
+  if (item.name.isEmpty()) {
+    item.name = name;
+  }
+  return item;
+}
+
+static QString getMatch(const QRegularExpression& re, const QString& subject)
+{
+  auto match = re.match(subject);
+  if (!match.hasMatch()) {
+    return QString();
+  }
+  return match.captured(match.lastCapturedIndex());
 }
 
 ItemStats ItemStats::parse(const QString& stats, const ItemParsers& parsers)
 {
   ItemStats item;
   item.formatted = stats;
-  item.name = parsers.objectName.match(stats).captured(1);
-  item.type = parsers.objectType.match(stats).captured(1);
+  item.name = getMatch(parsers.objectName, stats);
+  if (item.name.isEmpty()) {
+    item.name = getMatch(standardName, stats);
+  }
+  item.type = getMatch(parsers.objectType, stats);
 
-  QString worn = parsers.objectWorn.match(stats).captured(1);
+  QString worn = getMatch(parsers.objectWorn, stats);
   worn = worn.replace("\t", " ").toUpper().trimmed();
   item.worn = worn.split(' ', Qt::SkipEmptyParts);
 
-  QString flags = parsers.objectFlags.match(stats).captured(1);
+  if (parsers.weaponTypes.contains(item.type)) {
+    item.worn << item.type;
+  }
+
+  QString flags = getMatch(parsers.objectFlags, stats);
   flags = flags.replace("\t", " ").toUpper().trimmed();
   if (parsers.noFlags.isEmpty() || !flags.contains(parsers.noFlags)) {
     item.flags = flags.split(' ', Qt::SkipEmptyParts);
   }
 
-  item.weight = parsers.objectWeight.match(stats).captured(1).toDouble();
-  item.value = parsers.objectValue.match(stats).captured(1).toInt();
-  item.level = parsers.objectLevel.match(stats).captured(1).toInt();
-  item.armor = parsers.objectArmor.match(stats).captured(1).toInt();
+  item.weight = getMatch(parsers.objectWeight, stats).toDouble();
+  item.value = getMatch(parsers.objectValue, stats).toInt();
+  item.level = getMatch(parsers.objectLevel, stats).toInt();
+  item.armor = getMatch(parsers.objectArmor, stats).toInt();
+  item.damageType = getMatch(parsers.objectDamageType, stats);
+
+  auto match = parsers.objectDamage.match(stats);
+  item.damage = match.captured("range");
+  item.averageDamage = match.captured("average").toDouble();
 
   auto matches = parsers.objectApply.globalMatch(stats);
   while (matches.hasNext()) {
@@ -484,6 +542,9 @@ QList<ItemStats> ItemDatabase::searchForItem(const QList<ItemQuery>& queries) co
         isSet = numValue != 0;
       } else if (query.stat == "armor") {
         numValue = stats.armor;
+        isSet = numValue != 0;
+      } else if (query.stat == "damage") {
+        numValue = stats.averageDamage;
         isSet = numValue != 0;
       } else {
         isSet = stats.apply.contains(query.stat);

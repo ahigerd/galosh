@@ -20,9 +20,12 @@ struct ItemParsers {
   QRegularExpression objectLevel;
   QRegularExpression objectArmor;
   QRegularExpression objectApply;
+  QRegularExpression objectDamage;
+  QRegularExpression objectDamageType;
   QString noFlags;
 
   QMap<QString, QString> slotLocations;
+  QList<QString> weaponTypes;
 };
 
 struct ItemStats
@@ -32,6 +35,9 @@ struct ItemStats
   QString formatted;
   QString name;
   QString type;
+  QString damage;
+  QString damageType;
+  double averageDamage = 0;
   QStringList worn;
   QStringList flags;
   double weight = 0;
