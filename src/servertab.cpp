@@ -15,13 +15,6 @@
 static const char* defaultLoginPrompt = "By what name do you wish to be known?";
 static const char* defaultPasswordPrompt = "Password:";
 
-static QString cleanPattern(QString pattern)
-{
-  // By\ what\ name\ do\ you\ wish\ to\ be\ known\?
-  static QRegularExpression clean(R"(\\(.))");
-  return pattern.replace(clean, R"(\1)");
-}
-
 ServerTab::ServerTab(QWidget* parent)
 : DialogTabBase(tr("Server"), parent)
 {
@@ -128,10 +121,10 @@ void ServerTab::load(UserProfile* profile)
   password->setText(profile->password);
 
   TriggerDefinition* usernameTrigger = profile->triggers.findTrigger(TriggerManager::UsernameId);
-  loginPrompt->setText(usernameTrigger ? cleanPattern(usernameTrigger->pattern.pattern()) : "");
+  loginPrompt->setText(usernameTrigger ? TriggerDefinition::cleanPattern(usernameTrigger->pattern.pattern()) : "");
 
   TriggerDefinition* passwordTrigger = profile->triggers.findTrigger(TriggerManager::PasswordId);
-  passwordPrompt->setText(passwordTrigger ? cleanPattern(passwordTrigger->pattern.pattern()) : "");
+  passwordPrompt->setText(passwordTrigger ? TriggerDefinition::cleanPattern(passwordTrigger->pattern.pattern()) : "");
 
   toggleServerOrProgram();
 }

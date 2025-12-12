@@ -5,6 +5,13 @@
 const QString TriggerManager::UsernameId("\x01username");
 const QString TriggerManager::PasswordId("\x01password");
 
+QString TriggerDefinition::cleanPattern(const QString& pattern)
+{
+  // By\ what\ name\ do\ you\ wish\ to\ be\ known\?
+  static QRegularExpression clean(R"(\\(.))");
+  return QString(pattern).replace(clean, R"(\1)");
+}
+
 TriggerDefinition::TriggerDefinition(const QString& id)
 : id(id), echo(true), enabled(true), once(false), triggered(false)
 {

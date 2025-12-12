@@ -256,6 +256,7 @@ bool ProfileDialog::save()
     if (!ok) {
       return false;
     }
+    profile.save();
   }
   emit profileUpdated(path);
   return true;

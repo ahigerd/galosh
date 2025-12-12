@@ -128,14 +128,14 @@ void UserProfile::saveProfileSection(QSettings& settings)
 
   TriggerDefinition* usernameTrigger = triggers.findTrigger(TriggerManager::UsernameId);
   if (usernameTrigger) {
-    settings.setValue("loginPrompt", usernameTrigger->pattern.pattern());
+    settings.setValue("loginPrompt", TriggerDefinition::cleanPattern(usernameTrigger->pattern.pattern()));
   } else {
     settings.remove("loginPrompt");
   }
 
   TriggerDefinition* passwordTrigger = triggers.findTrigger(TriggerManager::PasswordId);
   if (passwordTrigger) {
-    settings.setValue("passwordPrompt", passwordTrigger->pattern.pattern());
+    settings.setValue("passwordPrompt", TriggerDefinition::cleanPattern(passwordTrigger->pattern.pattern()));
   } else {
     settings.remove("passwordPrompt");
   }

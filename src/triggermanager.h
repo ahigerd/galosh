@@ -8,6 +8,8 @@ class QSettings;
 
 struct TriggerDefinition
 {
+  static QString cleanPattern(const QString& pattern);
+
   explicit TriggerDefinition(const QString& id);
   TriggerDefinition(QSettings* profile, const QString& id);
 
