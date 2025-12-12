@@ -18,7 +18,6 @@ EquipmentView::EquipmentView(ItemDatabase* db, QWidget* parent)
     auto slot = db->equipmentSlotType(location);
     QString suffix;
     QString keyword = db->equipmentSlotType(location).keyword;
-    qDebug() << location << keyword;
     for (int i = 0; i < slot.count; i++) {
       QComboBox* dropdown = new QComboBox(this);
       dropdown->addItem("");

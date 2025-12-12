@@ -58,7 +58,6 @@ ItemParsers ItemParsers::defaultCircleMudParser = {
     {"wielded secondary", "ONE-HANDED"},
     {"wielded two-handed", "TWO-HANDED"},
   },
-  { "WEAPON" },
 };
 
 template <typename T>
@@ -108,6 +107,55 @@ QVariant ItemDatabase::data(const QModelIndex& index, int role) const
 void ItemDatabase::load(const QString& path)
 {
   dbFile = new QSettings(path, QSettings::IniFormat);
+  dbFile->beginGroup("Parsers");
+  parsers = ItemParsers::defaultCircleMudParser;
+  if (dbFile->contains("name")) {
+    parsers.objectName.setPattern(dbFile->value("name").toString());
+  }
+  if (dbFile->contains("type")) {
+    parsers.objectType.setPattern(dbFile->value("type").toString());
+  }
+  if (dbFile->contains("worn")) {
+    parsers.objectWorn.setPattern(dbFile->value("worn").toString());
+  }
+  if (dbFile->contains("flags")) {
+    parsers.objectFlags.setPattern(dbFile->value("flags").toString());
+  }
+  if (dbFile->contains("weight")) {
+    parsers.objectWeight.setPattern(dbFile->value("weight").toString());
+  }
+  if (dbFile->contains("value")) {
+    parsers.objectValue.setPattern(dbFile->value("value").toString());
+  }
+  if (dbFile->contains("level")) {
+    parsers.objectLevel.setPattern(dbFile->value("level").toString());
+  }
+  if (dbFile->contains("armor")) {
+    parsers.objectArmor.setPattern(dbFile->value("armor").toString());
+  }
+  if (dbFile->contains("apply")) {
+    parsers.objectApply.setPattern(dbFile->value("apply").toString());
+  }
+  if (dbFile->contains("damage")) {
+    parsers.objectDamage.setPattern(dbFile->value("damage").toString());
+  }
+  if (dbFile->contains("damageType")) {
+    parsers.objectDamageType.setPattern(dbFile->value("damageType").toString());
+  }
+  if (dbFile->contains("noFlags")) {
+    parsers.noFlags = dbFile->value("noFlags").toString();
+  }
+  dbFile->beginGroup("slot");
+  QMap<QString, QString> loadedSlotLocations;
+  for (const QString& key : dbFile->childKeys()) {
+    loadedSlotLocations[key] = dbFile->value(key).toString();
+  }
+  if (!loadedSlotLocations.isEmpty()) {
+    parsers.slotLocations = loadedSlotLocations;
+  }
+  dbFile->endGroup();
+  dbFile->endGroup();
+
   dbFile->beginGroup("Equipment");
   QMap<int, QString> order;
   for (const QString& location : dbFile->childGroups()) {
@@ -467,12 +515,12 @@ ItemStats ItemStats::parse(const QString& stats, const ItemParsers& parsers)
   }
   item.type = getMatch(parsers.objectType, stats);
 
-  QString worn = getMatch(parsers.objectWorn, stats);
-  worn = worn.replace("\t", " ").toUpper().trimmed();
-  item.worn = worn.split(' ', Qt::SkipEmptyParts);
-
-  if (parsers.weaponTypes.contains(item.type)) {
-    item.worn << item.type;
+  auto matches = parsers.objectWorn.globalMatch(stats);
+  while (matches.hasNext()) {
+    auto match = matches.next();
+    QString worn = match.captured(match.lastCapturedIndex());
+    worn = worn.replace("\t", " ").toUpper().trimmed();
+    item.worn << worn.split(' ', Qt::SkipEmptyParts);
   }
 
   QString flags = getMatch(parsers.objectFlags, stats);
@@ -491,7 +539,7 @@ ItemStats ItemStats::parse(const QString& stats, const ItemParsers& parsers)
   item.damage = match.captured("range");
   item.averageDamage = match.captured("average").toDouble();
 
-  auto matches = parsers.objectApply.globalMatch(stats);
+  matches = parsers.objectApply.globalMatch(stats);
   while (matches.hasNext()) {
     auto match = matches.next();
     QString stat = match.captured("stat").toUpper();

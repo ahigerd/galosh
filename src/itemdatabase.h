@@ -25,7 +25,6 @@ struct ItemParsers {
   QString noFlags;
 
   QMap<QString, QString> slotLocations;
-  QList<QString> weaponTypes;
 };
 
 struct ItemStats
