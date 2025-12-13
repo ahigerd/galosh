@@ -40,6 +40,9 @@ ItemParsers ItemParsers::defaultCircleMudParser = {
     {"worn on ears", "EAR"},
     {"worn on left ear", "EAR"},
     {"worn on right ear", "EAR"},
+    {"worn in ears", "EAR"},
+    {"worn in left ear", "EAR"},
+    {"worn in right ear", "EAR"},
     {"worn as badge", "BADGE"},
     {"worn as shield", "SHIELD"},
     {"worn on arms", "ARMS"},
@@ -59,22 +62,6 @@ ItemParsers ItemParsers::defaultCircleMudParser = {
     {"wielded two-handed", "TWO-HANDED"},
   },
 };
-
-template <typename T>
-bool containsCompare(const T& searched, const QString& sought, ItemQuery::Comparison compare)
-{
-  if (compare == ItemQuery::Equal) {
-    return searched.contains(sought);
-  } else if (compare == ItemQuery::NotEqual) {
-    return !searched.contains(sought);
-  } else if (compare == ItemQuery::Set) {
-    return !searched.isEmpty();
-  } else if (compare == ItemQuery::NotSet) {
-    return searched.isEmpty();
-  } else {
-    return false;
-  }
-}
 
 ItemDatabase::ItemDatabase(QObject* parent)
 : QAbstractListModel(parent), dbFile(nullptr)
@@ -164,13 +151,13 @@ void ItemDatabase::load(const QString& path)
     slot.location = location;
     slot.keyword = dbFile->value("keyword").toString();
     slot.count = dbFile->value("count", 1).toInt();
-    slotTypes[location] = slot;
     if (!slot.keyword.isEmpty()) {
       slotKeywords[slot.keyword] = location;
     } else {
       slot.keyword = parsers.slotLocations[location];
       slotKeywords[slot.keyword] = location;
     }
+    slotTypes[location] = slot;
     order[dbFile->value("order").toInt()] = location;
     dbFile->endGroup();
   }
@@ -586,7 +573,7 @@ QList<ItemStats> ItemDatabase::searchForItem(const QList<ItemQuery>& queries) co
         numValue = stats.value;
         isSet = numValue != 0;
       } else if (query.stat == "level") {
-        numValue = stats.value;
+        numValue = stats.level;
         isSet = numValue != 0;
       } else if (query.stat == "armor") {
         numValue = stats.armor;
@@ -598,10 +585,39 @@ QList<ItemStats> ItemDatabase::searchForItem(const QList<ItemQuery>& queries) co
         isSet = stats.apply.contains(query.stat);
         numValue = stats.apply.value(query.stat);
       }
+      bool matchAll = query.compare == ItemQuery::Equal || query.compare == ItemQuery::All || query.compare == ItemQuery::Set;
+      // bool matchAny = query.compare == ItemQuery::Any; // implicit
+      bool matchNone = query.compare == ItemQuery::NotEqual || query.compare == ItemQuery::None || query.compare == ItemQuery::NotSet;
       if (isList) {
-        match = containsCompare(listValue, query.value.toString().toUpper(), query.compare);
+        bool ok = matchNone;
+        for (const QString& v : query.value.toStringList()) {
+          if (listValue.contains(v.toUpper())) {
+            if (matchNone) {
+              ok = false;
+              break;
+            }
+            ok = true;
+          } else if (matchAll) {
+            ok = false;
+            break;
+          }
+        }
+        match = ok;
       } else if (isStr) {
-        match = containsCompare(strValue, query.value.toString().toLower(), query.compare);
+        bool ok = matchNone;
+        for (const QString& v : query.value.toStringList()) {
+          if (strValue.contains(v.toLower())) {
+            if (matchNone) {
+              ok = false;
+              break;
+            }
+            ok = true;
+          } else if (matchAll) {
+            ok = false;
+            break;
+          }
+        }
+        match = ok;
       } else if (query.compare == ItemQuery::Equal) {
         match = numValue == query.value.toDouble();
       } else if (query.compare == ItemQuery::NotEqual) {
@@ -614,6 +630,7 @@ QList<ItemStats> ItemDatabase::searchForItem(const QList<ItemQuery>& queries) co
         match = numValue >= query.value.toDouble();
       } else if (query.compare == ItemQuery::LessEqual) {
         match = numValue <= query.value.toDouble();
+        qDebug() << name << query.stat << numValue << "<=" << query.value.toDouble() << match;
       } else if (query.compare == ItemQuery::Set) {
         match = isSet;
       } else if (query.compare == ItemQuery::NotSet) {

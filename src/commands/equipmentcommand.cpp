@@ -24,12 +24,12 @@ QString EquipmentCommand::helpMessage(bool brief) const
 
 void EquipmentCommand::handleInvoke(const QStringList& args, const KWArgs& kwargs)
 {
-  if (!session->isConnected()) {
-    showError("Not connected to server");
-    return;
-  }
   QString arg = args.join(" ");
   if (kwargs.contains("-u")) {
+    if (!session->isConnected()) {
+      showError("Not connected to server");
+      return;
+    }
     if (arg.isEmpty()) {
       arg = "equipment";
     }
@@ -38,6 +38,10 @@ void EquipmentCommand::handleInvoke(const QStringList& args, const KWArgs& kwarg
   } else if (arg.isEmpty()) {
     session->openEquipment();
   } else {
+    if (!session->isConnected()) {
+      showError("Not connected to server");
+      return;
+    }
     session->switchEquipment(arg);
   }
 }

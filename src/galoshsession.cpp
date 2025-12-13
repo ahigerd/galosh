@@ -5,6 +5,7 @@
 #include "exploredialog.h"
 #include "roomview.h"
 #include "equipmentview.h"
+#include "itemsearchdialog.h"
 #include "commands/textcommand.h"
 #include "commands/equipmentcommand.h"
 #include "commands/identifycommand.h"
@@ -316,6 +317,8 @@ bool GaloshSession::eventFilter(QObject* obj, QEvent* event)
 void GaloshSession::openEquipment()
 {
   // TODO
+  ItemSearchDialog dlg(itemDB(), false);
+  dlg.exec();
 }
 
 void GaloshSession::switchEquipment(const QString& set)

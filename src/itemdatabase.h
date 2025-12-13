@@ -52,6 +52,9 @@ struct ItemQuery
   enum Comparison {
     Equal,
     NotEqual,
+    All,
+    Any,
+    None,
     Set,
     NotSet,
     Greater,
