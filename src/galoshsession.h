@@ -16,6 +16,7 @@ class MapRoom;
 class TriggerManager;
 class InfoModel;
 class ExploreDialog;
+class ItemSearchDialog;
 
 class GaloshSession : public QObject, public TextCommandProcessor
 {
@@ -59,6 +60,8 @@ signals:
 
 public slots:
   void exploreMap(int roomId = -1, const QString& movement = QString());
+  void openItemDatabase();
+
 #ifdef Q_MOC_RUN
   void help();
 
@@ -81,6 +84,7 @@ private:
   QStringList speedPath;
   QString statusBar;
   QPointer<ExploreDialog> explore;
+  QPointer<ItemSearchDialog> itemSearch;
   bool unread;
 };
 

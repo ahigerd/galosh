@@ -120,6 +120,7 @@ GaloshWindow::GaloshWindow(QWidget* parent)
   viewMenu->addSeparator();
   msspMenu = viewMenu->addAction("View MSSP &Info...", this, SLOT(openMsspDialog()));
   profileActions << viewMenu->addAction("E&xplore Map...", this, SLOT(exploreMap()));
+  profileActions << viewMenu->addAction("Item &Database...", this, SLOT(openItemDatabase()));
   viewMenu->addSeparator();
   roomAction = viewMenu->addAction("&Room Description", this, SLOT(toggleRoomDock(bool)));
   roomAction->setCheckable(true);
@@ -599,6 +600,15 @@ void GaloshWindow::exploreMap(int roomId, const QString& movement)
     return;
   }
   sess->exploreMap(roomId, movement);
+}
+
+void GaloshWindow::openItemDatabase()
+{
+  GaloshSession* sess = session();
+  if (!sess) {
+    return;
+  }
+  sess->openItemDatabase();
 }
 
 void GaloshWindow::reconnectSession()

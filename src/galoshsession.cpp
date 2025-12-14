@@ -342,3 +342,14 @@ void GaloshSession::equipmentReceived(const QList<ItemDatabase::EquipSlot>& equi
 
   dlg.exec();
 }
+
+void GaloshSession::openItemDatabase()
+{
+  if (!itemSearch) {
+    itemSearch = new ItemSearchDialog(itemDB(), false, term);
+    itemSearch->setAttribute(Qt::WA_DeleteOnClose);
+  }
+  itemSearch->show();
+  itemSearch->raise();
+  itemSearch->setFocus();
+}

@@ -315,7 +315,7 @@ void ItemSearchDialog::search()
       }
     }
     QList<QStandardItem*> cells = {
-      new QStandardItem(item.name),
+      new QStandardItem(item.uniqueName),
       new QStandardItem(),
       new QStandardItem(item.type),
       new QStandardItem(item.worn.join(" ")),
@@ -364,7 +364,6 @@ void ItemSearchDialog::tryAccept()
 void ItemSearchDialog::openItemContextMenu(const QPoint& pos)
 {
   QModelIndex index = keyIndex(matchView->indexAt(pos));
-  qDebug() << pos << index << index.data(Qt::DisplayRole);
   if (!index.isValid()) {
     return;
   }
@@ -387,6 +386,12 @@ void ItemSearchDialog::openItemContextMenu(const QPoint& pos)
 
 void ItemSearchDialog::showDetails(const QModelIndex& index)
 {
-  QMessageBox mb(QMessageBox::NoIcon, "Item Details", db->itemStats(index.data(Qt::DisplayRole).toString()), QMessageBox::Ok, this);
+  QString itemName = index.data(Qt::DisplayRole).toString();
+  QString text = db->itemStats(itemName);
+  QString keyword = db->itemKeyword(itemName);
+  if (!keyword.isEmpty()) {
+    text += "\n\n" + QStringLiteral("Assigned keyword: %1").arg(keyword);
+  }
+  QMessageBox mb(QMessageBox::NoIcon, "Item Details", text, QMessageBox::Ok, this);
   mb.exec();
 }

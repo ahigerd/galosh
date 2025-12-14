@@ -8,12 +8,14 @@ class QComboBox;
 
 class EquipmentView : public QWidget
 {
+Q_OBJECT
 public:
   EquipmentView(ItemDatabase* db, QWidget* parent = nullptr);
 
   void setItems(const QList<ItemDatabase::EquipSlot>& equipment);
 
 private:
+  void showMenu(const QString& slotName);
   void showStats(QString name);
 
   ItemDatabase* db;
