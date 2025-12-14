@@ -1,9 +1,13 @@
 #include "equipmentview.h"
+#include "itemsearchdialog.h"
 #include <QGridLayout>
 #include <QComboBox>
 #include <QLabel>
 #include <QToolButton>
 #include <QMessageBox>
+#include <QInputDialog>
+#include <QMenu>
+#include <QCursor>
 #include <QtDebug>
 
 EquipmentView::EquipmentView(ItemDatabase* db, QWidget* parent)
@@ -23,21 +27,22 @@ EquipmentView::EquipmentView(ItemDatabase* db, QWidget* parent)
       dropdown->addItem("");
       if (!keyword.isEmpty()) {
         for (const auto& stats : db->searchForItem({{ "worn", keyword }})) {
-          dropdown->addItem(stats.name);
+          dropdown->addItem(stats.uniqueName);
         }
       }
       QToolButton* statButton = new QToolButton(this);
       statButton->setText("...");
-      QObject::connect(statButton, &QToolButton::clicked, [this, dropdown]{ showStats(dropdown->currentText()); });
       layout->addWidget(new QLabel(location, this), row, 0);
       layout->addWidget(dropdown, row, 1);
       layout->addWidget(statButton, row, 2);
       if (i > 0) {
         suffix = "." + QString::number(i + 1);
       }
-      dropdown->setObjectName(location + suffix);
-      slotItems[location + suffix] = dropdown;
+      QString slotName = location + suffix;
+      dropdown->setObjectName(slotName);
+      slotItems[slotName] = dropdown;
       ++row;
+      QObject::connect(statButton, &QToolButton::clicked, [this, slotName]{ showMenu(slotName); });
     }
   }
 }
@@ -74,6 +79,60 @@ void EquipmentView::setItems(const QList<ItemDatabase::EquipSlot>& equipment)
   }
 }
 
+void EquipmentView::showMenu(const QString& slotName)
+{
+  QString slotKeyword = db->equipmentSlotType(slotName.section('.', 0, 0)).keyword;
+  QString currentItem = slotItems[slotName]->currentText();
+  QMenu menu;
+  menu.addSection(currentItem);
+
+  QAction* detailsAction = menu.addAction("Sh&ow Details...");
+  if (currentItem.isEmpty()) {
+    detailsAction->setEnabled(false);
+  }
+
+  QAction* keywordAction = menu.addAction("Set &Keyword...");
+  QString itemKeyword = db->itemKeyword(currentItem);
+  if (!itemKeyword.isEmpty()) {
+    keywordAction->setText(QStringLiteral("&Keyword: %1").arg(itemKeyword.replace("&", "&&")));
+  }
+
+  QAction* searchAction = menu.addAction("&Search for Items...");
+
+  QAction* action = menu.exec(QCursor::pos());
+  if (action == detailsAction) {
+    showStats(currentItem);
+  } else if (action == keywordAction) {
+    bool ok = false;
+    QString newKeyword = QInputDialog::getText(
+      this,
+      "Set Keyword",
+      QStringLiteral("Keyword for %1:").arg(currentItem),
+      QLineEdit::Normal,
+      itemKeyword,
+      &ok
+    );
+    if (ok) {
+      db->setItemKeyword(currentItem, newKeyword);
+    }
+  } else if (action == searchAction) {
+    ItemSearchDialog dlg(db, true, this);
+    dlg.setRequiredSlot(slotKeyword);
+    if (dlg.exec() != QDialog::Accepted) {
+      return;
+    }
+    QString item = dlg.selectedItemName();
+    if (item.isEmpty()) {
+      return;
+    }
+    QComboBox* dropdown = slotItems.value(slotName);
+    int index = dropdown->findText(item);
+    if (index >= 0) {
+      dropdown->setCurrentIndex(index);
+    }
+  }
+}
+
 void EquipmentView::showStats(QString name)
 {
   if (name.isEmpty()) {
@@ -85,7 +144,7 @@ void EquipmentView::showStats(QString name)
 
   QString stats;
   int count = 0;
-  for (int id : db->searchForName({ name })) {
+  for (int id : db->searchForName({ QRegularExpression::escape(name) })) {
     ++count;
     if (!stats.isEmpty()) {
       stats += "<br/><br/>";
@@ -104,6 +163,7 @@ void EquipmentView::showStats(QString name)
     if (count > 1) {
       stats = QStringLiteral("%1 matching items found:<br/><br/>%2").arg(name).arg(stats);
     }
-    QMessageBox::information(this, "Galosh", stats);
+    QMessageBox mb(QMessageBox::NoIcon, "Item Details", stats, QMessageBox::Ok, this);
+    mb.exec();
   }
 }

@@ -477,6 +477,7 @@ ItemStats ItemDatabase::parsedItemStats(const QString& name) const
     return ItemStats();
   }
   ItemStats item = ItemStats::parse(stats, parsers);
+  item.uniqueName = name;
   if (item.name.isEmpty()) {
     item.name = name;
   }

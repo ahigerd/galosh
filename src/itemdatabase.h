@@ -32,6 +32,7 @@ struct ItemStats
   static ItemStats parse(const QString& stats, const ItemParsers& parsers);
 
   QString formatted;
+  QString uniqueName;
   QString name;
   QString type;
   QString damage;
