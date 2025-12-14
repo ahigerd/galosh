@@ -1,5 +1,6 @@
 #include "equipmentview.h"
 #include "itemsearchdialog.h"
+#include "algorithms.h"
 #include <QGridLayout>
 #include <QComboBox>
 #include <QLabel>
@@ -14,7 +15,7 @@ EquipmentView::EquipmentView(ItemDatabase* db, QWidget* parent)
 : QWidget(parent), db(db)
 {
   QGridLayout* layout = new QGridLayout(this);
-  layout->setContentsMargins(0, 0, 0, 0);
+  layout->setContentsMargins(4, 0, 4, 2);
   layout->setVerticalSpacing(0);
 
   int row = 0;
@@ -45,6 +46,11 @@ EquipmentView::EquipmentView(ItemDatabase* db, QWidget* parent)
       QObject::connect(statButton, &QToolButton::clicked, [this, slotName]{ showMenu(slotName); });
     }
   }
+
+  layout->setColumnStretch(0, 0);
+  layout->setColumnStretch(1, 1);
+  layout->setColumnStretch(2, 0);
+  layout->setRowStretch(row, 1);
 }
 
 void EquipmentView::setItems(const QList<ItemDatabase::EquipSlot>& equipment)
@@ -166,4 +172,19 @@ void EquipmentView::showStats(QString name)
     QMessageBox mb(QMessageBox::NoIcon, "Item Details", stats, QMessageBox::Ok, this);
     mb.exec();
   }
+}
+
+QList<ItemDatabase::EquipSlot> EquipmentView::items() const
+{
+  QList<ItemDatabase::EquipSlot> result;
+  for (auto [location, dropdown] : cpairs(slotItems)) {
+    if (dropdown->currentIndex() < 0) {
+      continue;
+    }
+    ItemDatabase::EquipSlot slot;
+    slot.location = location;
+    slot.displayName = dropdown->currentText();
+    result << slot;
+  }
+  return result;
 }

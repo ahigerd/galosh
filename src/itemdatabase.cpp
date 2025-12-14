@@ -303,7 +303,7 @@ QList<int> ItemDatabase::searchForName(const QStringList& args) const
   QRegularExpression re(args.first(), QRegularExpression::CaseInsensitiveOption);
   QString matchZone;
   for (QString arg : args) {
-    re.setPattern(arg.replace("-", ".*"));
+    re.setPattern(arg.replace("-", ".*").replace("\\.*", "\\-"));
     QList<int> nextRound;
     for (int item : filtered) {
       if (re.match(keys[item - 1]).hasMatch()) {
@@ -631,7 +631,6 @@ QList<ItemStats> ItemDatabase::searchForItem(const QList<ItemQuery>& queries) co
         match = numValue >= query.value.toDouble();
       } else if (query.compare == ItemQuery::LessEqual) {
         match = numValue <= query.value.toDouble();
-        qDebug() << name << query.stat << numValue << "<=" << query.value.toDouble() << match;
       } else if (query.compare == ItemQuery::Set) {
         match = isSet;
       } else if (query.compare == ItemQuery::NotSet) {

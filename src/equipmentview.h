@@ -12,6 +12,7 @@ Q_OBJECT
 public:
   EquipmentView(ItemDatabase* db, QWidget* parent = nullptr);
 
+  QList<ItemDatabase::EquipSlot> items() const;
   void setItems(const QList<ItemDatabase::EquipSlot>& equipment);
 
 private:

@@ -1,7 +1,7 @@
 # windows
 CLASSES += galoshwindow profiledialog colorschemes
 CLASSES += msspview exploredialog mapoptions
-CLASSES += equipmentview itemsearchdialog
+CLASSES += equipmentview itemsearchdialog itemsetdialog
 
 CLASSES += galoshsession galoshterm roomview
 CLASSES += dialogtabbase servertab

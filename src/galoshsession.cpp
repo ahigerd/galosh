@@ -4,7 +4,7 @@
 #include "infomodel.h"
 #include "exploredialog.h"
 #include "roomview.h"
-#include "equipmentview.h"
+#include "itemsetdialog.h"
 #include "itemsearchdialog.h"
 #include "commands/textcommand.h"
 #include "commands/equipmentcommand.h"
@@ -329,17 +329,8 @@ void GaloshSession::switchEquipment(const QString& set)
 
 void GaloshSession::equipmentReceived(const QList<ItemDatabase::EquipSlot>& equipment)
 {
-  QDialog dlg;
-  QVBoxLayout* layout = new QVBoxLayout(&dlg);
-
-  EquipmentView* ev = new EquipmentView(itemDB(), &dlg);
-  ev->setItems(equipment);
-  layout->addWidget(ev, 1);
-
-  QDialogButtonBox* buttons = new QDialogButtonBox(QDialogButtonBox::Ok, &dlg);
-  QObject::connect(buttons, SIGNAL(accepted()), &dlg, SLOT(accept()));
-  layout->addWidget(buttons, 0);
-
+  ItemSetDialog dlg(profile.get(), true, term);
+  dlg.loadNewEquipment(equipment);
   dlg.exec();
 }
 
