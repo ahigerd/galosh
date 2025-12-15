@@ -6,6 +6,7 @@
 #include "roomview.h"
 #include "itemsetdialog.h"
 #include "itemsearchdialog.h"
+#include "itemsetdialog.h"
 #include "commands/textcommand.h"
 #include "commands/equipmentcommand.h"
 #include "commands/identifycommand.h"
@@ -30,6 +31,8 @@ GaloshSession::GaloshSession(UserProfile* profile, QWidget* parent)
 
   QObject::connect(term->socket(), SIGNAL(connected()), this, SIGNAL(statusUpdated()));
   QObject::connect(term->socket(), SIGNAL(disconnected()), this, SIGNAL(statusUpdated()));
+  QObject::connect(term->socket(), SIGNAL(connected()), this, SLOT(connectionChanged()));
+  QObject::connect(term->socket(), SIGNAL(disconnected()), this, SLOT(connectionChanged()));
   QObject::connect(term->socket(), SIGNAL(promptWaiting()), &autoMap, SLOT(promptWaiting()));
   QObject::connect(term->socket(), SIGNAL(msspEvent(QString, QString)), this, SIGNAL(msspReceived()));
   QObject::connect(term->socket(), SIGNAL(gmcpEvent(QString, QVariant)), &autoMap, SLOT(gmcpEvent(QString, QVariant)));
@@ -314,24 +317,115 @@ bool GaloshSession::eventFilter(QObject* obj, QEvent* event)
   return false;
 }
 
-void GaloshSession::openEquipment()
+void GaloshSession::switchEquipment(const QString& set, const QString& container)
 {
-  // TODO
-  ItemSearchDialog dlg(itemDB(), false);
-  dlg.exec();
+  QString setName = set;
+  itemDB()->captureEquipment(term, [this, set, container](const ItemDatabase::EquipmentSet& eq){ changeEquipment(eq, set, container); });
+  // TODO: customize eq command (but this works for every MUD I've ever seen)
+  term->processCommand("equipment");
 }
 
-void GaloshSession::switchEquipment(const QString& set)
-{
-  // TODO
-  Q_UNUSED(set);
-}
-
-void GaloshSession::equipmentReceived(const QList<ItemDatabase::EquipSlot>& equipment)
+void GaloshSession::equipmentReceived(const ItemDatabase::EquipmentSet& equipment)
 {
   ItemSetDialog dlg(profile.get(), true, term);
   dlg.loadNewEquipment(equipment);
   dlg.exec();
+}
+
+static ItemDatabase::EquipmentSet addSlotNumbers(ItemDatabase::EquipmentSet set)
+{
+  QMap<QString, int> slotCount;
+  for (ItemDatabase::EquipSlot& slot : set)
+  {
+    int count = (slotCount[slot.location] += 1);
+    if (count > 1) {
+      slot.location += QStringLiteral(".%1").arg(count);
+    }
+  }
+  return set;
+}
+
+static ItemDatabase::EquipmentSet diffSets(const ItemDatabase* db, const ItemDatabase::EquipmentSet& lhs, const ItemDatabase::EquipmentSet& rhs)
+{
+  ItemDatabase::EquipmentSet result;
+
+  QSet<QString> claimed;
+  for (const ItemDatabase::EquipSlot& lSlot : lhs) {
+    if (lSlot.displayName.isEmpty() || lSlot.location == "_container") {
+      continue;
+    }
+    QString slotName = lSlot.location.section('.', 0, 0);
+    bool found = false;
+    for (const ItemDatabase::EquipSlot& rSlot : rhs) {
+      QString rSlotName = rSlot.location.section('.', 0, 0);
+      if (slotName != rSlotName || rSlotName == "_container") {
+        continue;
+      }
+      if (lSlot.displayName == rSlot.displayName) {
+        if (claimed.contains(rSlot.location)) {
+          continue;
+        }
+        claimed << rSlot.location;
+        found = true;
+        break;
+      }
+    }
+    if (!found) {
+      result << (ItemDatabase::EquipSlot){ db->equipmentSlotType(slotName).keyword, lSlot.displayName };
+    }
+  }
+
+  return result;
+}
+
+void GaloshSession::changeEquipment(const ItemDatabase::EquipmentSet& _current, const QString& setName, const QString& toContainer)
+{
+  ItemDatabase* db = itemDB();
+  ItemDatabase::EquipmentSet current = addSlotNumbers(_current);
+  ItemDatabase::EquipmentSet target = addSlotNumbers(profile->loadItemSet(setName));
+  auto toRemove = diffSets(db, current, target);
+  auto toEquip = diffSets(db, target, current);
+
+  QString fromContainer;
+  for (auto [slot, name] : target) {
+    if (slot == "_container") {
+      fromContainer = db->itemKeyword(name);
+      if (fromContainer.isEmpty()) {
+        fromContainer = name.section(' ', -1);
+        term->writeColorLine("1;96", QStringLiteral("Keyword not set for \"%1\", using \"%2\"").arg(name).arg(fromContainer).toUtf8());
+      }
+      break;
+    }
+  }
+
+  term->writeColorLine("", "");
+  for (auto [slot, item] : toRemove) {
+    QString itemKeyword = db->itemKeyword(item);
+    if (itemKeyword.isEmpty()) {
+      itemKeyword = item.section(' ', -1);
+      term->writeColorLine("1;96", QStringLiteral("Keyword not set for \"%1\", using \"%2\"").arg(item).arg(itemKeyword).toUtf8());
+    }
+    term->processCommand(QStringLiteral("remove %1").arg(itemKeyword));
+    if (!toContainer.isEmpty()) {
+      term->processCommand(QStringLiteral("put %1 %2").arg(itemKeyword).arg(toContainer));
+    }
+  }
+  for (auto [slot, item] : toEquip) {
+    QString itemKeyword = db->itemKeyword(item);
+    if (itemKeyword.isEmpty()) {
+      itemKeyword = item.section(' ', -1);
+      term->writeColorLine("1;96", QStringLiteral("Keyword not set for \"%1\", using \"%2\"").arg(item).arg(itemKeyword).toUtf8());
+    }
+    if (!fromContainer.isEmpty()) {
+      term->processCommand(QStringLiteral("get %1 %2").arg(itemKeyword).arg(fromContainer));
+    }
+    QString verb = db->parsers.verbs.value(slot);
+    if (verb.isEmpty()) {
+      term->processCommand(QStringLiteral("wear %1 %2").arg(itemKeyword).arg(slot.toLower()));
+    } else {
+      term->processCommand(verb.arg(itemKeyword));
+    }
+  }
 }
 
 void GaloshSession::openItemDatabase()
@@ -339,8 +433,33 @@ void GaloshSession::openItemDatabase()
   if (!itemSearch) {
     itemSearch = new ItemSearchDialog(itemDB(), false, term);
     itemSearch->setAttribute(Qt::WA_DeleteOnClose);
+    QObject::connect(itemSearch, SIGNAL(openItemSets()), this, SLOT(openItemSets()));
   }
   itemSearch->show();
   itemSearch->raise();
   itemSearch->setFocus();
+}
+
+void GaloshSession::openItemSets()
+{
+  if (itemSearch) {
+    itemSearch->close();
+  }
+  if (!itemSets) {
+    itemSets = new ItemSetDialog(profile.get(), false, term);
+    itemSets->setAttribute(Qt::WA_DeleteOnClose);
+    itemSets->setConnected(term->socket()->isConnected());
+    QObject::connect(itemSets, SIGNAL(equipNamedSet(QString)), this, SLOT(switchEquipment(QString)));
+  }
+  itemSets->show();
+  itemSets->raise();
+  itemSets->setFocus();
+}
+
+void GaloshSession::connectionChanged()
+{
+  bool conn = term->socket()->isConnected();
+  if (itemSets) {
+    itemSets->setConnected(conn);
+  }
 }

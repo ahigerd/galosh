@@ -7,6 +7,7 @@ EquipmentCommand::EquipmentCommand(GaloshSession* session)
 {
   addKeyword("EQ");
   supportedKwargs["-u"] = false;
+  supportedKwargs["-c"] = true;
 }
 
 QString EquipmentCommand::helpMessage(bool brief) const
@@ -17,9 +18,9 @@ QString EquipmentCommand::helpMessage(bool brief) const
   return "Collects and manages equipment sets.\n"
     "    /EQUIP                Opens the equipment manager.\n"
     "    /EQUIP <set>          Equips the named equipment set.\n"
-    "    /EQUIP -u [command]   Captures a snapshot of your equipment\n"
-    "                          by sending the specified command.\n"
-    "                          (Default: \"equipment\")";
+    "           -c <object>    Puts the removed equipment in the named container.\n"
+    "    /EQUIP -u [command]   Captures a snapshot of your equipment by sending\n"
+    "                          the specified command. (Default: \"equipment\")";
 }
 
 void EquipmentCommand::handleInvoke(const QStringList& args, const KWArgs& kwargs)
@@ -33,15 +34,22 @@ void EquipmentCommand::handleInvoke(const QStringList& args, const KWArgs& kwarg
     if (arg.isEmpty()) {
       arg = "equipment";
     }
-    session->itemDB()->captureEquipment(session->term, [this](const QList<ItemDatabase::EquipSlot>& eq){ session->equipmentReceived(eq); });
+    session->itemDB()->captureEquipment(session->term, [this](const ItemDatabase::EquipmentSet& eq){ session->equipmentReceived(eq); });
     session->term->processCommand(arg);
   } else if (arg.isEmpty()) {
-    session->openEquipment();
+    session->openItemSets();
   } else {
     if (!session->isConnected()) {
       showError("Not connected to server");
       return;
     }
-    session->switchEquipment(arg);
+    QString compare = arg.toLower();
+    for (const QString& set : session->profile->itemSets()) {
+      if (set.toLower() == compare) {
+        session->switchEquipment(set, kwargs.value("-c"));
+        return;
+      }
+    }
+    showError(QStringLiteral("No item set \"%1\" found.").arg(arg));
   }
 }

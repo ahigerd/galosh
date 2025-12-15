@@ -7,6 +7,7 @@
 #include "triggermanager.h"
 #include "explorehistory.h"
 #include "colorschemes.h"
+#include "itemdatabase.h"
 class QSettings;
 class ServerProfile;
 
@@ -43,6 +44,11 @@ public:
 
   void reload();
   bool save();
+
+  QStringList itemSets() const;
+  ItemDatabase::EquipmentSet loadItemSet(const QString& name) const;
+  void saveItemSet(const QString& name, const ItemDatabase::EquipmentSet& items);
+  void removeItemSet(const QString& name);
 
 private:
   bool isGlobalFont;

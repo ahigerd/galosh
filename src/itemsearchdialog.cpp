@@ -65,9 +65,18 @@ ItemSearchDialog::ItemSearchDialog(ItemDatabase* db, bool forSelection, QWidget*
   lMatches->addWidget(matchView);
   layout->addWidget(bMatches, 4, 0, 1, 2);
 
+  QHBoxLayout* lButtons = new QHBoxLayout;
+  layout->addLayout(lButtons, 5, 0, 1, 2);
+
+  if (!forSelection) {
+    QPushButton* setButton = new QPushButton("Item &Sets...");
+    QObject::connect(setButton, SIGNAL(clicked()), this, SIGNAL(openItemSets()));
+    lButtons->addWidget(setButton, 0);
+  }
+
   QDialogButtonBox* bResults = new QDialogButtonBox(QDialogButtonBox::Close, this);
   QObject::connect(bResults, SIGNAL(rejected()), this, SLOT(reject()));
-  layout->addWidget(bResults, 5, 0, 1, 2);
+  lButtons->addWidget(bResults, 1);
 
   searchButton = bResults->addButton("Search", QDialogButtonBox::ActionRole);
   searchButton->setIcon(QIcon::fromTheme("edit-find"));

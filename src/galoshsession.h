@@ -17,6 +17,7 @@ class TriggerManager;
 class InfoModel;
 class ExploreDialog;
 class ItemSearchDialog;
+class ItemSetDialog;
 
 class GaloshSession : public QObject, public TextCommandProcessor
 {
@@ -47,9 +48,7 @@ public:
 
   bool eventFilter(QObject* obj, QEvent* event);
 
-  void openEquipment();
-  void switchEquipment(const QString& set);
-  void equipmentReceived(const QList<ItemDatabase::EquipSlot>& equipment);
+  void equipmentReceived(const ItemDatabase::EquipmentSet& equipment);
 
 signals:
   void msspReceived();
@@ -60,7 +59,9 @@ signals:
 
 public slots:
   void exploreMap(int roomId = -1, const QString& movement = QString());
+  void switchEquipment(const QString& set, const QString& container = QString());
   void openItemDatabase();
+  void openItemSets();
 
 #ifdef Q_MOC_RUN
   void help();
@@ -77,14 +78,18 @@ private slots:
   void gmcpEvent(const QString& key, const QVariant& value);
   void setUnread();
   void serverCertificate(const QMap<QString, QString>& info, bool selfSigned, bool nameMismatch);
+  void connectionChanged();
 
 private:
+  void changeEquipment(const ItemDatabase::EquipmentSet& current, const QString& setName, const QString& container);
+
   AutoMapper autoMap;
   ExploreHistory exploreHistory;
   QStringList speedPath;
   QString statusBar;
   QPointer<ExploreDialog> explore;
   QPointer<ItemSearchDialog> itemSearch;
+  QPointer<ItemSetDialog> itemSets;
   bool unread;
 };
 

@@ -2,6 +2,7 @@
 #include "itemsearchdialog.h"
 #include "algorithms.h"
 #include <QGridLayout>
+#include <QAbstractItemView>
 #include <QComboBox>
 #include <QLabel>
 #include <QToolButton>
@@ -15,9 +16,13 @@ EquipmentView::EquipmentView(ItemDatabase* db, QWidget* parent)
 : QWidget(parent), db(db)
 {
   QGridLayout* layout = new QGridLayout(this);
-  layout->setContentsMargins(4, 0, 4, 2);
+  layout->setContentsMargins(4, 2, 4, 2);
   layout->setVerticalSpacing(0);
 
+  QFont plain = font();
+  plain.setItalic(false);
+  QFont italic = plain;
+  italic.setItalic(true);
   int row = 0;
   for (const QString& location : db->equipmentSlotOrder()) {
     auto slot = db->equipmentSlotType(location);
@@ -26,9 +31,16 @@ EquipmentView::EquipmentView(ItemDatabase* db, QWidget* parent)
     for (int i = 0; i < slot.count; i++) {
       QComboBox* dropdown = new QComboBox(this);
       dropdown->addItem("");
+      dropdown->addItem("(ignore)", "ignore");
+      dropdown->setItemData(1, italic, Qt::FontRole);
       if (!keyword.isEmpty()) {
         for (const auto& stats : db->searchForItem({{ "worn", keyword }})) {
           dropdown->addItem(stats.uniqueName);
+          if (stats.keyword.isEmpty()) {
+            dropdown->setItemData(dropdown->count() - 1, italic, Qt::FontRole);
+          } else {
+            dropdown->setItemData(dropdown->count() - 1, plain, Qt::FontRole);
+          }
         }
       }
       QToolButton* statButton = new QToolButton(this);
@@ -43,6 +55,7 @@ EquipmentView::EquipmentView(ItemDatabase* db, QWidget* parent)
       dropdown->setObjectName(slotName);
       slotItems[slotName] = dropdown;
       ++row;
+      QObject::connect(dropdown, SIGNAL(currentIndexChanged(int)), this, SLOT(onItemChanged()));
       QObject::connect(statButton, &QToolButton::clicked, [this, slotName]{ showMenu(slotName); });
     }
   }
@@ -53,16 +66,36 @@ EquipmentView::EquipmentView(ItemDatabase* db, QWidget* parent)
   layout->setRowStretch(row, 1);
 }
 
-void EquipmentView::setItems(const QList<ItemDatabase::EquipSlot>& equipment)
+void EquipmentView::setItems(const ItemDatabase::EquipmentSet& equipment, bool ignoreEmpty)
 {
   int index = 1;
   QString lastSlot;
   for (QComboBox* dropdown : slotItems) {
-    dropdown->setCurrentIndex(-1);
+    dropdown->setCurrentIndex(ignoreEmpty ? 1 : -1);
   }
-  QFont bold = font();
+  QFont plain = font();
+  plain.setItalic(false);
+  QFont bold = plain;
   bold.setBold(true);
+  QFont italic = font();
+  italic.setItalic(true);
+  QFont boldItalic = bold;
+  boldItalic.setItalic(true);
+  for (QComboBox* dropdown : slotItems) {
+    int index = dropdown->findData(bold, Qt::FontRole);
+    if (index >= 0) {
+      dropdown->setItemData(index, plain, Qt::FontRole);
+    }
+    index = dropdown->findData(boldItalic, Qt::FontRole);
+    if (index >= 0) {
+      dropdown->setItemData(index, italic, Qt::FontRole);
+    }
+  }
   for (const ItemDatabase::EquipSlot& item : equipment) {
+    if (item.location == "_container") {
+      continue;
+    }
+
     QString suffix;
     if (item.location == lastSlot) {
       index++;
@@ -81,7 +114,11 @@ void EquipmentView::setItems(const QList<ItemDatabase::EquipSlot>& equipment)
       dropdown->addItem(item.displayName + " *");
       dropdown->setCurrentText(item.displayName + " *");
     }
-    dropdown->setItemData(dropdown->currentIndex(), QVariant::fromValue(bold), Qt::FontRole);
+    if (db->itemKeyword(item.displayName).isEmpty()) {
+      dropdown->setItemData(dropdown->currentIndex(), QVariant::fromValue(boldItalic), Qt::FontRole);
+    } else {
+      dropdown->setItemData(dropdown->currentIndex(), QVariant::fromValue(bold), Qt::FontRole);
+    }
   }
 }
 
@@ -109,18 +146,9 @@ void EquipmentView::showMenu(const QString& slotName)
   if (action == detailsAction) {
     showStats(currentItem);
   } else if (action == keywordAction) {
-    bool ok = false;
-    QString newKeyword = QInputDialog::getText(
-      this,
-      "Set Keyword",
-      QStringLiteral("Keyword for %1:").arg(currentItem),
-      QLineEdit::Normal,
-      itemKeyword,
-      &ok
-    );
-    if (ok) {
-      db->setItemKeyword(currentItem, newKeyword);
-    }
+    promptForKeyword(currentItem, itemKeyword);
+    QComboBox* dropdown = slotItems.value(slotName);
+    onItemChanged(dropdown);
   } else if (action == searchAction) {
     ItemSearchDialog dlg(db, true, this);
     dlg.setRequiredSlot(slotKeyword);
@@ -139,11 +167,12 @@ void EquipmentView::showMenu(const QString& slotName)
   }
 }
 
-void EquipmentView::showStats(QString name)
+void EquipmentView::showStats(const QString& _name)
 {
-  if (name.isEmpty()) {
+  if (_name.isEmpty()) {
     return;
   }
+  QString name = _name;
   if (name.endsWith(" *")) {
     name = name.mid(0, name.length() - 2);
   }
@@ -174,11 +203,11 @@ void EquipmentView::showStats(QString name)
   }
 }
 
-QList<ItemDatabase::EquipSlot> EquipmentView::items() const
+ItemDatabase::EquipmentSet EquipmentView::items() const
 {
-  QList<ItemDatabase::EquipSlot> result;
+  ItemDatabase::EquipmentSet result;
   for (auto [location, dropdown] : cpairs(slotItems)) {
-    if (dropdown->currentIndex() < 0) {
+    if (dropdown->currentData() == "ignore") {
       continue;
     }
     ItemDatabase::EquipSlot slot;
@@ -187,4 +216,34 @@ QList<ItemDatabase::EquipSlot> EquipmentView::items() const
     result << slot;
   }
   return result;
+}
+
+void EquipmentView::promptForKeyword(const QString& name, const QString& current)
+{
+  bool ok = false;
+  QString newKeyword = QInputDialog::getText(
+    this,
+    "Set Keyword",
+    QStringLiteral("Keyword for %1:").arg(name),
+    QLineEdit::Normal,
+    current,
+    &ok
+  );
+  if (ok) {
+    db->setItemKeyword(name, newKeyword);
+  }
+}
+
+void EquipmentView::onItemChanged(QComboBox* dropdown)
+{
+  if (!dropdown) {
+    dropdown = qobject_cast<QComboBox*>(sender());
+    if (!dropdown) {
+      return;
+    }
+  }
+  QString itemKeyword = db->itemKeyword(dropdown->currentText());
+  QFont f(font());
+  f.setItalic(itemKeyword.isEmpty());
+  dropdown->setFont(f);
 }

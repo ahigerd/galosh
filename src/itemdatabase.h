@@ -25,6 +25,7 @@ struct ItemParsers {
   QString noFlags;
 
   QMap<QString, QString> slotLocations;
+  QMap<QString, QString> verbs;
 };
 
 struct ItemStats
@@ -46,6 +47,8 @@ struct ItemStats
   int armor = 0;
   QMap<QString, int> apply;
   // todo: spell effects?
+
+  QString keyword;
 };
 
 struct ItemQuery
@@ -82,6 +85,7 @@ public:
     QString keyword;
     int count = 1;
   };
+  using EquipmentSet = QList<EquipSlot>;
 
   ItemDatabase(QObject* parent = nullptr);
 

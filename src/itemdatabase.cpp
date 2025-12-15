@@ -61,6 +61,12 @@ ItemParsers ItemParsers::defaultCircleMudParser = {
     {"wielded secondary", "ONE-HANDED"},
     {"wielded two-handed", "TWO-HANDED"},
   },
+  {
+    {"ONE-HANDED", "wield %1"},
+    {"TWO-HANDED", "wield %1"},
+    {"HOLD", "hold %1"},
+    {"OBELT", "wear %1 belt"},
+  }
 };
 
 ItemDatabase::ItemDatabase(QObject* parent)
@@ -481,6 +487,7 @@ ItemStats ItemDatabase::parsedItemStats(const QString& name) const
   if (item.name.isEmpty()) {
     item.name = name;
   }
+  item.keyword = itemKeyword(name);
   return item;
 }
 
@@ -555,8 +562,10 @@ QList<ItemStats> ItemDatabase::searchForItem(const QList<ItemQuery>& queries) co
       double numValue = 0;
       bool isStr = false, isList = false;
       bool isSet = false;
+      bool isExact = true;
       if (query.stat == "name") {
         isStr = true;
+        isExact = false;
         strValue = stats.name.toLower();
       } else if (query.stat == "type") {
         isStr = true;
@@ -607,7 +616,7 @@ QList<ItemStats> ItemDatabase::searchForItem(const QList<ItemQuery>& queries) co
       } else if (isStr) {
         bool ok = matchNone;
         for (const QString& v : query.value.toStringList()) {
-          if (strValue.contains(v.toLower())) {
+          if (isExact ? strValue == v.toLower() : strValue.contains(v.toLower())) {
             if (matchNone) {
               ok = false;
               break;
@@ -641,6 +650,7 @@ QList<ItemStats> ItemDatabase::searchForItem(const QList<ItemQuery>& queries) co
       }
     }
     if (match) {
+      stats.keyword = itemKeyword(stats.name);
       results << stats;
     }
   }

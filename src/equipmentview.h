@@ -12,12 +12,17 @@ Q_OBJECT
 public:
   EquipmentView(ItemDatabase* db, QWidget* parent = nullptr);
 
-  QList<ItemDatabase::EquipSlot> items() const;
-  void setItems(const QList<ItemDatabase::EquipSlot>& equipment);
+  ItemDatabase::EquipmentSet items() const;
+  void setItems(const ItemDatabase::EquipmentSet& equipment, bool ignoreEmpty = false);
+
+  void showStats(const QString& name);
+  void promptForKeyword(const QString& name, const QString& current);
+
+private slots:
+  void onItemChanged(QComboBox* dropdown = nullptr);
 
 private:
   void showMenu(const QString& slotName);
-  void showStats(QString name);
 
   ItemDatabase* db;
   QMap<QString, QComboBox*> slotItems;

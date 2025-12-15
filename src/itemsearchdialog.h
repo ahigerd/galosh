@@ -29,6 +29,9 @@ public:
 
   QString selectedItemName() const;
 
+signals:
+  void openItemSets();
+
 private slots:
   void applyRowUpdated();
   void removeApplyRow(QAbstractButton*);

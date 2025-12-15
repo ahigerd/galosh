@@ -166,3 +166,46 @@ void UserProfile::saveAppearanceSection(QSettings& settings)
     settings.setValue("font", selectedFont);
   }
 }
+
+QStringList UserProfile::itemSets() const
+{
+  QSettings settings(profilePath, QSettings::IniFormat);
+  QStringList sets;
+  for (const QString& group : settings.childGroups()) {
+    if (!group.startsWith("ItemSet-")) {
+      continue;
+    }
+    sets << group.mid(8);
+  }
+  return sets;
+}
+
+ItemDatabase::EquipmentSet UserProfile::loadItemSet(const QString& name) const
+{
+  QSettings settings(profilePath, QSettings::IniFormat);
+  SettingsGroup sg(&settings, "ItemSet-" + name);
+  ItemDatabase::EquipmentSet equipment;
+  for (const QString& key : settings.childKeys()) {
+    ItemDatabase::EquipSlot slot;
+    slot.location = key;
+    slot.displayName = settings.value(key).toString();
+    equipment << slot;
+  }
+  return equipment;
+}
+
+void UserProfile::saveItemSet(const QString& name, const ItemDatabase::EquipmentSet& items)
+{
+  QSettings settings(profilePath, QSettings::IniFormat);
+  settings.remove("ItemSet-" + name);
+  SettingsGroup sg(&settings, "ItemSet-" + name);
+  for (const ItemDatabase::EquipSlot& slot : items) {
+    settings.setValue(slot.location, slot.displayName);
+  }
+}
+
+void UserProfile::removeItemSet(const QString& name)
+{
+  QSettings settings(profilePath, QSettings::IniFormat);
+  settings.remove("ItemSet-" + name);
+}
