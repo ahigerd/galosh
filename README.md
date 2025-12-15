@@ -33,7 +33,8 @@ descriptions, and it can keep more information about the current room visible at
 * Tab completion
 * Mudlet map importing
 * Offline map exploration
-* Item database
+* Searchable item database
+* Quick-equip item sets
 
 ## Roadmap
 
@@ -43,6 +44,33 @@ descriptions, and it can keep more information about the current room visible at
 * Conditional triggers
 * Split-screen
 * Prebuilt releases for macOS
+
+## Getting Galosh
+
+### Windows
+
+Galosh is distributed as a portable app on Windows. Download the [latest release of Galosh](https://github.com/ahigerd/galosh/releases/latest) and
+extract `galosh.exe` to any path you like. No installation required!
+
+### Build from source
+
+Galosh requires Qt 5.15 or higher, including Qt 6.x.
+
+* `git clone https://github.com/ahigerd/galosh.git`
+* Open the `galosh` folder
+* Optionally, edit `galosh.pro` to set the `CONFIG` flags.
+    * The official Windows build uses `CONFIG += release static` and `CONFIG -= debug debug_and_release`.
+* `qmake`
+* `make`
+
+## Using Galosh
+
+### Quick Start
+
+1. Launch Galosh. The Profiles dialog will open automatically.
+2. Fill in a profile name, server hostname, and server port number. Check "Use SSL/TLS" if the server supports secure connections.
+3. Optionally, fill in a username, password, and login/password prompts to automatically log in after connecting.
+4. Click Connect.
 
 ## License
 
