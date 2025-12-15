@@ -199,6 +199,7 @@ bool ItemSetDialog::save()
     set << (ItemDatabase::EquipSlot){ "_container", container };
   }
   profile->saveItemSet(name, set);
+  loadNamedSet(name);
   return true;
 }
 

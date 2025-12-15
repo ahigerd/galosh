@@ -345,7 +345,7 @@ static ItemDatabase::EquipmentSet addSlotNumbers(ItemDatabase::EquipmentSet set)
   return set;
 }
 
-static ItemDatabase::EquipmentSet diffSets(const ItemDatabase* db, const ItemDatabase::EquipmentSet& lhs, const ItemDatabase::EquipmentSet& rhs)
+static ItemDatabase::EquipmentSet diffSets(const ItemDatabase* db, const ItemDatabase::EquipmentSet& lhs, const ItemDatabase::EquipmentSet& rhs, bool ignoreBlank)
 {
   ItemDatabase::EquipmentSet result;
 
@@ -355,12 +355,13 @@ static ItemDatabase::EquipmentSet diffSets(const ItemDatabase* db, const ItemDat
       continue;
     }
     QString slotName = lSlot.location.section('.', 0, 0);
-    bool found = false;
+    bool found = false, ignore = true;
     for (const ItemDatabase::EquipSlot& rSlot : rhs) {
       QString rSlotName = rSlot.location.section('.', 0, 0);
       if (slotName != rSlotName || rSlotName == "_container") {
         continue;
       }
+      ignore = false;
       if (lSlot.displayName == rSlot.displayName) {
         if (claimed.contains(rSlot.location)) {
           continue;
@@ -370,7 +371,7 @@ static ItemDatabase::EquipmentSet diffSets(const ItemDatabase* db, const ItemDat
         break;
       }
     }
-    if (!found) {
+    if (!found && (!ignoreBlank || !ignore)) {
       result << (ItemDatabase::EquipSlot){ db->equipmentSlotType(slotName).keyword, lSlot.displayName };
     }
   }
@@ -383,8 +384,8 @@ void GaloshSession::changeEquipment(const ItemDatabase::EquipmentSet& _current, 
   ItemDatabase* db = itemDB();
   ItemDatabase::EquipmentSet current = addSlotNumbers(_current);
   ItemDatabase::EquipmentSet target = addSlotNumbers(profile->loadItemSet(setName));
-  auto toRemove = diffSets(db, current, target);
-  auto toEquip = diffSets(db, target, current);
+  auto toRemove = diffSets(db, current, target, true);
+  auto toEquip = diffSets(db, target, current, false);
 
   QString fromContainer;
   for (auto [slot, name] : target) {
