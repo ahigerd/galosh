@@ -33,18 +33,22 @@ public:
 
   void writeColorLine(const QByteArray& colorCode, const QByteArray& message);
 
+  bool isParsing() const;
+
 signals:
   void lineReceived(const QString& line);
   void commandEntered(const QString& command, bool echo = true);
   void commandEnteredForProfile(const QString& profile, const QString& command);
   void slashCommand(const QString& command, const QStringList& args);
   void speedwalk(const QStringList& steps);
+  bool parsingChanged(bool on);
 
 public slots:
   void setTermFont(const QFont& font);
   void setColorScheme(const ColorScheme& scheme);
   void showError(const QString& message);
   void processCommand(const QString& command, bool echo = true);
+  void setParsing(bool on);
 
 private slots:
   void executeCommand(const QString& command, bool echo = true);
@@ -70,6 +74,7 @@ private:
   MultiCommandLine* multiline;
   QLabel* multilineStatus;
   QToolButton* bMultiline;
+  QToolButton* bParse;
   QScrollBar* scrollBar;
   bool pendingScroll;
   bool darkBackground;

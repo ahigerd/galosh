@@ -115,9 +115,6 @@ GaloshWindow::GaloshWindow(QWidget* parent)
   mb->addMenu(fileMenu);
 
   QMenu* viewMenu = new QMenu("&View", mb);
-  viewMenu->addAction("&Profiles...", this, SLOT(openProfileDialog()));
-  profileActions << viewMenu->addAction("&Map Settings...", this, SLOT(openMapOptions()));
-  viewMenu->addSeparator();
   msspMenu = viewMenu->addAction("View MSSP &Info...", this, SLOT(openMsspDialog()));
   profileActions << viewMenu->addAction("E&xplore Map...", this, SLOT(exploreMap()));
   profileActions << viewMenu->addAction("Item &Database...", this, SLOT(openItemDatabase()));
@@ -129,9 +126,19 @@ GaloshWindow::GaloshWindow(QWidget* parent)
   infoAction->setCheckable(true);
   mapDockAction = viewMenu->addAction("Mini-Ma&p", this, SLOT(toggleMapDock(bool)));
   mapDockAction->setCheckable(true);
-  viewMenu->addSeparator();
-  viewMenu->addAction("Open &Configuration Folder...", this, SLOT(openConfigFolder()));
   mb->addMenu(viewMenu);
+
+  QMenu* toolsMenu = new QMenu("&Tools", mb);
+  toolsMenu->addAction("&Profiles...", this, SLOT(openProfileDialog()));
+  profileActions << toolsMenu->addAction("&Map Settings...", this, SLOT(openMapOptions()));
+  toolsMenu->addSeparator();
+  parsingAction = toolsMenu->addAction("Enable Pa&rsing", this, SLOT(toggleParsing(bool)), QKeySequence("Ctrl+P"));
+  parsingAction->setCheckable(true);
+  parsingAction->setChecked(true);
+  profileActions << parsingAction;
+  toolsMenu->addSeparator();
+  toolsMenu->addAction("Open &Configuration Folder...", this, SLOT(openConfigFolder()));
+  mb->addMenu(toolsMenu);
 
   QMenu* helpMenu = new QMenu("&Help", mb);
   helpMenu->addAction("Open &Website...", this, SLOT(openWebsite()));
@@ -272,6 +279,7 @@ void GaloshWindow::updateStatus()
     }
     infoView->setModel(sess->infoModel);
     infoView->expandAll();
+    parsingAction->setChecked(sess->term->isParsing());
   } else {
     sbStatus->setText("Disconnected.");
     roomView->setRoom(nullptr, 0);
@@ -370,6 +378,7 @@ void GaloshWindow::connectToProfile(const QString& path, bool online)
     QObject::connect(sess, SIGNAL(destroyed(QObject*)), this, SLOT(sessionDestroyed(QObject*)));
     QObject::connect(sess->term, SIGNAL(destroyed(QObject*)), this, SLOT(sessionDestroyed(QObject*)));
     QObject::connect(sess->term, SIGNAL(commandEnteredForProfile(QString,QString)), this, SLOT(sendCommandToProfile(QString,QString)));
+    QObject::connect(sess->term, SIGNAL(parsingChanged(bool)), this, SLOT(toggleParsing(bool)));
 
     updateActions();
   }
@@ -558,6 +567,17 @@ void GaloshWindow::toggleMapDock(bool checked)
 {
   mapDock->setVisible(checked);
   updateGeometry(false);
+}
+
+void GaloshWindow::toggleParsing(bool checked)
+{
+  parsingAction->setChecked(checked);
+  GaloshTerm* term = qobject_cast<GaloshTerm*>(sender());
+  GaloshSession* sess = term ? sessions.value(term).data() : session();
+  if (!sess) {
+    return;
+  }
+  sess->term->setParsing(checked);
 }
 
 void GaloshWindow::openConfigFolder()

@@ -102,12 +102,12 @@ GaloshTerm::GaloshTerm(QWidget* parent)
   QObject::connect(multiline, SIGNAL(commandEntered(QString, bool)), line, SLOT(processCommand(QString, bool)));
   lineStack->addWidget(multilineStatus);
 
-  QToolButton* bParse = new QToolButton(this);
+  bParse = new QToolButton(this);
   bParse->setText("\uFF0F");
   bParse->setCheckable(true);
   bParse->setChecked(true);
   bParse->setToolTip("Command Parsing");
-  QObject::connect(bParse, SIGNAL(toggled(bool)), line, SLOT(setParsing(bool)));
+  QObject::connect(bParse, SIGNAL(toggled(bool)), this, SLOT(setParsing(bool)));
   lBar->addWidget(bParse, 0, Qt::AlignBottom);
 
   bMultiline = new QToolButton(this);
@@ -326,4 +326,18 @@ void GaloshTerm::setColorScheme(const ColorScheme& scheme)
   colors[11].color = QColor(192, 255, 224);
   term->setColorTable(colors.constData());
   */
+}
+
+bool GaloshTerm::isParsing() const
+{
+  return line->isParsing();
+}
+
+void GaloshTerm::setParsing(bool on)
+{
+  if (on != bParse->isChecked()) {
+    line->setParsing(on);
+    bParse->setChecked(on);
+    emit parsingChanged(on);
+  }
 }

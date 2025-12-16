@@ -1,7 +1,6 @@
 #ifndef GALOSH_TRIGGERTAB_H
 #define GALOSH_TRIGGERTAB_H
 
-#include <QWidget>
 #include "dialogtabbase.h"
 #include "triggermanager.h"
 class QTreeWidget;

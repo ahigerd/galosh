@@ -61,6 +61,7 @@ private slots:
   void toggleRoomDock(bool checked);
   void toggleInfoDock(bool checked);
   void toggleMapDock(bool checked);
+  void toggleParsing(bool checked);
   void sessionDestroyed(QObject* obj);
 
 private:
@@ -78,6 +79,7 @@ private:
   QList<QAction*> disconnectedActions;
   QList<QAction*> connectedActions;
   QDockWidget* infoDock;
+  QAction* parsingAction;
   QAction* infoAction;
   QTreeView* infoView;
   QDockWidget* roomDock;

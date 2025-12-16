@@ -82,10 +82,12 @@ private slots:
 
 private:
   void changeEquipment(const ItemDatabase::EquipmentSet& current, const QString& setName, const QString& container);
+  void processCommandQueue();
 
   AutoMapper autoMap;
   ExploreHistory exploreHistory;
   QStringList speedPath;
+  QStringList commandQueue;
   QString statusBar;
   QPointer<ExploreDialog> explore;
   QPointer<ItemSearchDialog> itemSearch;

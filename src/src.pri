@@ -4,8 +4,8 @@ CLASSES += msspview exploredialog mapoptions
 CLASSES += equipmentview itemsearchdialog itemsetdialog
 
 CLASSES += galoshsession galoshterm roomview
-CLASSES += dialogtabbase servertab
-CLASSES += triggertab appearancetab waypointstab
+CLASSES += dialogtabbase servertab triggertab
+CLASSES += commandtab appearancetab waypointstab
 CLASSES += commandline multicommandline dropdowndelegate
 
 # models

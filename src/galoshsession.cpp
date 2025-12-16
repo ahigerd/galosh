@@ -232,11 +232,17 @@ void GaloshSession::speedwalk(const QStringList& steps)
 
 void GaloshSession::abortSpeedwalk()
 {
-  if (speedPath.isEmpty()) {
+  if (commandQueue.isEmpty() && speedPath.isEmpty()) {
     term->showError("No speedwalk to abort.");
   } else {
+    bool wasSpeedwalk = !speedPath.isEmpty();
+    commandQueue.clear();
     speedPath.clear();
-    term->writeColorLine("96", "Speedwalk aborted.");
+    if (wasSpeedwalk) {
+      term->writeColorLine("96", "Speedwalk aborted.");
+    } else {
+      term->writeColorLine("96", "Command aborted.");
+    }
   }
 }
 
@@ -248,11 +254,12 @@ void GaloshSession::setLastRoom(int roomId)
     QString dir = speedPath.takeFirst();
     if (dir == "done") {
       term->writeColorLine("93", "Speedwalk complete.");
-      return;
-    }
-    term->processCommand(dir);
-    if (speedPath.isEmpty()) {
-      speedPath << "done";
+      processCommandQueue();
+    } else {
+      term->processCommand(dir);
+      if (speedPath.isEmpty()) {
+        speedPath << "done";
+      }
     }
   }
   emit currentRoomUpdated();
@@ -427,6 +434,8 @@ void GaloshSession::changeEquipment(const ItemDatabase::EquipmentSet& _current, 
       term->processCommand(verb.arg(itemKeyword));
     }
   }
+
+  processCommandQueue();
 }
 
 void GaloshSession::openItemDatabase()
@@ -463,4 +472,13 @@ void GaloshSession::connectionChanged()
   if (itemSets) {
     itemSets->setConnected(conn);
   }
+}
+
+void GaloshSession::processCommandQueue()
+{
+  if (commandQueue.isEmpty()) {
+    return;
+  }
+  QString command = commandQueue.takeFirst();
+  term->processCommand(command);
 }
