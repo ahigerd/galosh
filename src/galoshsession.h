@@ -83,6 +83,7 @@ private slots:
 private:
   void changeEquipment(const ItemDatabase::EquipmentSet& current, const QString& setName, const QString& container);
   void processCommandQueue();
+  bool customCommandFilter(const QString& command);
 
   AutoMapper autoMap;
   ExploreHistory exploreHistory;

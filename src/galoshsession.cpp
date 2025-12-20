@@ -22,6 +22,7 @@ GaloshSession::GaloshSession(UserProfile* profile, QWidget* parent)
 : QObject(parent), TextCommandProcessor("/"), profile(profile), autoMap(map()), exploreHistory(map()), unread(false)
 {
   term = new GaloshTerm(parent);
+  term->setCommandFilter([this](const QString& command) { return customCommandFilter(command); });
   QObject::connect(term, SIGNAL(lineReceived(QString)), &autoMap, SLOT(processLine(QString)));
   QObject::connect(term, SIGNAL(lineReceived(QString)), itemDB(), SLOT(processLine(QString)));
   QObject::connect(term, SIGNAL(lineReceived(QString)), triggers(), SLOT(processLine(QString)), Qt::QueuedConnection);
@@ -481,4 +482,18 @@ void GaloshSession::processCommandQueue()
   }
   QString command = commandQueue.takeFirst();
   term->processCommand(command);
+}
+
+bool GaloshSession::customCommandFilter(const QString& command)
+{
+  // like with eventFilter, return true to stop commands from being further handled
+  QStringList actions = profile->customCommand(command);
+  if (actions.isEmpty()) {
+    return false;
+  }
+  // TODO: process %1 %* %1+ etc.
+  //
+  commandQueue = actions;
+  processCommandQueue();
+  return true;
 }

@@ -50,12 +50,19 @@ public:
   void saveItemSet(const QString& name, const ItemDatabase::EquipmentSet& items);
   void removeItemSet(const QString& name);
 
+  QStringList customCommands() const;
+  QStringList customCommand(const QString& name) const;
+  void setCustomCommand(const QString& name, const QStringList& actions);
+
 private:
   bool isGlobalFont;
   bool loadError;
 
   void saveProfileSection(QSettings& settings);
   void saveAppearanceSection(QSettings& settings);
+  void saveCommandsSection(QSettings& settings);
+
+  QMap<QString, QStringList> commandDefs;
 };
 
 #endif

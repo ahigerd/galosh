@@ -2,8 +2,8 @@
 #include "userprofile.h"
 #include "servertab.h"
 #include "triggertab.h"
+#include "commandtab.h"
 #include "appearancetab.h"
-#include "waypointstab.h"
 #include "msspview.h"
 #include "telnetsocket.h"
 #include "algorithms.h"
@@ -67,6 +67,7 @@ ProfileDialog::ProfileDialog(bool forConnection, QWidget* parent)
   tServer = new ServerTab(tabs);
   tWidgets << tServer;
   tWidgets << new TriggerTab(tabs);
+  tWidgets << new CommandTab(tabs);
   tWidgets << new AppearanceTab(tabs);
 
   for (auto [i, tab] : enumerate(tWidgets)) {

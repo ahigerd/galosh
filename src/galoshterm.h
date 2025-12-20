@@ -3,6 +3,7 @@
 
 #include <QWidget>
 #include <QAbstractSocket>
+#include <functional>
 #include "Vt102Emulation.h"
 #include "colorschemes.h"
 class QLabel;
@@ -35,10 +36,13 @@ public:
 
   bool isParsing() const;
 
+  void setCommandFilter(std::function<bool(const QString&)> filter);
+
 signals:
   void lineReceived(const QString& line);
   void commandEntered(const QString& command, bool echo = true);
   void commandEnteredForProfile(const QString& profile, const QString& command);
+  void simpleCommandSent();
   void slashCommand(const QString& command, const QStringList& args);
   void speedwalk(const QStringList& steps);
   bool parsingChanged(bool on);
@@ -78,6 +82,7 @@ private:
   QScrollBar* scrollBar;
   bool pendingScroll;
   bool darkBackground;
+  std::function<bool(const QString&)> commandFilter;
 };
 
 #endif

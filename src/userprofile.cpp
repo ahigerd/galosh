@@ -1,6 +1,7 @@
 #include "userprofile.h"
 #include "serverprofile.h"
 #include "settingsgroup.h"
+#include "algorithms.h"
 #include <QFontDatabase>
 #include <QSettings>
 #include <QtDebug>
@@ -84,6 +85,17 @@ void UserProfile::reload()
     selectedFont = settings.value("font", QFontDatabase::systemFont(QFontDatabase::FixedFont)).value<QFont>();
   }
 
+  for (const QString& group : settings.childGroups()) {
+    if (group.startsWith("Command-")) {
+      SettingsGroup sg(&settings, group);
+      QMap<int, QString> actions;
+      for (const QString& key : settings.childKeys()) {
+        actions[key.toInt()] = settings.value(key).toString();
+      }
+      commandDefs[group.section('-', 1)] = actions.values();
+    }
+  }
+
   triggers.loadProfile(profilePath);
 
   serverProfile = getServerProfile(host.isEmpty() ? profilePath : host);
@@ -98,7 +110,7 @@ bool UserProfile::save()
   }
   saveProfileSection(settings);
   saveAppearanceSection(settings);
-
+  saveCommandsSection(settings);
 
   settings.sync();
   return settings.status() != QSettings::NoError;
@@ -175,7 +187,7 @@ QStringList UserProfile::itemSets() const
     if (!group.startsWith("ItemSet-")) {
       continue;
     }
-    sets << group.mid(8);
+    sets << group.section('-', 1);
   }
   return sets;
 }
@@ -208,4 +220,39 @@ void UserProfile::removeItemSet(const QString& name)
 {
   QSettings settings(profilePath, QSettings::IniFormat);
   settings.remove("ItemSet-" + name);
+}
+
+QStringList UserProfile::customCommands() const
+{
+  return commandDefs.keys();
+}
+
+QStringList UserProfile::customCommand(const QString& name) const
+{
+  return commandDefs.value(name);
+}
+
+void UserProfile::setCustomCommand(const QString& name, const QStringList& actions)
+{
+  if (actions.isEmpty()) {
+    commandDefs.remove(name);
+  } else {
+    commandDefs[name] = actions;
+  }
+}
+
+void UserProfile::saveCommandsSection(QSettings& settings)
+{
+  QStringList toRemove;
+  for (const QString& group : settings.childGroups()) {
+    if (group.startsWith("Command-")) {
+      settings.remove(group);
+    }
+  }
+  for (auto [name, actions] : cpairs(commandDefs)) {
+    SettingsGroup sg(&settings, "Command-" + name);
+    for (auto [index, action] : enumerate(actions)) {
+      settings.setValue(QString::number(index), action);
+    }
+  }
 }

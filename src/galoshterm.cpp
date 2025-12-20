@@ -177,8 +177,10 @@ void GaloshTerm::executeCommand(const QString& command, bool echo)
 {
   QByteArray payload = command.toUtf8();
   writeColorLine("93", echo ? payload : QByteArray(command.length(), '*'));
-  if (tel->isConnected()) {
-    tel->write(payload + "\r\n");
+  if (!commandFilter || !commandFilter(command)) {
+    if (tel->isConnected()) {
+      tel->write(payload + "\r\n");
+    }
   }
 }
 
@@ -340,4 +342,9 @@ void GaloshTerm::setParsing(bool on)
     bParse->setChecked(on);
     emit parsingChanged(on);
   }
+}
+
+void GaloshTerm::setCommandFilter(std::function<bool(const QString&)> filter)
+{
+  commandFilter = filter;
 }
