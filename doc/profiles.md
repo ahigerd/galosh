@@ -42,10 +42,14 @@ When it is opened using the Profiles, Triggers, or Commands functions, it will p
 This button will save any outstanding changes to the current profile, close the Profiles dialog, and open a new session that connects to the server
 or program.
 
+Only one session can be open for a profile at a time. If you wish to have two connections to a server, create two profiles.
+
 ### Offline
 
 This button will save any outstanding changes to the current profile, close the Profiles dialog, and open a new session in
 [offline mode](sessions-offline.md).
+
+Only one session can be open for a profile at a time. If you wish to have two sessions open simultaneously, create two profiles.
 
 ### OK
 
@@ -61,4 +65,4 @@ This button will save any outstanding changes to the current profile without clo
 
 -----
 
-[Back: Introduction](intro.md) - [Next: Profiles - Server Tab](profiles-server.md)
+[Back: Introduction](intro.md) &bull; [Next: Profiles - Server Tab](profiles-server.md)

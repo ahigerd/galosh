@@ -40,4 +40,4 @@ Galosh requires Qt 5.15 or higher, including Qt 6.x.
 
 -----
 
-[Back: Table of Contents](index.md) - [Next: Profiles](profiles.md)
+[Back: Table of Contents](index.md) &bull; [Next: Profiles](profiles.md)

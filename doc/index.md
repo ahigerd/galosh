@@ -18,7 +18,9 @@ This documentation applies to v0.1.0.
         * [Tools](session-menus.md#tools)
         * [Help](session-menus.md#help)
     * [Toolbar](session-menus.md#toolbar)
+    * [SSL / TLS](session-tls.md)
     * [Offline Mode](session-offline.md)
+    * [The Command Line](session-commandline.md)
     * [Commands](session-commands.md)
         * [Speedwalking](commands/speedwalking.md)
         * [/DC](commands/dc.md): Disconnects from the game
@@ -49,7 +51,9 @@ This documentation applies to v0.1.0.
 * [Mapping](map.md)
 * [Item Database](itemdb.md)
     * [Equipment Sets](itemdb-sets.md)
-* [Configuration Files](config.md)
+* Technical Information
+    * [Configuration Files](config.md)
+    * [Terminal Emulation](terminal.md)
 
 ## License
 
