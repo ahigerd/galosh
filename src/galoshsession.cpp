@@ -530,6 +530,9 @@ void GaloshSession::processCommandQueue(const CommandResult* result)
   }
   QString command = commandQueue.takeFirst();
   term->processCommand(command);
+  if (customResult.isFinished()) {
+    QTimer::singleShot(0, this, SLOT(processCommandQueue()));
+  }
 }
 
 void GaloshSession::stepTimeout()
@@ -559,7 +562,7 @@ bool GaloshSession::customCommandFilter(const QString& command)
     return false;
   }
 
-  static QRegularExpression argRE("(?<!%)%(\\d+|[*])([+]?)");
+  static QRegularExpression argRE("(?<!%)%(\\d+|[*]|{\\d+[:][^}]+})([+]?)");
   QStringList parsed;
   for (QString action : actions) {
     int pos = 0;
@@ -568,12 +571,14 @@ bool GaloshSession::customCommandFilter(const QString& command)
       if (!match.hasMatch()) {
         break;
       }
-      int index = match.captured(1).toInt() - 1;
+      QString ref = match.captured(1);
+      QString replacement = ref.section(':', 1);
+      replacement.chop(1);
+      int index = ref.section(':', 0, 0).toInt() - 1;
       if (index < 0) {
         index = 0;
       }
       bool rest = !match.captured(2).isEmpty();
-      QString replacement;
       if (index < args.length()) {
         if (rest) {
           replacement = args.mid(index).join(' ');
@@ -594,7 +599,6 @@ bool GaloshSession::customCommandFilter(const QString& command)
 void GaloshSession::processSlashCommand(const QString& command, const QStringList& args)
 {
   if (!customResult.isFinished() || !equipResult.isFinished() || !stepResult.isFinished()) {
-    qDebug() << command;
     if (command != ".") {
       term->showError("Another command is in progress.");
       return;

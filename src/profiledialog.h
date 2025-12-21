@@ -18,6 +18,7 @@ public:
   enum Tab {
     Tab_Server,
     Tab_Triggers,
+    Tab_Commands,
     Tab_Appearance,
     NumTabs,
   };

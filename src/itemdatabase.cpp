@@ -201,10 +201,11 @@ void ItemDatabase::processLine(const QString& line)
   auto& [pendingItem, pendingStats, captureState, equipment, equipCallback] = pendingCaptures[source];
 
   if (captureState == 1) {
-    if (line.trimmed().isEmpty()) {
-      return;
+    // TODO: configurable
+    if (line.contains("You are using:")) {
+      captureState = 2;
     }
-    captureState = 2;
+    return;
   } else if (captureState == 2) {
     if (line.trimmed().isEmpty()) {
       captureState = 0;

@@ -60,6 +60,9 @@ void CommandResult::setCallback(CommandResult::Callback callback)
   if (isFinished()) {
     qWarning() << "CommandResult::setCallback() after command finished";
   }
+  if (d->callback) {
+    qWarning() << "CommandResult::setCallback() after setCallback";
+  }
   d->callback = callback;
 }
 

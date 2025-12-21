@@ -85,6 +85,7 @@ void UserProfile::reload()
     selectedFont = settings.value("font", QFontDatabase::systemFont(QFontDatabase::FixedFont)).value<QFont>();
   }
 
+  commandDefs.clear();
   for (const QString& group : settings.childGroups()) {
     if (group.startsWith("Command-")) {
       SettingsGroup sg(&settings, group);

@@ -106,7 +106,7 @@ GaloshWindow::GaloshWindow(QWidget* parent)
   setMenuBar(mb);
 
   QMenu* fileMenu = new QMenu("&File", mb);
-  fileMenu->addAction("C&onnect...", this, SLOT(openConnectDialog()));
+  fileMenu->addAction("C&onnect...", this, SLOT(openConnectDialog()), QKeySequence::Open);
   disconnectedActions << fileMenu->addAction("&Reconnect", this, SLOT(reconnectSession()));
   connectedActions << fileMenu->addAction("&Disconnect", this, SLOT(disconnectSession()));
   profileActions << fileMenu->addAction("&Close", this, SLOT(closeSession()), QKeySequence::Close);
@@ -156,6 +156,7 @@ GaloshWindow::GaloshWindow(QWidget* parent)
   tb->addAction("Profiles", this, SLOT(openProfileDialog()));
   tb->addSeparator();
   tb->addAction("Triggers", [this]{ openProfileDialog(ProfileDialog::Tab_Triggers); });
+  tb->addAction("Commands", [this]{ openProfileDialog(ProfileDialog::Tab_Commands); });
   profileActions << tb->addAction("Map", this, SLOT(exploreMap()));
   profileActions << tb->addAction("Items", this, SLOT(openItemDatabase()));
   tb->addSeparator();
