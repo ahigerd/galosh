@@ -47,7 +47,7 @@ private slots:
   void openWaypoints();
 
 protected:
-  virtual void showCommandMessage(TextCommand* command, const QString& message, bool isError) override;
+  virtual void showCommandMessage(TextCommand* command, const QString& message, MessageType msgType) override;
   virtual bool commandFilter(const QString& command, const QStringList& args) override;
 
   void moveEvent(QMoveEvent*);

@@ -17,7 +17,7 @@ QString SimplifyCommand::helpMessage(bool brief) const
     "Add '-a' to more aggressively look for shortcuts between rooms.";
 }
 
-void SimplifyCommand::handleInvoke(const QStringList&, const KWArgs& kwargs)
+CommandResult SimplifyCommand::handleInvoke(const QStringList&, const KWArgs& kwargs)
 {
   int before = history->length();
   history->simplify(kwargs.contains("-a"));
@@ -31,4 +31,5 @@ void SimplifyCommand::handleInvoke(const QStringList&, const KWArgs& kwargs)
   } else {
     showMessage(QStringLiteral("Simplified history from %1 steps to %2 steps").arg(before).arg(after));
   }
+  return CommandResult::success();
 }

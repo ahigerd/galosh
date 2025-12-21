@@ -12,6 +12,7 @@
 #include "commands/maphistorycommand.h"
 #include "commands/routecommand.h"
 #include "commands/simplifycommand.h"
+#include "commands/speedwalkcommand.h"
 #include "commands/waypointcommand.h"
 #include "commands/zonecommand.h"
 #include <QSettings>
@@ -210,7 +211,7 @@ void ExploreDialog::handleSpeedwalk(const QStringList& dirs)
 bool ExploreDialog::commandFilter(const QString& command, const QStringList& args)
 {
   if (command.startsWith(".")) {
-    handleSpeedwalk(CommandLine::parseSpeedwalk(command + args.join("")));
+    handleSpeedwalk(SpeedwalkCommand::parseSpeedwalk(command + args.join("")));
     return true;
   }
 
@@ -228,14 +229,17 @@ bool ExploreDialog::commandFilter(const QString& command, const QStringList& arg
   return false;
 }
 
-void ExploreDialog::showCommandMessage(TextCommand* command, const QString& message, bool isError)
+void ExploreDialog::showCommandMessage(TextCommand* command, const QString& message, ExploreDialog::MessageType msgType)
 {
-  if (command && isError) {
+  if (msgType == MT_Subcommand) {
+    return;
+  }
+  if (command && msgType == MT_Error) {
     responseLines << QString("%1: %2").arg(command->name(), message);
   } else {
     responseLines << message;
   }
-  responseError = responseError || isError;
+  responseError = responseError || msgType == MT_Error;
 }
 
 void ExploreDialog::refocus()

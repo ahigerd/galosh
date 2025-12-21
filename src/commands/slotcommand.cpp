@@ -83,7 +83,7 @@ QString SlotCommand::helpMessage(bool brief) const
   return fullHelp;
 }
 
-void SlotCommand::handleInvoke(const QStringList& args, const KWArgs&)
+CommandResult SlotCommand::handleInvoke(const QStringList& args, const KWArgs&)
 {
   if (args.isEmpty() && method0.isValid()) {
     method0.invoke(obj);
@@ -93,5 +93,8 @@ void SlotCommand::handleInvoke(const QStringList& args, const KWArgs&)
     methodN.invoke(obj, Q_ARG(QStringList, args));
   } else {
     showError("unsupported arguments");
+    return CommandResult::fail();
   }
+  // TODO: return value?
+  return CommandResult::success();
 }

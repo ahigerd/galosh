@@ -13,7 +13,7 @@ public:
   virtual int maximumArguments() const override { return 1; }
 
 protected:
-  virtual void handleInvoke(const QStringList& args, const KWArgs& kwargs) override;
+  virtual CommandResult handleInvoke(const QStringList& args, const KWArgs& kwargs) override;
 
 private:
   ExploreHistory* history;

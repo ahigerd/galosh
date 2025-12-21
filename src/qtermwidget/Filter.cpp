@@ -30,7 +30,6 @@
 #include <QClipboard>
 #include <QString>
 #include <QTextStream>
-#include <QSharedData>
 #include <QFile>
 #include <QDesktopServices>
 #include <QUrl>

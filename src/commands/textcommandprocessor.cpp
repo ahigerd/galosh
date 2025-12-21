@@ -2,6 +2,40 @@
 #include "textcommand.h"
 #include "helpcommand.h"
 
+QPair<QString, QStringList> TextCommandProcessor::parseCommand(const QString& command)
+{
+  QStringList words = command.trimmed().split(' ');
+  if (words.isEmpty()) {
+    return {};
+  }
+  QString key = words.takeFirst();
+  QStringList args;
+  QChar quote = '\0';
+  QString token;
+  for (const QString& word : words) {
+    if (!quote.isNull()) {
+      token += " " + word;
+      if (word.endsWith(quote)) {
+        args << token;
+        token.clear();
+        quote = '\0';
+      }
+    } else if (word.isEmpty()) {
+      continue;
+    } else if (word.startsWith('"') || word.startsWith("'")) {
+      quote = word[0];
+      token = word;
+    } else {
+      args << word;
+    }
+  }
+  if (!quote.isNull()) {
+    // be permissive: pass through an incomplete quoted string
+    args << token;
+  }
+  return { key, args };
+}
+
 TextCommandProcessor::TextCommandProcessor(const QString& commandPrefix)
 {
   m_helpCommand = new HelpCommand(commandPrefix, this);
@@ -28,53 +62,28 @@ void TextCommandProcessor::addCommand(TextCommand* command)
 }
 
 // Returns true if the command was executed
-bool TextCommandProcessor::handleCommand(const QString& command)
+CommandResult TextCommandProcessor::handleCommand(const QString& command)
 {
-  QStringList words = command.trimmed().split(' ');
-  if (words.isEmpty()) {
-    return false;
+  auto [key, args] = parseCommand(command);
+  if (key.isEmpty()) {
+    return CommandResult::fail();
   }
-  QString key = words.takeFirst().toUpper();
-  QStringList args;
-  QChar quote = '\0';
-  QString token;
-  for (const QString& word : words) {
-    if (!quote.isNull()) {
-      token += " " + word;
-      if (word.endsWith(quote)) {
-        args << token;
-        token.clear();
-        quote = '\0';
-      }
-    } else if (word.isEmpty()) {
-      continue;
-    } else if (word.startsWith('"') || word.startsWith("'")) {
-      quote = word[0];
-      token = word;
-    } else {
-      args << word;
-    }
-  }
-  if (!quote.isNull()) {
-    // be permissive: pass through an incomplete quoted string
-    args << token;
-  }
-  return handleCommand(key, args);
+  return handleCommand(key.toUpper(), args);
 }
 
-bool TextCommandProcessor::handleCommand(const QString& key, const QStringList& args)
+CommandResult TextCommandProcessor::handleCommand(const QString& key, const QStringList& args)
 {
+  m_hasError = false;
   if (commandFilter(key, args)) {
     // the command was handled by the filter
-    return true;
+    return CommandResult::success();
   }
   TextCommand* command = m_commands.value(key);
   if (!command) {
-    showCommandMessage(nullptr, key + ": unknown command", true);
-    return false;
+    showCommandMessage(nullptr, key + ": unknown command", MT_Error);
+    return CommandResult::fail();
   }
-  command->invoke(args);
-  return true;
+  return command->invoke(args);
 }
 
 void TextCommandProcessor::help()
@@ -85,4 +94,9 @@ void TextCommandProcessor::help()
 bool TextCommandProcessor::commandFilter(const QString&, const QStringList&)
 {
   return false;
+}
+
+void TextCommandProcessor::commandErrored()
+{
+  m_hasError = true;
 }

@@ -13,7 +13,7 @@ public:
 
 protected:
   virtual int minimumArguments() const override { return 1; }
-  virtual void handleInvoke(const QStringList& args, const KWArgs& kwargs) override;
+  virtual CommandResult handleInvoke(const QStringList& args, const KWArgs& kwargs) override;
 
 private:
   MapManager* map;

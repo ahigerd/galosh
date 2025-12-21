@@ -18,7 +18,7 @@ QString HelpCommand::helpMessage(bool brief) const
     "If a command name is provided, shows more detailed help for that command.";
 }
 
-void HelpCommand::handleInvoke(const QStringList& args, const KWArgs&)
+CommandResult HelpCommand::handleInvoke(const QStringList& args, const KWArgs&)
 {
   if (args.isEmpty()) {
     QMap<QString, const TextCommand*> names;
@@ -29,7 +29,7 @@ void HelpCommand::handleInvoke(const QStringList& args, const KWArgs&)
       const TextCommand* cmd = names[name];
       showMessage(QStringLiteral("%1%2\t%3").arg(commandPrefix).arg(name.leftJustified(8)).arg(cmd->helpMessage(true)));
     }
-    return;
+    return CommandResult::success();
   }
   QString name = args.first().toUpper();
   if (!commandPrefix.isEmpty() && name.startsWith(commandPrefix)) {
@@ -38,7 +38,7 @@ void HelpCommand::handleInvoke(const QStringList& args, const KWArgs&)
   const TextCommand* cmd = source->m_commands.value(name);
   if (!cmd) {
     showError("Unknown command: " + name);
-    return;
+    return CommandResult::fail();
   }
   QString intro = QStringLiteral("Help for %1%2").arg(commandPrefix).arg(cmd->name());
   if (cmd->keywords().length() > 1) {
@@ -65,4 +65,5 @@ void HelpCommand::handleInvoke(const QStringList& args, const KWArgs&)
 
   showMessage(intro + "\n" + QString(intro.length(), '='));
   showMessage(cmd->helpMessage(false) + "\n");
+  return CommandResult::success();
 }

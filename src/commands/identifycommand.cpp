@@ -21,7 +21,7 @@ QString IdentifyCommand::helpMessage(bool brief) const
     "If multiple matching items are found, a list of index numbers and item names will be displayed.";
 }
 
-void IdentifyCommand::handleInvoke(const QStringList& args, const KWArgs&)
+CommandResult IdentifyCommand::handleInvoke(const QStringList& args, const KWArgs&)
 {
   QList<int> matches;
   if (args.count() == 1) {
@@ -48,6 +48,7 @@ void IdentifyCommand::handleInvoke(const QStringList& args, const KWArgs&)
     }
   } else if (matches.isEmpty()) {
     showError("No matching items found.");
+    return CommandResult::fail();
   } else {
     QString name = db->itemName(matches[0]);
     QString keyword = db->itemKeyword(name);
@@ -58,4 +59,5 @@ void IdentifyCommand::handleInvoke(const QStringList& args, const KWArgs&)
     showMessage(db->itemStats(name).replace("\n", "\r\n"));
   }
   showMessage("");
+  return CommandResult::success();
 }

@@ -4,6 +4,7 @@
 #include <QObject>
 #include <QStringList>
 #include <QMap>
+#include "commandresult.h"
 class TextCommandProcessor;
 
 class TextCommand
@@ -20,18 +21,22 @@ public:
   inline QStringList keywords() const { return m_keywords; }
   virtual QString helpMessage(bool brief) const = 0;
 
-  void invoke(const QStringList& args);
+  CommandResult invoke(const QStringList& args);
 
 protected:
   virtual int minimumArguments() const { return 0; }
   virtual int maximumArguments() const { return -1; }
-  virtual void handleInvoke(const QStringList& args, const KWArgs& kwargs) = 0;
+  virtual CommandResult handleInvoke(const QStringList& args, const KWArgs& kwargs) = 0;
 
   void addKeyword(const QString& keyword);
 
   void showMessage(const QString& message);
   void showError(const QString& message);
-  void invokeCommand(const QString& command);
+  void showCommand(const QString& message);
+  CommandResult invokeCommand(const QString& command, bool quiet = true);
+  CommandResult invokeCommand(const QString& command, const QStringList& args, bool quiet = true);
+
+  void finished(bool error);
 
   // true = requires parameter, false = no parameter
   QMap<QString, bool> supportedKwargs;

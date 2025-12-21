@@ -39,7 +39,7 @@ QString MapHistoryCommand::helpMessage(bool brief) const
   return message;
 }
 
-void MapHistoryCommand::handleInvoke(const QStringList& args, const KWArgs& kwargs)
+CommandResult MapHistoryCommand::handleInvoke(const QStringList& args, const KWArgs& kwargs)
 {
   bool speedwalk = defaultSpeed || kwargs.contains("-s");
   bool reverse = defaultReverse || kwargs.contains("-r");
@@ -52,7 +52,7 @@ void MapHistoryCommand::handleInvoke(const QStringList& args, const KWArgs& kwar
     len = args[0].toInt();
     if (len <= 0) {
       showError("bad history length: " + args[0]);
-      return;
+      return CommandResult::fail();
     }
   }
 
@@ -70,11 +70,12 @@ void MapHistoryCommand::handleInvoke(const QStringList& args, const KWArgs& kwar
   }
   if (messages.isEmpty()) {
     showError("No history to show");
-    return;
+    return CommandResult::fail();
   }
   if (error) {
     showError(messages.join("\n"));
   } else {
     showMessage(messages.join("\n"));
   }
+  return CommandResult::success();
 }

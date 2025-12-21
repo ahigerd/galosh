@@ -59,30 +59,31 @@ signals:
 
 public slots:
   void exploreMap(int roomId = -1, const QString& movement = QString());
-  void switchEquipment(const QString& set, const QString& container = QString());
+  CommandResult switchEquipment(const QString& set, const QString& container = QString());
   void openItemDatabase();
   void openItemSets();
 
 #ifdef Q_MOC_RUN
   void help();
-
-private slots:
-  void handleCommand(const QString& command, const QStringList& args);
 #endif
 
 private slots:
-  void showCommandMessage(TextCommand* command, const QString& message, bool isError) override;
+  void showCommandMessage(TextCommand* command, const QString& message, MessageType msgType) override;
   void speedwalk(const QStringList& steps);
   void abortSpeedwalk();
   void setLastRoom(int roomId);
   void gmcpEvent(const QString& key, const QVariant& value);
+  void onLineReceived(const QString& line);
   void setUnread();
   void serverCertificate(const QMap<QString, QString>& info, bool selfSigned, bool nameMismatch);
   void connectionChanged();
+  void processSlashCommand(const QString& command, const QStringList& args);
+  void processCommandQueue(const CommandResult* result = nullptr);
+  void stepTimeout();
 
 private:
+  void speedwalkStep(const QString& step, CommandResult& res, bool fast);
   void changeEquipment(const ItemDatabase::EquipmentSet& current, const QString& setName, const QString& container);
-  void processCommandQueue();
   bool customCommandFilter(const QString& command);
 
   AutoMapper autoMap;
@@ -94,6 +95,8 @@ private:
   QPointer<ItemSearchDialog> itemSearch;
   QPointer<ItemSetDialog> itemSets;
   bool unread;
+  CommandResult equipResult, stepResult, customResult;
+  QTimer stepTimer;
 };
 
 #endif

@@ -10,7 +10,6 @@ class CommandLine : public QLineEdit
 {
 Q_OBJECT
 public:
-  static QStringList parseSpeedwalk(const QString& dirs);
   static QStringList parseSlashCommand(const QString& command);
   static QStringList parseMultilineCommand(const QString& command);
 

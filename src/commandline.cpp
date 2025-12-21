@@ -8,59 +8,6 @@
 
 static QRegularExpression nonWordChars("[^[:alnum:]_-]+", QRegularExpression::UseUnicodePropertiesOption);
 
-QStringList CommandLine::parseSpeedwalk(const QString& dirs)
-{
-  if (dirs.isEmpty()) {
-    // empty path
-    return QStringList();
-  }
-  if (dirs.back() >= '0' && dirs.back() <= '9') {
-    // invalid syntax
-    return QStringList();
-  }
-  QStringList path;
-  int count = -1;
-  bool bracket = false;
-  QString bracketed;
-  for (QChar ch : dirs) {
-    if (bracket) {
-      if (ch == ']') {
-        bracket = false;
-        while (count-- > 0) {
-          path << bracketed;
-        }
-        bracketed.clear();
-      } else {
-        bracketed += ch;
-      }
-    } else if (ch == '[') {
-      bracket = true;
-      if (count < 0) {
-        count = 1;
-      }
-    } else if (ch >= '0' && ch <= '9') {
-      if (count < 0) {
-        count = 0;
-      }
-      count = count * 10 + (ch.cell() - '0');
-    } else if (ch == '.' || ch == ' ') {
-      // skip dots and spaces
-    } else {
-      if (count < 0) {
-        count = 1;
-      }
-      while (count-- > 0) {
-        path << QString(ch);
-      }
-    }
-  }
-  if (bracket) {
-    // invalid syntax
-    return QStringList();
-  }
-  return path;
-}
-
 QStringList CommandLine::parseSlashCommand(const QString& command)
 {
   QStringList tokens = command.simplified().split(' ');
@@ -168,12 +115,15 @@ void CommandLine::processCommand(const QString& command, bool echo)
       emit slashCommand(slash, args);
     } else if (command.startsWith('.') && command != ".") {
       // TODO: customizable speedwalk prefix
+      emit slashCommand("SPEEDWALK", { command.mid(1) });
+      /*
       QStringList dirs = parseSpeedwalk(command.mid(1));
       if (dirs.isEmpty()) {
         emit showError("Invalid speedwalk path");
       } else {
         emit speedwalk(dirs);
       }
+      */
     } else {
       QStringList lines = parseMultilineCommand(command);
       for (QString line : lines) {

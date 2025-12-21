@@ -20,12 +20,12 @@ signals:
 protected:
   virtual int minimumArguments() const override { return 0; }
   virtual int maximumArguments() const override { return 1; }
-  virtual void handleInvoke(const QStringList& args, const KWArgs& kwargs) override;
+  virtual CommandResult handleInvoke(const QStringList& args, const KWArgs& kwargs) override;
 
 private:
-  void handleAdd(const QString& name, int roomId);
-  void handleDelete(const QString& name);
-  void handleRoute(const QString& name, bool run);
+  CommandResult handleAdd(const QString& name, int roomId);
+  CommandResult handleDelete(const QString& name);
+  CommandResult handleRoute(const QString& name, bool run, bool fast);
 
   MapManager* map;
   ExploreHistory* history;

@@ -12,7 +12,7 @@ public:
   virtual QString helpMessage(bool brief) const override;
 
 protected:
-  virtual void handleInvoke(const QStringList& args, const KWArgs& kwargs) override;
+  virtual CommandResult handleInvoke(const QStringList& args, const KWArgs& kwargs) override;
 
 private:
   TextCommandProcessor* source;

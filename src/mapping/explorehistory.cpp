@@ -92,7 +92,7 @@ QString ExploreHistory::speedwalk(int length, bool reverse, QStringList* warning
     inc = -1;
     std::swap(from, to);
   }
-  QList<QPair<QString, int>> dirs;
+  QStringList dirs;
   for (int i = from; i != to + inc; i += inc) {
     const Step& step = steps[i];
     QString dir = step.dir;
@@ -112,6 +112,15 @@ QString ExploreHistory::speedwalk(int length, bool reverse, QStringList* warning
         *warnings << QStringLiteral("Warning: uncertain return to %1 from %2 (from %3)").arg(step.start).arg(step.dest).arg(step.dir);
       }
     }
+    dirs << dir;
+  }
+  return formatSpeedwalk(dirs);
+}
+
+QString ExploreHistory::formatSpeedwalk(const QStringList& path)
+{
+  QList<QPair<QString, int>> dirs;
+  for (const QString& dir : path) {
     if (!dirs.isEmpty() && dirs.back().first == dir) {
       dirs.back().second++;
     } else {

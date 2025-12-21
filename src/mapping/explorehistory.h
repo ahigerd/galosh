@@ -10,6 +10,8 @@ class ExploreHistory : public QObject
 {
 Q_OBJECT
 public:
+  static QString formatSpeedwalk(const QStringList& path);
+
   ExploreHistory(MapManager* map, QObject* parent = nullptr);
 
   QStringList describe(int length, bool reverse = false) const;

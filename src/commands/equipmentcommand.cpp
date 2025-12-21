@@ -23,13 +23,13 @@ QString EquipmentCommand::helpMessage(bool brief) const
     "                          the specified command. (Default: \"equipment\")";
 }
 
-void EquipmentCommand::handleInvoke(const QStringList& args, const KWArgs& kwargs)
+CommandResult EquipmentCommand::handleInvoke(const QStringList& args, const KWArgs& kwargs)
 {
   QString arg = args.join(" ");
   if (kwargs.contains("-u")) {
     if (!session->isConnected()) {
       showError("Not connected to server");
-      return;
+      return CommandResult::fail();
     }
     if (arg.isEmpty()) {
       arg = "equipment";
@@ -38,18 +38,21 @@ void EquipmentCommand::handleInvoke(const QStringList& args, const KWArgs& kwarg
     session->term->processCommand(arg);
   } else if (arg.isEmpty()) {
     session->openItemSets();
+    return CommandResult::success();
   } else {
     if (!session->isConnected()) {
       showError("Not connected to server");
-      return;
+      return CommandResult::fail();
     }
     QString compare = arg.toLower();
     for (const QString& set : session->profile->itemSets()) {
       if (set.toLower() == compare) {
-        session->switchEquipment(set, kwargs.value("-c"));
-        return;
+        return session->switchEquipment(set, kwargs.value("-c"));
       }
     }
     showError(QStringLiteral("No item set \"%1\" found.").arg(arg));
+    return CommandResult::fail();
   }
+  // unreachable
+  return CommandResult::fail();
 }

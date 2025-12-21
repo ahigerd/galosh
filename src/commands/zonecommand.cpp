@@ -17,19 +17,19 @@ QString ZoneCommand::helpMessage(bool brief) const
     "If used with a zone name, shows information about that zone.";
 }
 
-void ZoneCommand::handleInvoke(const QStringList& args, const KWArgs&)
+CommandResult ZoneCommand::handleInvoke(const QStringList& args, const KWArgs&)
 {
   if (args.isEmpty()) {
     for (const QString& zone : map->zoneNames()) {
       showMessage(zone);
     }
-    return;
+    return CommandResult::success();
   }
   QString zoneName = args.join(' ');
   const MapZone* zone = map->searchForZone(zoneName);
   if (!zone) {
     showError("Unknown zone: " + zoneName);
-    return;
+    return CommandResult::fail();
   }
   showMessage(zone->name);
   int minRoom = 0, maxRoom = 0, numRooms = zone->roomIds.size();
@@ -51,4 +51,5 @@ void ZoneCommand::handleInvoke(const QStringList& args, const KWArgs&)
     }
     showMessage(name);
   }
+  return CommandResult::success();
 }

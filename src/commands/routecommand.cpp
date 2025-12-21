@@ -8,6 +8,7 @@ RouteCommand::RouteCommand(MapManager* map, ExploreHistory* history)
   supportedKwargs["-q"] = false;
   supportedKwargs["-g"] = false;
   supportedKwargs["-z"] = false;
+  supportedKwargs["-f"] = false;
 }
 
 QString RouteCommand::helpMessage(bool brief) const
@@ -21,25 +22,30 @@ QString RouteCommand::helpMessage(bool brief) const
     "    -z        Routes to a zone instead of a room or waypoint\n"
     "    -q        Show as a speedwalking path\n"
     "    -g        Immediately run the speedwalking path\n"
+    "    -f        With -g, run the speedwalking path in fast mode\n"
     "    start     (Optional) The room ID to start routing from\n"
     "    id        The room ID to route to\n"
     "    waypoint  A predefined waypoint to route to";
 }
 
-void RouteCommand::handleInvoke(const QStringList& args, const KWArgs& kwargs)
+CommandResult RouteCommand::handleInvoke(const QStringList& args, const KWArgs& kwargs)
 {
+  if (kwargs.contains("-f") && !kwargs.contains("-g")) {
+    showError("Cannot use fast mode without -g.");
+    return CommandResult::fail();
+  }
   int startRoomId;
   if (args.length() > 1) {
     bool ok = false;
     startRoomId = args.first().toInt(&ok);
     if (!ok) {
       showError("Could not identify start room");
-      return;
+      return CommandResult::fail();
     }
   } else {
     if (!history->currentRoom()) {
       showError("Could not find current room");
-      return;
+      return CommandResult::fail();
     }
     startRoomId = history->currentRoom()->id;
   }
@@ -51,11 +57,11 @@ void RouteCommand::handleInvoke(const QStringList& args, const KWArgs& kwargs)
     const MapZone* zone = map->searchForZone(args.last());
     if (!zone) {
       showError("Could not find destination zone.");
-      return;
+      return CommandResult::fail();
     }
     if (zone->roomIds.contains(startRoomId)) {
       showError("Already in destination zone.");
-      return;
+      return CommandResult::fail();
     }
     destName = zone->name;
     route = map->search()->findRoute(startRoomId, destName, map->routeAvoidZones());
@@ -70,22 +76,22 @@ void RouteCommand::handleInvoke(const QStringList& args, const KWArgs& kwargs)
     const MapRoom* room = map->room(endRoomId);
     if (!room) {
       showError("Could not find destination room");
-      return;
+      return CommandResult::fail();
     }
     if (startRoomId == endRoomId) {
       showError("Start room and destination room are the same");
-      return;
+      return CommandResult::fail();
     }
     route = map->search()->findRoute(startRoomId, endRoomId, map->routeAvoidZones());
   }
   if (route.isEmpty()) {
     showError(QStringLiteral("Could not find route from %1 to %2").arg(startRoomId).arg(destName));
-    return;
+    return CommandResult::fail();
   }
   QStringList dirs = map->search()->routeDirections(route);
   if (dirs.isEmpty()) {
     showError(QStringLiteral("Could not find route from %1 to %2").arg(startRoomId).arg(destName));
-    return;
+    return CommandResult::fail();
   }
   ExploreHistory path(map);
   path.goTo(startRoomId);
@@ -107,9 +113,15 @@ void RouteCommand::handleInvoke(const QStringList& args, const KWArgs& kwargs)
   if (warnings.isEmpty()) {
     showMessage(messages.join("\n"));
     if (kwargs.contains("-g")) {
-      emit speedwalk(dirs);
+      QStringList walkArgs = QStringList() << " " << "-v" << dirs;
+      if (kwargs.contains("-f")) {
+        walkArgs << "-f";
+      }
+      return invokeCommand("SPEEDWALK", walkArgs);
     }
   } else {
     showError(messages.join("\n"));
+    return CommandResult::fail();
   }
+  return CommandResult::success();
 }

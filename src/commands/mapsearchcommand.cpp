@@ -21,7 +21,7 @@ QString MapSearchCommand::helpMessage(bool brief) const
     "Use '-z \"zone\"' to search within a single zone.";
 }
 
-void MapSearchCommand::handleInvoke(const QStringList& args, const KWArgs& kwargs)
+CommandResult MapSearchCommand::handleInvoke(const QStringList& args, const KWArgs& kwargs)
 {
   QString searchZone = kwargs["-z"];
   if (searchZone.startsWith('"') || searchZone.startsWith("'")) {
@@ -33,9 +33,10 @@ void MapSearchCommand::handleInvoke(const QStringList& args, const KWArgs& kwarg
   QList<const MapRoom*> results = map->searchForRooms(args, kwargs.contains("-n"), searchZone);
   if (results.isEmpty()) {
     showError("No search results");
-    return;
+    return CommandResult::fail();
   }
   for (const MapRoom* room : results) {
     showMessage(QStringLiteral("[%1] %2 (%3)").arg(room->id).arg(room->name).arg(room->zone));
   }
+  return CommandResult::success();
 }

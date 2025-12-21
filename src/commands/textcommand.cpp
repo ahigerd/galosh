@@ -29,7 +29,7 @@ void TextCommand::addKeyword(const QString& name)
   }
 }
 
-void TextCommand::invoke(const QStringList& args)
+CommandResult TextCommand::invoke(const QStringList& args)
 {
   KWArgs kwargs;
   QStringList positional;
@@ -43,7 +43,7 @@ void TextCommand::invoke(const QStringList& args)
         if (supportedKwargs.value(arg)) {
           if (i == argCount - 1) {
             showError(QStringLiteral("%1 requires an argument").arg(arg));
-            return;
+            return CommandResult::fail();
           }
           kwargs[arg] = args[++i];
         } else {
@@ -57,30 +57,53 @@ void TextCommand::invoke(const QStringList& args)
   argCount = positional.count();
   if (argCount < minimumArguments()) {
     showError("missing required argument");
-    return;
+    return CommandResult::fail();
   }
   int maxArgs = maximumArguments();
   if (maxArgs >= 0 && argCount > maxArgs) {
     showError("unexpected arguments");
-    return;
+    return CommandResult::fail();
   }
-  handleInvoke(positional, kwargs);
+  return handleInvoke(positional, kwargs);
 }
 
 void TextCommand::showMessage(const QString& message)
 {
   Q_ASSERT(m_parent);
-  m_parent->showCommandMessage(this, message, false);
+  m_parent->showCommandMessage(this, message, TextCommandProcessor::MT_Message);
 }
 
 void TextCommand::showError(const QString& message)
 {
   Q_ASSERT(m_parent);
-  m_parent->showCommandMessage(this, message, true);
+  m_parent->commandErrored();
+  m_parent->showCommandMessage(this, message, TextCommandProcessor::MT_Error);
 }
 
-void TextCommand::invokeCommand(const QString& command)
+void TextCommand::showCommand(const QString& message)
 {
   Q_ASSERT(m_parent);
-  m_parent->handleCommand(command);
+  m_parent->showCommandMessage(this, message, TextCommandProcessor::MT_Subcommand);
+}
+
+CommandResult TextCommand::invokeCommand(const QString& command, bool quiet)
+{
+  Q_ASSERT(m_parent);
+  if (!quiet) {
+    showCommand(command);
+  }
+  return m_parent->handleCommand(command);
+}
+
+CommandResult TextCommand::invokeCommand(const QString& command, const QStringList& args, bool quiet)
+{
+  Q_ASSERT(m_parent);
+  if (!quiet) {
+    QString message = command;
+    if (!args.isEmpty()) {
+      message += " " + args.join(" ");
+    }
+    showCommand(message);
+  }
+  return m_parent->handleCommand(command, args);
 }
