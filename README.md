@@ -35,15 +35,18 @@ descriptions, and it can keep more information about the current room visible at
 * Offline map exploration
 * Searchable item database
 * Quick-equip item sets
+* Smart aliases / custom commands
+* Client command documentation (`/HELP`)
 
 ## Roadmap
 
+* Full documentation
 * Context-aware tab completion (spellcasting, etc.)
-* Smart aliases / custom commands
 * Trigger variables
 * Conditional triggers
 * Split-screen
 * Prebuilt releases for macOS
+* Unicode support on Windows
 
 ## Getting Galosh
 
