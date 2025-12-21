@@ -49,6 +49,7 @@ This documentation applies to v0.1.0.
 * [Mapping](map.md)
 * [Item Database](itemdb.md)
     * [Equipment Sets](itemdb-sets.md)
+* [Configuration Files](config.md)
 
 ## License
 

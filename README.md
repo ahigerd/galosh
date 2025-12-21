@@ -47,6 +47,8 @@ descriptions, and it can keep more information about the current room visible at
 * Split-screen
 * Prebuilt releases for macOS
 * Unicode support on Windows
+* Better management of server-level profile settings
+* Better accessibility for user interface
 
 ## Getting Galosh
 
