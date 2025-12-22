@@ -59,7 +59,7 @@ extract `galosh.exe` to any path you like. No installation required!
 
 ### Build from source
 
-Galosh requires Qt 5.15 or higher, including Qt 6.x.
+Galosh requires Qt 5.15 or newer, including Qt 6.x.
 
 * `git clone https://github.com/ahigerd/galosh.git`
 * Open the `galosh` folder

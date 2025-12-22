@@ -12,3 +12,4 @@
 * "Revert Scheme" button doesn't update when creating a new scheme
 * Decide on a better default font strategy
 * Double-check consistency on "..." in menu items and button labels
+* Make multiline commands honor async

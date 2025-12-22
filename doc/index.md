@@ -18,9 +18,11 @@ This documentation applies to v0.1.0.
         * [Tools](session-menus.md#tools)
         * [Help](session-menus.md#help)
     * [Toolbar](session-menus.md#toolbar)
+    * [Character Stats](session-stats.md)
+    * [Room Description](session-room.md)
+    * [Mini-Map](session-minimap.md)
     * [SSL / TLS](session-tls.md)
     * [Offline Mode](session-offline.md)
-    * [The Command Line](session-commandline.md)
     * [Commands](session-commands.md)
         * [Speedwalking](commands/speedwalking.md)
         * [/DC](commands/dc.md): Disconnects from the game

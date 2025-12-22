@@ -30,7 +30,7 @@ characters include:
     * _For example, `ax?b` will match `ab` and `axb`, but not `axxb`._
 * `\`: Matches the next character exactly instead of treating it as special. (This is also called "escaping" the character.)
     * _For example, `a\.c` will match `a.c`, but not `abc`._
-* `(`...`)`: Parentheses create a capturing group that can be used in the command. See below for more information.
+* `(`...`)`: Parentheses create a capturing group that can be used in the associated command. See below for more information.
     * _For example, `(.+) says` will match `Mukashi says` and `Tspil says`, capturing `Mukashi` and `Tspil` respectively._
 
 Patterns are case-sensitive. The matched text must all be contained within a single line, but it may occur anywhere within the line.
