@@ -63,4 +63,4 @@ Note that the information in the MSSP window is provided by the MUD and may not 
 
 -----
 
-[Back: Profiles](profiles.md) &bull; [Next: Profiles - Triggers Tab](profiles-triggers.md)
+[Back: Profiles](profiles.md) &bull; [Up: Table of Contents](index.md) &bull; [Next: Profiles - Triggers Tab](profiles-triggers.md)

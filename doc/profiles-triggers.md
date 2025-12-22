@@ -65,4 +65,4 @@ New triggers are enabled by default.
 
 -----
 
-[Back: Profiles - Server Tab](profiles-server.md) &bull; [Next: Profiles - Commands Tab](profiles-commands.md)
+[Back: Profiles - Server Tab](profiles-server.md) &bull; [Up: Table of Contents](index.md) &bull; [Next: Profiles - Commands Tab](profiles-commands.md)

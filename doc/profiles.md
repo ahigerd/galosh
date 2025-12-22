@@ -69,4 +69,4 @@ This button will save any outstanding changes to the current profile without clo
 
 -----
 
-[Back: Introduction](intro.md) &bull; [Next: Profiles - Server Tab](profiles-server.md)
+[Back: Introduction](intro.md) &bull; [Up: Table of Contents](index.md) &bull; [Next: Profiles - Server Tab](profiles-server.md)

@@ -68,4 +68,4 @@ In addition to standard text editing shortcuts, these keyboard shortcuts are sup
 
 -----
 
-[Back: Profiles - Appearance Tab](profiles-appearance.md) &bull; [Next: Main Window - Menus](session-menus.md)
+[Back: Profiles - Appearance Tab](profiles-appearance.md) &bull; [Up: Table of Contents](index.md) &bull; [Next: Main Window - Menus](session-menus.md)

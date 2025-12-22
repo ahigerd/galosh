@@ -80,4 +80,4 @@ For example, `%2+` will capture the second parameter as well as any other parame
 
 -----
 
-[Back: Profiles - Triggers Tab](profiles-triggers.md) &bull; [Next: Profiles - Appearance Tab](profiles-appearance.md)
+[Back: Profiles - Triggers Tab](profiles-triggers.md) &bull; [Up: Table of Contents](index.md) &bull; [Next: Profiles - Appearance Tab](profiles-appearance.md)

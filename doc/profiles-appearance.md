@@ -52,4 +52,4 @@ Check "Use this font for all profiles" to replace the font selection in all prof
 
 -----
 
-[Back: Profiles - Commands Tab](profiles-commands.md) &bull; [Next: Main Window](session.md)
+[Back: Profiles - Commands Tab](profiles-commands.md) &bull; [Up: Table of Contents](index.md) &bull; [Next: Main Window](session.md)
