@@ -4,6 +4,10 @@ Galosh organizes settings into profiles. Each profile represents a single charac
 
 The Profiles dialog is the first thing presented when opening Galosh. It is used to manage and connect to profiles.
 
+All settings contained within the Profiles dialog are specific to a single profile. However, [maps](map.md), [items](itemdb.md), and
+[SSL / TLS security certificates](session-tls.md) are shared between all profiles using the same
+[hostname or command](profiles-server.md#connect-to-a-server).
+
 ![Screenshot of Profiles dialog](images/profiles-server.png)
 
 ## Profile List
