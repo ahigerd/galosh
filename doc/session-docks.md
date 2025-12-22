@@ -57,4 +57,4 @@ By default, the Mini-Map panel is docked to the top side of the main window, to 
 
 -----
 
-[Back: Main Window](session.md) &bull; [Up: Table of Contents](index.md) &bull; [Next: Room Description Panel](session-room.md)
+[Back: Main Window](session.md) &bull; [Up: Table of Contents](index.md) &bull; [Next: SSL / TLS](session-tls.md)

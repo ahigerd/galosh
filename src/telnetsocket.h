@@ -8,6 +8,7 @@
 #include <QHash>
 #ifndef QT_NO_SSL
 #include <QSslSocket>
+#include <QSslConfiguration>
 #endif
 class QProcess;
 
