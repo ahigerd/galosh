@@ -77,6 +77,10 @@ Galosh requires Qt 5.15 or higher, including Qt 6.x.
 3. Optionally, fill in a username, password, and login/password prompts to automatically log in after connecting.
 4. Click Connect.
 
+### Documentation
+
+Documentation for Galosh can be found [in the doc/ folder](doc/index.md).
+
 ## License
 
 Copyright &copy; 2025 Adam Higerd
