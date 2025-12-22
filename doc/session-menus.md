@@ -19,7 +19,7 @@ This menu is labeled **Galosh** on macOS.
 * <ins>View MSSP Info...</ins>: Opens the [MSSP window](profiles-server.md#mssp) to view server information. _Only available when in online mode._
 * <ins>Explore Map...</ins>: Opens the [Map Explorer window](map-explorer.md) to browse recorded map information.
 * <ins>Item Database...</ins>: Opens the [Item Search window](itemdb.md#item-search) to search recorded item information.
-* <ins>Item Sets...</ins>: Opens the [Item Sets window](itemdb-sets.md) to manage equippable sets of items.
+* <ins>Equipment Sets...</ins>: Opens the [Equipment Sets window](itemdb-sets.md) to manage equippable sets of items.
 * <ins>Room Description</ins>: Shows or hides the dockable [Room Description panel](session-room.md).
 * <ins>Character Stats</ins>: Shows or hides the dockable [Character Stats panel](session-stats.md).
 * <ins>Mini-Map</ins>: Shows or hides the dockable [Mini-Map panel](session-minimap.md).

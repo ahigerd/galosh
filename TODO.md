@@ -15,3 +15,6 @@
 * Make multiline commands honor async
 * Remove "command aborted due to error" message when not executing a custom command
     * Maybe also remove it when it's the last command in the list?
+* /ECHO command
+* Title bar doesn't clear after closing last session (and maybe other things?)
+* Error out speedwalk commands in offline mode

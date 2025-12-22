@@ -27,6 +27,7 @@ This documentation applies to v0.1.0.
     * [Commands](session-commands.md)
         * [Speedwalking](commands/speedwalking.md)
         * [/DC](commands/dc.md): Disconnects from the game
+        * [/ECHO](commands/echo.md): Displays a line of text
         * [/EQUIP](commands/equip.md): Switches equipment sets, or captures a snapshot of your equipment
         * [/EXPLORE](commands/explore.md): Opens the map exploration window
         * [/HELP](commands/help.md): Shows information about a command
@@ -36,7 +37,7 @@ This documentation applies to v0.1.0.
     * [Menus](map-menus.md)
         * [Map](map-menus.md#map)
         * [View](map-menus.md#view)
-        * [Help](map-menus.md#view)
+        * [Help](map-menus.md#help)
     * [Commands](map-commands.md)
         * [Speedwalking](commands/speedwalking.md)
         * [/BACK](commands/back.md): Returns to the previous room
@@ -53,6 +54,7 @@ This documentation applies to v0.1.0.
         * [/ZONES](commands/zones.md): List known zones, or show information about a zone
 * [Mapping](map.md)
     * [Map Settings](map.md#map-settings)
+    * [Waypoints](map-waypoints.md)
 * [Item Database](itemdb.md)
     * [Item Search](itemdb.md#item-search)
     * [Equipment Sets](itemdb-sets.md)

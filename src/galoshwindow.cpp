@@ -118,7 +118,7 @@ GaloshWindow::GaloshWindow(QWidget* parent)
   msspMenu = viewMenu->addAction("View MSSP &Info...", this, SLOT(openMsspDialog()));
   profileActions << viewMenu->addAction("E&xplore Map...", this, SLOT(exploreMap()));
   profileActions << viewMenu->addAction("Item &Database...", this, SLOT(openItemDatabase()));
-  profileActions << viewMenu->addAction("I&tem Sets...", this, SLOT(openItemSets()));
+  profileActions << viewMenu->addAction("E&quipment Sets...", this, SLOT(openItemSets()));
   viewMenu->addSeparator();
   roomAction = viewMenu->addAction("&Room Description", this, SLOT(toggleRoomDock(bool)));
   roomAction->setCheckable(true);
