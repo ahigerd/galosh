@@ -60,3 +60,7 @@ Never reuse passwords on multiple services, especially over an insecure connecti
 on the MSSP button will connect to the MUD and check for MSSP data.
 
 Note that the information in the MSSP window is provided by the MUD and may not be accurate.
+
+-----
+
+[Back: Profiles](profiles.md) &bull; [Next: Profiles - Triggers Tab](profiles-triggers.md)
