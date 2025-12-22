@@ -18,9 +18,9 @@ This documentation applies to v0.1.0.
         * [Tools](session-menus.md#tools)
         * [Help](session-menus.md#help)
     * [Toolbar](session-menus.md#toolbar)
-    * [Character Stats](session-stats.md)
-    * [Room Description](session-room.md)
-    * [Mini-Map](session-minimap.md)
+    * [Character Stats Panel](session-stats.md)
+    * [Room Description Panel](session-room.md)
+    * [Mini-Map Panel](session-minimap.md)
     * [SSL / TLS](session-tls.md)
     * [Offline Mode](session-offline.md)
     * [Commands](session-commands.md)
@@ -51,7 +51,9 @@ This documentation applies to v0.1.0.
         * [/WAYPOINT](commands/waypoint.md): Adds, views, removes, or routes to waypoints
         * [/ZONES](commands/zones.md): List known zones, or show information about a zone
 * [Mapping](map.md)
+    * [Map Settings](map.md#map-settings)
 * [Item Database](itemdb.md)
+    * [Item Search](itemdb.md#item-search)
     * [Equipment Sets](itemdb-sets.md)
 * Technical Information
     * [Configuration Files](config.md)

@@ -13,3 +13,5 @@
 * Decide on a better default font strategy
 * Double-check consistency on "..." in menu items and button labels
 * Make multiline commands honor async
+* Remove "command aborted due to error" message when not executing a custom command
+    * Maybe also remove it when it's the last command in the list?

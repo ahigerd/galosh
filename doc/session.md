@@ -34,23 +34,27 @@ for a response between commands. If you want to include a `|` character in a com
 
 ### Parsing
 
-The `/` button to the right of the command line toggles parsing mode. Parsing mode is on by default.
+The `/` button to the right of the command line toggles parsing mode.
 
-When parsing mode is turned off, **all** commands typed into the command line are sent to the MUD unmodified.
+When parsing mode is turned on (the default), Galosh processes the input for commands and line separators as described above.
+
+When parsing mode is turned off, all commands typed into the command line are sent to the MUD unmodified.
 
 ### Multiline editing
 
 The `…` button to the right of the command line opens the multiline editor. Any text in the command line will appear in the multiline editor, with
-`|` characters separating the text into lines as described above.
+`|` characters becoming separate lines as described above.
 
-Most common text editing commands work in the multiline editor. Pressing ↵ in the multiline editor will add a line.
+Most common text editing commands work in the multiline editor. Press ↵ in the multiline editor to add a line.
 
-Text typed into the multiline editor is not sent until you press Ctrl+↵ (or ⌘+↵ on macOS). THe multiline editor will close and all lines in it will
-be sent together, with no delay in between. If parsing mode is enabled, each line is separately processed for commands and speedwalk paths.
+Text typed into the multiline editor is not sent until you press Ctrl+↵ (or ⌘+↵ on macOS). The multiline editor will close and all lines in it will
+be sent together, with no delay between them. If parsing mode is enabled, each line is separately processed for commands and speedwalk paths.
 
 Press Escape to close the multiline editor without sending. The contents of the multiline editor will be preserved in the command line.
 
 ## Keyboard shortcuts
+
+In addition to standard text editing shortcuts, these keyboard shortcuts are supported in the main window:
 
 | Windows        | macOS       | Other          | Action |
 | -------------- | ----------- | -------------- | ------ |
@@ -61,3 +65,7 @@ Press Escape to close the multiline editor without sending. The contents of the 
 | Ctrl+P         | ⌘+P         | Ctrl+P         | Toggle command parsing |
 | Ctrl+↵         | ⌘+↵         | Ctrl+↵         | Open the multiline editor, or send a multiline command |
 | Esc            | Escape      | Esc            | Close the multiline editor |
+
+-----
+
+[Back: Profiles - Appearance Tab](profiles-appearance.md) &bull; [Next: Main Window - Menus](session-menus.md)
