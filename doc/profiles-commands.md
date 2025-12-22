@@ -37,17 +37,18 @@ itself will cause Galosh to hang._)
 
 ## Parameters
 
-Custom commands may accept parameters. In the command line, parameters are separated from the command name by spaces. Quotation marks (`"`) can be
-used to include a space inside a parameter.
+Custom commands can make use of parameters, which are given as additional words in the command line separated by spaces. Use quotation marks (`"`)
+to include spaces inside a parameter.
 
-Parameters will be substituted into all actions in the command. `%1` will be replaced by the first parameter, `%2` will be be replaced by the second
-parameter, and so on. If fewer than the specified number of parameters are given, any additional references will be removed.
+To use parameters, put placeholders in the actions. Like in triggers, placeholders are introduced with a `%` character. `%1` will be replaced by the
+first parameter, `%2` will be replaced by the second parameter, and so on.
 
-As an alternative to removing references to parameters, you may instead provide a default value using this format: `%{number:default}`. With this
-syntax, if a parameter is omitted, the default value will instead be substituted into the action.
+If fewer than the specified number of parameters are given, any additional placeholders will be removed. As an alternative, you may provide a default
+value for a placeholder that will be used instead. A placeholder with a default value is written as `%{<number>:<default value>}`. For example,
+`%{1:door}` will be replaced with the word "door" if no parameters are provided.
 
-Add a `+` to a parameter reference to additionally include all parameters following it. For example, `%2+` will capture the second parameter as well
-as any other parameters after it. `%*` is an alternative way to write `%1+`.
+Add a `+` to a placeholder to additionally include all parameters following it. This allows multiple words to be inserted without quotation marks.
+For example, `%2+` will capture the second parameter as well as any other parameters after it. `%*` is an alternative way to write `%1+`.
 
 ### Examples
 
@@ -55,21 +56,27 @@ as any other parameters after it. `%*` is an alternative way to write `%1+`.
 * Action: `say %1`
     * Input: `MyCommand`
     * Output: `say `
+        * _Placeholders for missing parameters are removed._
     * Input: `MyCommand Hello, world!`
     * Output: `say Hello,`
+        * _Spaces separate placeholders._
     * Input: `MyCommand "Hello, world!"`
     * Output: `say Hello, world!`
+        * _Quotation marks combine multiple words into a single parameter._
 * Command: `od`
 * Action: `unlock %{1:door}`
 * Action: `open %{1:door}`
     * Input: `od`
     * Output: `unlock door`, then `open door`
+        * _The default value is used if a parameter is not provided._
     * Input: `od gate`
     * Output: `unlock gate`, then `open gate`
+        * _The parameter will replace each placeholder._
 * Command: `tbold`
 * Action: `tell %1 *** %2+ ***`
     * Input: `tbold tspil Listen to me!`
     * Output: `tell tspil *** Listen to me! ***`
+        * _All parameters from the second onward are included in the output._
 
 -----
 

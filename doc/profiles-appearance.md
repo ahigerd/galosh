@@ -8,7 +8,7 @@ The Appearance tab in the Profiles dialog is used to change color schemes and fo
 
 Galosh includes a variety of color schemes by default. The default is Galosh Green.
 
-The other color schemes include:
+Other included color schemes are inspired by classic terminals past and present:
 
 * <ins>CGA Green / CGA Amber / CGA White</ins>: Color palettes designed to imitate the colors of the IBM 5153 CGA monitor. These palettes have a
     lower brightness for the intense colors and use a distinct brown color instead of dark yellow.
@@ -23,10 +23,10 @@ The other color schemes include:
 * <ins>CGA Light Mode / EGA Light Mode / Linux Light Mode / Mono Light Mode</ins>: Dark-on-light color palettes. Intense colors in these palettes are
     darker than the normal colors instead of brighter to make them more distinct against the light background.
 
-The color scheme selected here will only apply only to the current profile. This may be used to make different sessions visually distinct from each
-other when you are using multiple characters at once.
+The color scheme selected here will apply only to the current profile. This allows you to make different sessions visually distinct from each other
+when you are playing multiple characters at the same time.
 
-The "Edit Schemes..." button will allow you to create additional custom color schemes and to select a default color scheme for all profiles.
+Click "Edit Schemes..." to create additional custom color schemes and to select a default color scheme for all profiles.
 
 ## Edit Schemes...
 
@@ -40,7 +40,7 @@ If "Use this as the default color scheme" is checked, it will be used for any pr
 
 The "New Scheme" button will prompt you for a name and create a copy of the selected color scheme.
 
-If one of the default color schemes is selected, the "Revert Scheme" button will undo any changes to it and restore the original colors. This button
+If one of the standard color schemes is selected, the "Revert Scheme" button will undo any changes to it and restore the original colors. This button
 is replaced with "Delete Scheme" for custom color schemes. Any profiles using a color scheme that is deleted will fall back to the default color
 scheme.
 
@@ -48,8 +48,8 @@ scheme.
 
 Click the "Select Font" button to open a font chooser dialog. Galosh only supports monospaced fonts.
 
-Check the "Use this font for all profiles" box to replace the font selection in all profiles with the current font.
+Check "Use this font for all profiles" to replace the font selection in all profiles with the current font.
 
 -----
 
-[Back: Profiles - Commands Tab](profiles-commands.md) &bull; [Next: Profiles - Appearance Tab](profiles-appearance.md)
+[Back: Profiles - Commands Tab](profiles-commands.md) &bull; [Next: Main Window](session.md)

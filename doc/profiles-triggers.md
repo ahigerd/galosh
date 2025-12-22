@@ -15,9 +15,10 @@ Click the "New Trigger" button to create a new trigger. Click the "Delete Trigge
 
 The pattern of a trigger is text that, when received, will activate the associated command.
 
-Patterns are defined using [Perl-compatible regular expressions](https://www.regular-expressions.info/). This means you can usually just type in the
-exact text you wish to match, but certain characters will have special meanings. Full documentation of all features supported by PCRE is beyond the
-scope of this document, but common special characters include:
+Patterns are defined using [Perl-compatible regular expressions](https://www.regular-expressions.info/), often called "regexps" or "regexes" for
+short. For most cases, you can usually just type in the exact text you wish to match. However, certain characters have special meanings that can be
+used to match varying input text. Full documentation of all features supported by PCRE is beyond the scope of this document, but common special
+characters include:
 
 * `.`: Matches any character.
     * _For example, `a.c` will match `abc`, `adc`, and `a c`._
@@ -25,9 +26,9 @@ scope of this document, but common special characters include:
     * _For example, `ax*b` will match `ab`, `axb`, `axxb`, and so on._
 * `+`: Matches one or more copies of the previous character.
     * _For example, `ax+b` will match `axb` and `axxb`, but not `ab`._
-* `?`: Matches zero or one of the previous character.
+* `?`: Makes the previous character optional.
     * _For example, `ax?b` will match `ab` and `axb`, but not `axxb`._
-* `\`: Matches the next character exactly instead of treating it as special.
+* `\`: Matches the next character exactly instead of treating it as special. (This is also called "escaping" the character.)
     * _For example, `a\.c` will match `a.c`, but not `abc`._
 * `(`...`)`: Parentheses create a capturing group that can be used in the command. See below for more information.
     * _For example, `(.+) says` will match `Mukashi says` and `Tspil says`, capturing `Mukashi` and `Tspil` respectively._
@@ -45,8 +46,8 @@ for a response between commands. If you want to include a `|` character in a com
 
 ### Capturing groups
 
-Capturing groups specified in parentheses in the pattern can be used as substitutions in the command. The first capturing group will replace `%1` in
-the command, the second will replace `%2`, and so on.
+Capturing groups specified in parentheses in the pattern can be used as substitutions in the command. Use `%` and a number to create a placeholder.
+The first capturing group will replace `%1` in the command, the second will replace `%2`, and so on.
 
 For example:
 
