@@ -54,4 +54,4 @@ The buttons on the toolbar provide quick access to functions also available in t
 
 -----
 
-[Back: Main Window](session.md) &bull; [Up: Table of Contents](index.md) &bull; [Next: Character Stats Panel](session-stats.md)
+[Back: Main Window](session.md) &bull; [Up: Table of Contents](index.md) &bull; [Next: Dockable Panels](session-docks.md)
