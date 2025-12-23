@@ -2,8 +2,8 @@
 
 ![Screenshot of the Galosh main window](images/main-window.png)
 
-The Galosh main window provides a [menu bar](session-menus.md), a [tool bar](session-menus.md#toolbar), and dockable panels for a
-[mini-map](session-minimap.md), [character stats](session-stats.md), and a [room description](session-room.md).
+The Galosh main window provides a [menu bar](session-menus.md), a [tool bar](session-menus.md#toolbar), and [dockable panels](session-docks.md) for a
+mini-map, character stats, and a room description.
 
 These surround the central focus of the Galosh main window: the line-based terminal emulator. Galosh's terminal emulator supports VT100 / ANSI
 terminal control codes with 256-color and true-color extensions. The basic 16 colors of the terminal palette can be configured in the

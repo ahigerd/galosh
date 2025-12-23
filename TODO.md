@@ -19,3 +19,5 @@
 * Title bar doesn't clear after closing last session (and maybe other things?)
 * Error out speedwalk commands in offline mode
 * Add some kind of escape for `.`
+* Map explorer opens with the wrong zone selected in the dropdown
+* Prevent navigating into unmapped rooms in the explorer

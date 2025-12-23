@@ -18,7 +18,7 @@ The Galosh main window supports the following slash commands:
 * [/EXPLORE](commands/explore.md): Opens the map exploration window
 * [/HELP](commands/help.md): Shows information about a command
 * [/ROUTE](commands/route.md): Calculates the path to a specified room
-* [/SPEEDWALK](commands/speedwalk.md): Calculates the path to a specified room
+* [/SPEEDWALK](commands/speedwalk.md): Executes a speedwalk path
 * [/WAYPOINT](commands/waypoint.md): Adds, views, removes, or routes to waypoints
 
 -----

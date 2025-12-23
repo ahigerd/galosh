@@ -47,7 +47,8 @@ By default, the Room Description panel is docked to the top side of the main win
 The Mini-Map panel displays your current location on the map.
 
 Rooms in the MUD are shown as squares, and exits are shown as lines connecting rooms. The current room is highlighted with an outline. The appearance
-of the mini-map can be customized in the [Map Settings dialog](map.md#map-settings).
+of the mini-map can be customized in the [Map Settings dialog](map.md#map-settings). For more information about interpreting the mini-map, see the
+[Map Explorer](map-explorer.md) page.
 
 Hover the mouse cursor over a room to show its name and numeric ID. Click the `+` and `-` buttons to zoom in and out, respectively.
 
