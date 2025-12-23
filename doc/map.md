@@ -54,9 +54,9 @@ GMCP is the most reliable source of map data. While Galosh will attempt to const
 to correct errors in the map data on MUDs that do not use GMCP.
 
 The automapper assumes that information about the map does not change after it is collected. This allows it to remember secret doors once they are
-disoovered, but it also means that it may become confused if changes occur. Zones with in-game effects that cause rooms to move or exits to connect
+discovered, but it also means that it may become confused if changes occur. Zones with in-game effects that cause rooms to move or exits to connect
 to different places are not suitable for automatic mapping.
 
 -----
 
-[Back: Map Explorer - Commands Overview](map-commands.md) &bull; [Up: Table of Contents](index.md) &bull; [Next: Map Settings](map-settings.md)
+[Back: Map Explorer - Commands Overview](map-commands.md) &bull; [Up: Table of Contents](index.md) &bull; [Next: Waypoints](map-waypoints.md)

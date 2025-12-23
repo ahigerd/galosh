@@ -32,8 +32,8 @@ any missing information will be omitted.
 
 The room description is displayed with minimal formatting to make as much text visible as possible.
 
-The Exits box shows which rooms are known to be accessible from the current room. If an exit has a known door, it will be labeled as closed or
-locked, and the name of the door will be displayed if it is available. Double-click on one of the rooms displayed in it to open the
+The Exits box shows which rooms are known to be accessible from the current room. If an exit has a known door, the door's status (closed or locked)
+will be included, as well as the door's name if it is available. Double-click on one of the rooms displayed in it to open the
 [Map Explorer window](map-explorer.md).
 
 Room information can be collected from descriptions displayed on screen, from `room` package data sent using the GMCP protocol, and from map data

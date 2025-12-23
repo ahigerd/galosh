@@ -6,7 +6,7 @@ _This page documents the menu bar in the Map Explorer. For the menu bar in the m
 
 ### Map
 
-* <ins>Waypoints...</ins>: Opens the [Waypoints dialog](map-waypoints.md) to manage the waypoints for the current server.
+* <ins>Waypoints...</ins>: Opens the [Waypoints dialog](map-waypoints.md#waypoints-dialog) to manage the waypoints for the current server.
 * <ins>Settings...</ins>: Opens the [Map Settings dialog](map-settings.md) to manage mapping settings.
 * <ins>Close</ins>: Closes the Map Explorer window.
 

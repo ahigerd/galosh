@@ -53,8 +53,8 @@ This documentation applies to v0.1.0.
         * [/WAYPOINT](commands/waypoint.md): Adds, views, removes, or routes to waypoints
         * [/ZONES](commands/zones.md): List known zones, or show information about a zone
 * [Mapping](map.md)
-    * [Map Settings](map-settings.md)
     * [Waypoints](map-waypoints.md)
+    * [Map Settings](map-settings.md)
 * [Item Database](itemdb.md)
     * [Item Search](itemdb.md#item-search)
     * [Equipment Sets](itemdb-sets.md)

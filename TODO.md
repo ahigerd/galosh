@@ -2,6 +2,7 @@
 
 * Commands tab doesn't seem to have proper dirty detection
 * Validate that commands don't start with `/` or `.`
+* Validate that waypoint names don't contain spaces
 * Fix escaping in custom command args, remove quotes
 * Make parsing multiline input use the command queue
 * "Revert Scheme" button doesn't update when creating a new scheme
@@ -19,6 +20,9 @@
 * Remove "command aborted due to error" message when not executing a custom command
     * Maybe also remove it when it's the last command in the list?
 * Error out speedwalk commands in offline mode instead of timing out
+* Show message in scrollback if map updated on connect
+* Bind QKeySequence::HelpContents to show help
+* Add vnum to `/WAY` output
 
 ## Incomplete features
 
@@ -34,10 +38,13 @@
 * Prevent navigating into unmapped rooms in the explorer
 * Automap disable prefs (per zone, per server, command toggle)
 * Expose Mudlet import in UI
-    * Show message in scrollback if map updated on connect
 * Capture room descriptions from GMCP when present
 * Disable automapping when room ID is -1
 * Door rendering in mapper
 * Option to clear recorded room information to recapture
 * Manual map editing
 * Feature to highlight unexplored areas?
+* Fullscreen mode?
+* Right-click menu in scrollback
+* Replace newlines with `|` when pasting in command line (except at ends of string)
+* Support using waypoints with `.`
