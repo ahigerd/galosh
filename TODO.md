@@ -21,3 +21,8 @@
 * Add some kind of escape for `.`
 * Map explorer opens with the wrong zone selected in the dropdown
 * Prevent navigating into unmapped rooms in the explorer
+* Automap disable prefs (per zone, per server, command toggle)
+* Expose Mudlet import in UI
+    * Show message in scrollback if map updated on connect
+* Capture room descriptions from GMCP when present
+* Disable automapping when room ID is -1

@@ -27,7 +27,7 @@ This menu is labeled **Galosh** on macOS.
 ### Tools
 
 * <ins>Profiles...</ins>: Opens the [Profiles dialog](profiles.md) to change settings for the current session.
-* <ins>Map Settings...</ins>: Opens the [Map Settings dialog](map.md#map-settings) to change mapping and routing options.
+* <ins>Map Settings...</ins>: Opens the [Map Settings dialog](map-settings.md) to change mapping and routing options.
 * <ins>Enable Parsing</ins>: Toggles [parsing mode](session.md#parsing) on or off.
 * <ins>Open Configuration Folder...</ins>: Opens the folder containing Galosh's [configuration files](config.md).
 

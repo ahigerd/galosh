@@ -53,13 +53,17 @@ This documentation applies to v0.1.0.
         * [/WAYPOINT](commands/waypoint.md): Adds, views, removes, or routes to waypoints
         * [/ZONES](commands/zones.md): List known zones, or show information about a zone
 * [Mapping](map.md)
-    * [Map Settings](map.md#map-settings)
+    * [Map Settings](map-settings.md)
     * [Waypoints](map-waypoints.md)
 * [Item Database](itemdb.md)
     * [Item Search](itemdb.md#item-search)
     * [Equipment Sets](itemdb-sets.md)
 * Technical Information
     * [Configuration Files](config.md)
+        * [Galosh.conf](config-galosh.md)
+        * [Profiles](config-profiles.md)
+        * [.galosh_map files](config-map.md)
+        * [.galosh_items files](config-items.md)
     * [Terminal Emulation](terminal.md)
 
 ## License
