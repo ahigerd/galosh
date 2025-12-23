@@ -343,11 +343,11 @@ void MapViewer::setSession(GaloshSession* sess)
     map = session->map();
     mapLayout = map->layout();
     view->setMap(mapLayout);
-    setCurrentRoom();
   } else {
     map = nullptr;
     mapLayout = nullptr;
     view->setMap(nullptr);
   }
   reload();
+  setCurrentRoom();
 }

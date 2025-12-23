@@ -81,7 +81,7 @@ void MapManager::loadMap(const QString& mapFileName)
     SettingsGroup sg(mapFile, " RoomTypes");
     roomCosts.clear();
     roomColors.clear();
-    for (const QString& roomType : mapFile->childKeys()) {
+    for (const QString& roomType : mapFile->childGroups()) {
       SettingsGroup rt(mapFile, roomType);
       roomCosts[roomType] = qMax(mapFile->value("cost").toInt(), 1);
       roomColors[roomType] = QColor(mapFile->value("color").toString());
