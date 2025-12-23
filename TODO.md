@@ -18,3 +18,4 @@
 * /ECHO command
 * Title bar doesn't clear after closing last session (and maybe other things?)
 * Error out speedwalk commands in offline mode
+* Add some kind of escape for `.`

@@ -25,7 +25,7 @@ This documentation applies to v0.1.0.
     * [SSL / TLS](session-tls.md)
     * [Offline Mode](session-offline.md)
     * [Commands](session-commands.md)
-        * [Speedwalking](commands/speedwalking.md)
+        * [Speedwalking](commands/speedwalk.md)
         * [/DC](commands/dc.md): Disconnects from the game
         * [/ECHO](commands/echo.md): Displays a line of text
         * [/EQUIP](commands/equip.md): Switches equipment sets, or captures a snapshot of your equipment
@@ -39,7 +39,7 @@ This documentation applies to v0.1.0.
         * [View](map-menus.md#view)
         * [Help](map-menus.md#help)
     * [Commands](map-commands.md)
-        * [Speedwalking](commands/speedwalking.md)
+        * [Speedwalking](commands/speedwalk.md)
         * [/BACK](commands/back.md): Returns to the previous room
         * [/GOTO](commands/goto.md): Teleports to a room by numeric ID
         * [/HELP](commands/help.md): Shows information about a command
@@ -49,7 +49,7 @@ This documentation applies to v0.1.0.
         * [/ROUTE](commands/route.md): Calculates the path to a specified room
         * [/SEARCH](commands/search.md): Search for rooms by name and description
         * [/SIMPLIFY](commands/simplify.md): Removes backtracking from exploration history
-        * [/SPEED](commands/speedwalking.md#speed): Shows speedwalking directions for the exploration history
+        * [/SPEED](commands/speedwalk.md#speed): Shows speedwalking directions for the exploration history
         * [/WAYPOINT](commands/waypoint.md): Adds, views, removes, or routes to waypoints
         * [/ZONES](commands/zones.md): List known zones, or show information about a zone
 * [Mapping](map.md)

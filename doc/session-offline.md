@@ -9,8 +9,9 @@ A session in offline mode can be identified by the ![red](../res/red.png) red ic
 
 In offline mode, most Galosh features continue to work:
 
-* [Triggers](profiles-triggers.md) and [custom commands](profiles-commands.md) can be tested offline, as long as they don't require a response from
-   the MUD. (_Tip: Use the [/ECHO](commands/echo.md) command to test triggers._)
+* [Triggers](profiles-triggers.md) and [custom commands](profiles-commands.md) can be tested offline, as long as they do not require a response from
+   the MUD.
+   * _Tip: Use the [/ECHO](commands/echo.md) command to test triggers._
 * [Appearance](profiles-appearance.md) settings will be applied to open sessions, whether online or offline.
 * The [Map Explorer](map-explorer.md) always uses recorded automap data, even in online mode.
 * [Waypoints](map-waypoints.md) can be viewed and modified.
@@ -20,17 +21,17 @@ In offline mode, most Galosh features continue to work:
 
 However, features that require communication with the MUD will not work:
 
-* Text entered in the command line will be displayed on screen but will otherwise have no effect.
+* Text entered in the command line will be displayed as usual but will otherwise have no effect.
 * Speedwalking in the main window will display an error unless done with `/SPEEDWALK -f`.
 * The `/EQUIPMENT -u` command cannot be used to collect updated equipment information.
-* The [dockable panels](session-docs.md) will not be updated.
+* The [dockable panels](session-docks.md) will not be updated.
 * The "View MSSP Info..." menu item and the MSSP button in the toolbar will show the last-known status collected from the server.
     * If the session was opened in offline mode, the MSSP button will be unavailable.
     * The [MSSP button](profiles-server.md#mssp) in the Profiles dialog can be used to make a new connection to the server to collect up-to-date MSSP
       information.
 
-If a valid hostname and port or a valid command line are configured for the associated profile, an offline session can become an online session using
-the "Reconnect" button or menu item.
+An offline session can become an online session by using the "Reconnect" button or menu item, if the associated profile has a valid hostname and port
+or a valid command line.
 
 -----
 
