@@ -44,7 +44,8 @@ data, so any missing information will be omitted.
 
 The room description is displayed with minimal formatting to make as much text visible as possible.
 
-The Exits box shows which rooms are known to be accessible from the current room. Double-click a room to move to it.
+The Exits box shows which rooms are known to be accessible from the current room. If an exit has a known door, it will be labeled as closed or
+locked, and the name of the door will be displayed if it is available. Double-click a room to move to it.
 
 ## Command Line
 
