@@ -10,12 +10,12 @@ For information about how Galosh collects map information, see the [Mapping page
 
 ## Map
 
-The dropdown at the top of the map view allows you to select a zone to explore. Click the `+` and `-` buttons to zoom in and out, respectively.
+The dropdown at the top of the map view allows you to select a zone to explore. Click the `+` and `-` buttons to zoom in and out.
 
 Each mapped room in the selected zone is represented as a square:
 
-* The number inside is the last two digits of the room's numeric ID.
-* The current room is highlighted with a light blue outline.
+* The number inside shows the last two digits of the room's numeric ID.
+* A light blue outline highlights the current room.
 * The color of the square indicates the room's terrain type. Colors and available terrain types can be managed in the
     [Map Settings dialog](map-settings.md).
 * Lines connecting squares represent exits between rooms.
@@ -37,7 +37,7 @@ Double-click a zone connection to open that zone's map in the map explorer.
 
 ## Room Description
 
-The Room Description panel displays information about the current room. It can be resized by dragging the line between the map and the room name.
+The Room Description panel displays information about the current room. It can be resized by dragging the line dividing the map and the room name.
 
 The top of the panel displays the current zone, the name of the current room, the numeric room ID, and the terrain type. Not all MUDs provide this
 data, so any missing information will be omitted.
@@ -53,8 +53,8 @@ The Map Explorer has a command line similar to the one in the main window.
 You can navigate through the map using commands like those used in most MUDs, such as `n`, `e`, `s`, or `w` (or `north`, `east`, `south`, or `west`).
 The command line will flash red if you try to use an exit that is not found in the map.
 
-There are also a variety of commands that can be used to search the map for various features or to calculate routes between locations. The `/` before
-slash commands may be omitted in the Map Explorer. See the [Map Explorer - Commands](map-commands.md) page for information about the commands
+There are also a variety of commands that can be used to search the map for various features or to calculate routes between locations. The `/` prefix
+for slash commands is optional in the Map Explorer. See the [Map Explorer - Commands](map-commands.md) page for information about the commands
 recognized by the Map Explorer. Messages or errors returned by commands will be displayed below the room description.
 
 Navigating the map using the command line or the exits in the Room Description panel will record your steps in the exploration history. Use the
