@@ -1,4 +1,4 @@
-## Bugs / incomplete implementation
+## Bugs / unfinished
 
 * Commands tab doesn't seem to have proper dirty detection
 * Validate that commands don't start with `/` or `.`
@@ -9,11 +9,13 @@
 * Decide on a better default font strategy
 * Title bar doesn't clear after closing last session (and maybe other things?)
 * Map explorer opens with the wrong zone selected in the dropdown
+* Map colors/costs might be getting clobbered
 
 ## Polish
 
 * Add tooltips to all icons
 * Make Triggers and Commands UIs consistent (probably use Triggers design?)
+    * And maybe also Waypoints?
 * Use new doc icon instead of new folder icon for New Profile
 * Check for consistency in "remove" vs "delete"
 * Double-check consistency on "..." in menu items and button labels
@@ -23,6 +25,10 @@
 * Show message in scrollback if map updated on connect
 * Bind QKeySequence::HelpContents to show help
 * Add vnum to `/WAY` output
+* Use `\t` for table formatting in in-app help text
+    * Detect display width for wordwrapping?
+* Some table views use bold headers, others don't
+* Decide on "room type" vs "terrain type"
 
 ## Incomplete features
 
@@ -30,6 +36,9 @@
 * Detect recursive commands
 * Make multiline commands honor async
 * Add some kind of escape for `.`
+* Double-click minimap to open map explorer
+* Add right-click menu in mini-map/map explorer
+* Check user-defined terrain types when heuristically coloring non-GMCP rooms
 
 ## New features
 
@@ -48,3 +57,4 @@
 * Right-click menu in scrollback
 * Replace newlines with `|` when pasting in command line (except at ends of string)
 * Support using waypoints with `.`
+* Maybe option to make `.` fast by default?
