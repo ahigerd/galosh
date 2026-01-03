@@ -50,7 +50,7 @@ CommandResult EquipmentCommand::handleInvoke(const QStringList& args, const KWAr
         return session->switchEquipment(set, kwargs.value("-c"));
       }
     }
-    showError(QStringLiteral("No item set \"%1\" found.").arg(arg));
+    showError(QStringLiteral("No equipment set \"%1\" found.").arg(arg));
     return CommandResult::fail();
   }
   // unreachable

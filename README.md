@@ -47,6 +47,8 @@ descriptions, and it can keep more information about the current room visible at
 * Split-screen
 * Prebuilt releases for macOS
 * Unicode support on Windows
+* Better management of server-level profile settings
+* Better accessibility for user interface
 
 ## Getting Galosh
 
@@ -57,7 +59,7 @@ extract `galosh.exe` to any path you like. No installation required!
 
 ### Build from source
 
-Galosh requires Qt 5.15 or higher, including Qt 6.x.
+Galosh requires Qt 5.15 or newer, including Qt 6.x.
 
 * `git clone https://github.com/ahigerd/galosh.git`
 * Open the `galosh` folder
@@ -74,6 +76,10 @@ Galosh requires Qt 5.15 or higher, including Qt 6.x.
 2. Fill in a profile name, server hostname, and server port number. Check "Use SSL/TLS" if the server supports secure connections.
 3. Optionally, fill in a username, password, and login/password prompts to automatically log in after connecting.
 4. Click Connect.
+
+### Documentation
+
+Documentation for Galosh can be found [in the doc/ folder](doc/index.md).
 
 ## License
 

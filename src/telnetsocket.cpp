@@ -138,6 +138,9 @@ void TelnetSocket::connectToHost(const QString& host, quint16 port, bool tls)
 #ifdef QT_NO_SSL
     emit errorOccurred(QAbstractSocket::SslHandshakeFailedError);
 #else
+    QSslConfiguration cfg = tcp->sslConfiguration();
+    cfg.setOcspStaplingEnabled(true);
+    tcp->setSslConfiguration(cfg);
     tcp->connectToHostEncrypted(host, port);
 #endif
   } else {

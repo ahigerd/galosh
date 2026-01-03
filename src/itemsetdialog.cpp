@@ -22,9 +22,9 @@ ItemSetDialog::ItemSetDialog(UserProfile* profile, bool newSet, QWidget* parent)
 : QDialog(parent), profile(profile), db(&profile->serverProfile->itemDB), equipButton(nullptr), newSetMode(newSet)
 {
   if (newSet) {
-    setWindowTitle("New Item Set");
+    setWindowTitle("New Equipment Set");
   } else {
-    setWindowTitle("Item Sets");
+    setWindowTitle("Equipment Sets");
   }
 
   QFormLayout* layout = new QFormLayout(this);
@@ -42,7 +42,7 @@ ItemSetDialog::ItemSetDialog(UserProfile* profile, bool newSet, QWidget* parent)
     QObject::connect(bSet, SIGNAL(clicked()), this, SLOT(setMenu()));
     lSet->addWidget(bSet, 0);
 
-    layout->addRow("Item set:", lSet);
+    layout->addRow("Equipment set:", lSet);
     QObject::connect(cSetName, SIGNAL(currentTextChanged(QString)), this, SLOT(loadNamedSet(QString)));
   }
 
@@ -171,10 +171,10 @@ void ItemSetDialog::done(int r)
 bool ItemSetDialog::validateSetName(const QString& name)
 {
   if (name.isEmpty()) {
-    QMessageBox::critical(this, "Galosh", "Item set name is required.");
+    QMessageBox::critical(this, "Galosh", "Equipment set name is required.");
     return false;
   } else if (name.contains(" ")) {
-    QMessageBox::critical(this, "Galosh", "Item set name should not contain spaces.");
+    QMessageBox::critical(this, "Galosh", "Equipment set name should not contain spaces.");
     return false;
   } else {
     return true;
@@ -188,7 +188,7 @@ bool ItemSetDialog::save()
     return false;
   }
   if (newSetMode && cSetName->findText(name) >= 0) {
-    int response = QMessageBox::question(this, "Galosh", QStringLiteral("Do you want to replace the item set \"%1\"?").arg(name), QMessageBox::Ok | QMessageBox::Cancel);
+    int response = QMessageBox::question(this, "Galosh", QStringLiteral("Do you want to replace the equipment set \"%1\"?").arg(name), QMessageBox::Ok | QMessageBox::Cancel);
     if (response != QMessageBox::Ok) {
       return false;
     }
@@ -226,8 +226,8 @@ void ItemSetDialog::setMenu()
     bool ok = false;
     QString newName = QInputDialog::getText(
       this,
-      rename ? "Rename Item Set" : "Create New Item Set",
-      "Name for item set:",
+      rename ? "Rename Equipment Set" : "Create New Equipment Set",
+      "Name for equipment set:",
       QLineEdit::Normal,
       rename ? cSetName->currentText() : "",
       &ok
@@ -238,7 +238,7 @@ void ItemSetDialog::setMenu()
         cSetName->setItemText(cSetName->currentIndex(), newName);
       } else {
         if (cSetName->findText(newName) >= 0) {
-          QMessageBox::critical(this, "Galosh", QStringLiteral("An item set with the name \"%1\" already exists.").arg(newName));
+          QMessageBox::critical(this, "Galosh", QStringLiteral("An equipment set with the name \"%1\" already exists.").arg(newName));
           return;
         }
         cSetName->addItem(newName);
