@@ -8,7 +8,6 @@
 * "Revert Scheme" button doesn't update when creating a new scheme
 * Decide on a better default font strategy
 * Title bar doesn't clear after closing last session (and maybe other things?)
-* Map explorer opens with the wrong zone selected in the dropdown
 * Map colors/costs might be getting clobbered
 
 ## Polish
@@ -24,6 +23,7 @@
 * Error out speedwalk commands in offline mode instead of timing out
 * Show message in scrollback if map updated on connect
 * Bind QKeySequence::HelpContents to show help
+    * Maybe have a help browser in addition to text-based help?
 * Add vnum to `/WAY` output
 * Use `\t` for table formatting in in-app help text
     * Detect display width for wordwrapping?
@@ -58,3 +58,4 @@
 * Replace newlines with `|` when pasting in command line (except at ends of string)
 * Support using waypoints with `.`
 * Maybe option to make `.` fast by default?
+* Accessibility
