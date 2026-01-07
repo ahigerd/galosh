@@ -31,6 +31,7 @@ public slots:
 
 private slots:
   void onReturnPressed();
+  void onTextChanged(const QString& text);
 
 protected:
   bool focusNextPrevChild(bool) override;

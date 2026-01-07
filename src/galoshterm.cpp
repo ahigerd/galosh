@@ -155,7 +155,11 @@ void GaloshTerm::openMultiline(bool on)
     setFocusProxy(multiline);
     multiline->setFocus();
   } else {
-    QString content = multiline->toPlainText().replace("|", "\\|").replace("\n", "|");
+    QString content = multiline->toPlainText().replace("|", "\\|");
+    while (content.endsWith("\n")) {
+      content.chop(1);
+    }
+    content.replace("\n", "|");
     line->setText(content);
     lineStack->setCurrentWidget(line);
     setFocusProxy(line);
@@ -322,7 +326,7 @@ bool GaloshTerm::isParsing() const
 
 void GaloshTerm::setParsing(bool on)
 {
-  if (on != bParse->isChecked()) {
+  if (on != line->isParsing()) {
     line->setParsing(on);
     bParse->setChecked(on);
     emit parsingChanged(on);

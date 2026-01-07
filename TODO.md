@@ -7,7 +7,6 @@
 * Decide on a better default font strategy
 * Title bar doesn't clear after closing last session (and maybe other things?)
 * Map colors/costs might be getting clobbered
-* Parsing button broke (menu item still works)
 * Apply button in profiles window doesn't clear dirty flag
 
 ## Polish
@@ -18,9 +17,6 @@
 * Use new doc icon instead of new folder icon for New Profile
 * Check for consistency in "remove" vs "delete"
 * Double-check consistency on "..." in menu items and button labels
-* Remove "command aborted due to error" message when not executing a custom command
-    * Maybe also remove it when it's the last command in the list?
-* Error out speedwalk commands in offline mode instead of timing out
 * Show message in scrollback if map updated on connect
 * Bind QKeySequence::HelpContents to show help
     * Maybe have a help browser in addition to text-based help?
@@ -56,7 +52,6 @@
 * Feature to highlight unexplored areas?
 * Fullscreen mode?
 * Right-click menu in scrollback
-* Replace newlines with `|` when pasting in command line (except at ends of string)
 * Support using waypoints with `.`
 * Maybe option to make `.` fast by default?
 * Accessibility

@@ -45,6 +45,7 @@ CommandLine::CommandLine(QWidget* parent)
   completer->setWidget(this);
 
   QObject::connect(this, SIGNAL(returnPressed()), this, SLOT(onReturnPressed()));
+  QObject::connect(this, SIGNAL(textChanged(QString)), this, SLOT(onTextChanged(QString)));
 }
 
 bool CommandLine::focusNextPrevChild(bool)
@@ -262,4 +263,16 @@ bool CommandLine::isParsing() const
 void CommandLine::setParsing(bool on)
 {
   parsing = on;
+}
+
+void CommandLine::onTextChanged(const QString& oldText)
+{
+  QString newText = QString(oldText).replace("\r", "");
+  while (newText.endsWith("\n")) {
+    newText.chop(1);
+  }
+  newText.replace("\n", "|");
+  if (oldText != newText) {
+    setText(newText);
+  }
 }
