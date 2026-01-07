@@ -3,12 +3,12 @@
 * Commands tab doesn't seem to have proper dirty detection
 * Validate that commands don't start with `/` or `.`
 * Validate that waypoint names don't contain spaces
-* Fix escaping in custom command args, remove quotes
-* Make parsing multiline input use the command queue
 * "Revert Scheme" button doesn't update when creating a new scheme
 * Decide on a better default font strategy
 * Title bar doesn't clear after closing last session (and maybe other things?)
 * Map colors/costs might be getting clobbered
+* Parsing button broke (menu item still works)
+* Apply button in profiles window doesn't clear dirty flag
 
 ## Polish
 
@@ -29,16 +29,17 @@
     * Detect display width for wordwrapping?
 * Some table views use bold headers, others don't
 * Decide on "room type" vs "terrain type"
+* Verify button icons on other platforms (or create custom icons for everything)
 
 ## Incomplete features
 
 * Custom command arg validation options? (or autodetect?)
 * Detect recursive commands
-* Make multiline commands honor async
-* Add some kind of escape for `.`
+* Customizable speedwalk prefix
 * Double-click minimap to open map explorer
 * Add right-click menu in mini-map/map explorer
 * Check user-defined terrain types when heuristically coloring non-GMCP rooms
+* Expose some map commands to main window
 
 ## New features
 
@@ -59,3 +60,6 @@
 * Support using waypoints with `.`
 * Maybe option to make `.` fast by default?
 * Accessibility
+* "Duplicate Profile" button
+* Custom commands in map editor
+* Avoid individual rooms for routing

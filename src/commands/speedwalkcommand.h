@@ -18,8 +18,6 @@ public:
 
   virtual QString helpMessage(bool brief) const override;
 
-  virtual bool isAsync() const { return true; }
-
 signals:
   void speedwalk(const QStringList& steps, bool fast);
 

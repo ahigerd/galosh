@@ -10,6 +10,7 @@
 #include "mapviewer.h"
 #include "mapoptions.h"
 #include "algorithms.h"
+#include "commands/sendcommand.h"
 #include <QDesktopServices>
 #include <QApplication>
 #include <QFontDatabase>
@@ -366,6 +367,7 @@ void GaloshWindow::connectToProfile(const QString& path, bool online)
     UserProfile* profile = new UserProfile(path);
     // Session takes ownership of profile
     sess = new GaloshSession(profile, this);
+    sess->addCommand(new SendCommand(this));
     sessions[sess->term] = sess;
     tabs->addTab(sess->term, sess->name());
     tabs->setCurrentWidget(sess->term);
@@ -378,7 +380,6 @@ void GaloshWindow::connectToProfile(const QString& path, bool online)
     QObject::connect(sess, SIGNAL(openProfileDialog(ProfileDialog::Tab)), this, SLOT(openProfileDialog(ProfileDialog::Tab)));
     QObject::connect(sess, SIGNAL(destroyed(QObject*)), this, SLOT(sessionDestroyed(QObject*)));
     QObject::connect(sess->term, SIGNAL(destroyed(QObject*)), this, SLOT(sessionDestroyed(QObject*)));
-    QObject::connect(sess->term, SIGNAL(commandEnteredForProfile(QString,QString)), this, SLOT(sendCommandToProfile(QString,QString)));
     QObject::connect(sess->term, SIGNAL(parsingChanged(bool)), this, SLOT(toggleParsing(bool)));
 
     updateActions();
@@ -401,7 +402,7 @@ void GaloshWindow::reloadProfile(const QString& path)
   }
 }
 
-void GaloshWindow::sendCommandToProfile(const QString& profile, const QString& command)
+bool GaloshWindow::sendCommandToProfile(const QString& profile, const QString& command)
 {
   GaloshSession* origin = sessions.value(qobject_cast<QWidget*>(sender()));
   if (!origin) {
@@ -416,13 +417,14 @@ void GaloshWindow::sendCommandToProfile(const QString& profile, const QString& c
     if (name.toLower().startsWith(prefix)) {
       origin->term->writeColorLine("100;93", QStringLiteral("[:%1> %2").arg(name).arg(command).toUtf8());
       sess->term->processCommand(command);
-      return;
+      return true;
     }
   }
   if (origin) {
     origin->term->writeColorLine("100;93", QStringLiteral("[:%1> %2").arg(profile).arg(command).toUtf8());
     origin->term->showError(QStringLiteral("Could not find window for profile \"%1\".").arg(profile));
   }
+  return false;
 }
 
 bool GaloshWindow::confirmClose(GaloshSession* sess)

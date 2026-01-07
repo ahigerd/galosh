@@ -17,7 +17,7 @@ public:
 signals:
   void statusUpdated(const QString& message);
   void toggleMultiline(bool on);
-  void commandEntered(const QString& command, bool echo = true);
+  void commandsEntered(const QStringList& commands);
 
 protected:
   void keyPressEvent(QKeyEvent* event);

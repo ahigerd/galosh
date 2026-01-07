@@ -38,7 +38,7 @@ public slots:
   void exploreMap(int roomId = -1, const QString& movement = QString());
   void openItemDatabase();
   void openItemSets();
-  void sendCommandToProfile(const QString& profile, const QString& command);
+  bool sendCommandToProfile(const QString& profile, const QString& command);
   void about();
 
 protected:

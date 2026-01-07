@@ -4,7 +4,7 @@
 #include "explorehistory.h"
 
 WaypointCommand::WaypointCommand(MapManager* map, ExploreHistory* history)
-: QObject(nullptr), TextCommand("WAYPOINT"), map(map), history(history)
+: TextCommand("WAYPOINT"), map(map), history(history)
 {
   supportedKwargs["-a"] = true;
   supportedKwargs["-d"] = true;

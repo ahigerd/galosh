@@ -23,6 +23,7 @@ public:
 
   quint64 callbackId() const;
   bool isFinished() const;
+  bool wasAborted() const;
   bool hasError() const;
 
   void setCallback(Callback callback);
@@ -38,6 +39,7 @@ public:
   }
 
   void done(bool error);
+  void abort();
   void reset();
 
 private:
@@ -50,6 +52,7 @@ private:
     Callback callback;
     bool finished;
     bool error;
+    bool aborted;
   };
 
   QExplicitlySharedDataPointer<Impl> d;

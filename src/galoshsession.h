@@ -67,24 +67,27 @@ public slots:
   void help();
 #endif
 
+protected:
+  // return true if the command matches a custom command
+  virtual bool isCustomCommand(const QString& command) const override;
+  virtual bool commandFilter(const QString& command, const QStringList& args) override;
+
 private slots:
+  void processCommand(const QString& command, bool echo);
+  void processTrigger(const QString& command, bool echo);
+  void processCommands(const QStringList& commands);
   void showCommandMessage(TextCommand* command, const QString& message, MessageType msgType) override;
-  void speedwalk(const QStringList& steps);
-  void abortSpeedwalk();
   void setLastRoom(int roomId);
   void gmcpEvent(const QString& key, const QVariant& value);
   void onLineReceived(const QString& line);
   void setUnread();
   void serverCertificate(const QMap<QString, QString>& info, bool selfSigned, bool nameMismatch);
   void connectionChanged();
-  void processSlashCommand(const QString& command, const QStringList& args);
-  void processCommandQueue(const CommandResult* result = nullptr);
   void stepTimeout();
 
 private:
   void speedwalkStep(const QString& step, CommandResult& res, bool fast);
   void changeEquipment(const ItemDatabase::EquipmentSet& current, const QString& setName, const QString& container);
-  bool customCommandFilter(const QString& command);
 
   AutoMapper autoMap;
   ExploreHistory exploreHistory;

@@ -7,7 +7,9 @@
 #include "itemsetdialog.h"
 #include "itemsearchdialog.h"
 #include "itemsetdialog.h"
+#include "commandline.h"
 #include "commands/textcommand.h"
+#include "commands/customcommand.h"
 #include "commands/equipmentcommand.h"
 #include "commands/identifycommand.h"
 #include "commands/slotcommand.h"
@@ -23,13 +25,13 @@ GaloshSession::GaloshSession(UserProfile* profile, QWidget* parent)
 : QObject(parent), TextCommandProcessor("/"), profile(profile), autoMap(map()), exploreHistory(map()), unread(false)
 {
   term = new GaloshTerm(parent);
-  term->setCommandFilter([this](const QString& command) { return customCommandFilter(command); });
   QObject::connect(term, SIGNAL(lineReceived(QString)), &autoMap, SLOT(processLine(QString)));
   QObject::connect(term, SIGNAL(lineReceived(QString)), itemDB(), SLOT(processLine(QString)));
   QObject::connect(term, SIGNAL(lineReceived(QString)), triggers(), SLOT(processLine(QString)), Qt::QueuedConnection);
   QObject::connect(term, SIGNAL(lineReceived(QString)), this, SLOT(onLineReceived(QString)));
   QObject::connect(term, SIGNAL(commandEntered(QString, bool)), &autoMap, SLOT(commandEntered(QString, bool)), Qt::QueuedConnection);
-  QObject::connect(term, SIGNAL(speedwalk(QStringList)), this, SLOT(speedwalk(QStringList)));
+  QObject::connect(term, SIGNAL(commandEntered(QString, bool)), this, SLOT(processCommand(QString, bool)));
+  QObject::connect(term, SIGNAL(commandsEntered(QStringList)), this, SLOT(processCommands(QStringList)));
 
   QObject::connect(term->socket(), SIGNAL(connected()), this, SIGNAL(statusUpdated()));
   QObject::connect(term->socket(), SIGNAL(disconnected()), this, SIGNAL(statusUpdated()));
@@ -43,21 +45,16 @@ GaloshSession::GaloshSession(UserProfile* profile, QWidget* parent)
 
   infoModel = new InfoModel(this);
 
+  addCommand(new CustomCommand(profile));
   addCommand(new IdentifyCommand(&profile->serverProfile->itemDB));
   addCommand(new EquipmentCommand(this));
   addCommand(new SpeedwalkCommand(map(), &exploreHistory, [this](const QString& step, CommandResult& res, bool fast){ speedwalkStep(step, res, fast); }, false));
-  addCommand(new SlotCommand(".", this, SLOT(abortSpeedwalk()), "Aborts a speedwalk path in progress"));
   addCommand(new SlotCommand("DC", term->socket(), SLOT(disconnectFromHost()), "Disconnects from the game"))->addKeyword("DISCONNECT");
   addCommand(new SlotCommand("EXPLORE", this, SLOT(exploreMap()), "Opens the map exploration window"))->addKeyword("MAP");
+  addCommand(new RouteCommand(map(), &exploreHistory));
+  addCommand(new WaypointCommand(map(), &exploreHistory));
 
-  RouteCommand* routeCommand = addCommand(new RouteCommand(map(), &exploreHistory));
-  QObject::connect(routeCommand, SIGNAL(speedwalk(QStringList)), this, SLOT(speedwalk(QStringList)));
-
-  WaypointCommand* waypointCommand = addCommand(new WaypointCommand(map(), &exploreHistory));
-  QObject::connect(waypointCommand, SIGNAL(speedwalk(QStringList)), this, SLOT(speedwalk(QStringList)));
-
-  QObject::connect(term, SIGNAL(slashCommand(QString, QStringList)), this, SLOT(processSlashCommand(QString, QStringList)));
-  QObject::connect(triggers(), SIGNAL(executeCommand(QString, bool)), term, SLOT(processCommand(QString, bool)), Qt::QueuedConnection);
+  QObject::connect(triggers(), SIGNAL(executeCommand(QString, bool)), this, SLOT(processTrigger(QString, bool)), Qt::QueuedConnection);
 
   QObject::connect(&autoMap, SIGNAL(currentRoomUpdated(int)), this, SLOT(setLastRoom(int)));
 
@@ -228,39 +225,6 @@ void GaloshSession::gmcpEvent(const QString& key, const QVariant& value)
   }
 }
 
-void GaloshSession::speedwalk(const QStringList& steps)
-{
-  if (!speedPath.isEmpty()) {
-    term->showError("Another speedwalk is in progress.");
-    return;
-  }
-  term->writeColorLine("96", "Starting speedwalk...");
-  speedPath = steps;
-  term->processCommand(speedPath.takeFirst());
-}
-
-void GaloshSession::abortSpeedwalk()
-{
-  if (!stepResult.isFinished()) {
-    stepResult.done(true);
-    speedPath.clear();
-    stepTimer.stop();
-    return;
-  }
-  if (commandQueue.isEmpty() && speedPath.isEmpty()) {
-    term->showError("No speedwalk to abort.");
-  } else {
-    bool wasSpeedwalk = !speedPath.isEmpty();
-    commandQueue.clear();
-    speedPath.clear();
-    if (wasSpeedwalk) {
-      term->writeColorLine("96", "Speedwalk aborted.");
-    } else {
-      term->writeColorLine("96", "Command aborted.");
-    }
-  }
-}
-
 void GaloshSession::setLastRoom(int roomId)
 {
   profile->setLastRoomId(roomId);
@@ -270,20 +234,6 @@ void GaloshSession::setLastRoom(int roomId)
   if (!stepResult.isFinished()) {
     stepResult.done(false);
   }
-  /*
-  if (!speedPath.isEmpty()) {
-    QString dir = speedPath.takeFirst();
-    if (dir == "done") {
-      term->writeColorLine("93", "Speedwalk complete.");
-      processCommandQueue();
-    } else {
-      term->processCommand(dir);
-      if (speedPath.isEmpty()) {
-        speedPath << "done";
-      }
-    }
-  }
-  */
 }
 
 void GaloshSession::showCommandMessage(TextCommand* command, const QString& message, TextCommandProcessor::MessageType msgType)
@@ -330,7 +280,7 @@ void GaloshSession::onLineReceived(const QString& line)
   if (!stepResult.isFinished()) {
     // TODO: make triggers configurable
     if (line.contains("Alas, you cannot go that way") || line.endsWith("seems to be closed.")) {
-      abortSpeedwalk();
+      stepResult.done(true);
     }
   }
 }
@@ -514,25 +464,19 @@ void GaloshSession::connectionChanged()
   }
 }
 
-void GaloshSession::processCommandQueue(const CommandResult* result)
+bool GaloshSession::commandFilter(const QString& command, const QStringList& args)
 {
-  if (result && result->hasError()) {
-    term->showError("Command aborted due to error.");
-    commandQueue.clear();
-    return;
+  if (command.isEmpty()) {
+    term->transmitCommand(args.join(' '));
+    return true;
   }
-  if (!customResult.isFinished()) {
-    // this was triggered while a custom command was already running
-    return;
+  if (command == ".") {
+    if (!abortQueue()) {
+      term->showError("Nothing to abort.");
+    }
+    return true;
   }
-  if (commandQueue.isEmpty()) {
-    return;
-  }
-  QString command = commandQueue.takeFirst();
-  term->processCommand(command);
-  if (customResult.isFinished()) {
-    QTimer::singleShot(0, this, SLOT(processCommandQueue()));
-  }
+  return false;
 }
 
 void GaloshSession::stepTimeout()
@@ -553,65 +497,58 @@ void GaloshSession::speedwalkStep(const QString& step, CommandResult& res, bool 
   term->processCommand(step);
 }
 
-// like with eventFilter, return true to stop commands from being further handled
-bool GaloshSession::customCommandFilter(const QString& command)
+bool GaloshSession::isCustomCommand(const QString& command) const
 {
-  auto [cmd, args] = parseCommand(command);
-  QStringList actions = profile->customCommand(cmd);
-  if (actions.isEmpty()) {
-    return false;
-  }
-
-  static QRegularExpression argRE("(?<!%)%(\\d+|[*]|{\\d+[:][^}]+})([+]?)");
-  QStringList parsed;
-  for (QString action : actions) {
-    int pos = 0;
-    while (pos < action.length()) {
-      auto match = argRE.match(action, pos);
-      if (!match.hasMatch()) {
-        break;
-      }
-      QString ref = match.captured(1);
-      QString replacement = ref.section(':', 1);
-      replacement.chop(1);
-      int index = ref.section(':', 0, 0).toInt() - 1;
-      if (index < 0) {
-        index = 0;
-      }
-      bool rest = !match.captured(2).isEmpty();
-      if (index < args.length()) {
-        if (rest) {
-          replacement = args.mid(index).join(' ');
-        } else {
-          replacement = args[index];
-        }
-      }
-      action = action.left(match.capturedStart(0)) + replacement + action.mid(match.capturedEnd(0));
-      pos = match.capturedStart(0) + replacement.length();
-    }
-    parsed << action;
-  }
-  commandQueue = parsed + commandQueue;
-  processCommandQueue();
-  return true;
+  return !profile->customCommand(command).isEmpty();
 }
 
-void GaloshSession::processSlashCommand(const QString& command, const QStringList& args)
+void GaloshSession::processCommand(const QString& command, bool echo)
 {
-  if (!customResult.isFinished() || !equipResult.isFinished() || !stepResult.isFinished()) {
-    if (command != ".") {
-      term->showError("Another command is in progress.");
-      return;
+  if (!echo || !term->isParsing()) {
+    term->transmitCommand(command, echo);
+    return;
+  }
+  auto [cmd, args] = parseCommand(command);
+  if (cmd.isEmpty()) {
+    term->transmitCommand(command, true);
+  } else if (cmd == ".") {
+    if (!abortQueue()) {
+      term->showError("Nothing to abort.");
+    }
+  } else if (isRunning()) {
+    term->showError("Another command is already in progress.");
+  } else {
+    enqueueCommand(command);
+  }
+}
+
+void GaloshSession::processTrigger(const QString& command, bool echo)
+{
+  if (!echo) {
+    term->transmitCommand(command, false);
+    return;
+  }
+  QStringList lines = CommandLine::parseMultilineCommand(command);
+  enqueueCommands(lines, true); // forgive errors
+}
+
+void GaloshSession::processCommands(const QStringList& commands)
+{
+  bool immediate = true;
+  for (const QString& line : commands) {
+    auto [cmd, args] = parseCommand(line);
+    if (!cmd.isEmpty()) {
+      immediate = false;
+      break;
     }
   }
-  customResult = handleCommand(command, args);
-  if (customResult.isFinished()) {
-    if (customResult.hasError()) {
-      processCommandQueue(&customResult);
-    } else {
-      QTimer::singleShot(0, this, SLOT(processCommandQueue()));
+  if (immediate) {
+    for (const QString& line : commands) {
+      term->transmitCommand(line, true);
     }
+  } else if (isRunning()) {
+    term->showError("Another command is already in progress.");
   } else {
-    customResult.setCallback(this, &GaloshSession::processCommandQueue);
+    enqueueCommands(commands);
   }
 }

@@ -87,19 +87,15 @@ GaloshTerm::GaloshTerm(QWidget* parent)
   line = new CommandLine(lineStack);
   QObject::connect(tel, SIGNAL(lineReceived(QString)), line, SLOT(onLineReceived(QString)));
   QObject::connect(line, &CommandLine::commandEntered, [this](const QString&, bool) { screen->clearSelection(); });
-  QObject::connect(line, SIGNAL(commandEntered(QString, bool)), this, SLOT(executeCommand(QString, bool)));
   QObject::connect(line, SIGNAL(commandEntered(QString, bool)), this, SIGNAL(commandEntered(QString, bool)));
-  QObject::connect(line, SIGNAL(commandEnteredForProfile(QString, QString)), this, SIGNAL(commandEnteredForProfile(QString, QString)));
-  QObject::connect(line, SIGNAL(showError(QString)), this, SLOT(showError(QString)));
-  QObject::connect(line, SIGNAL(slashCommand(QString, QStringList)), this, SLOT(onSlashCommand(QString, QStringList)));
-  QObject::connect(line, SIGNAL(speedwalk(QStringList)), this, SIGNAL(speedwalk(QStringList)));
+  QObject::connect(line, SIGNAL(commandsEntered(QStringList)), this, SIGNAL(commandsEntered(QStringList)));
   QObject::connect(line, SIGNAL(multilineRequested()), this, SLOT(openMultiline()));
   lineStack->addWidget(line);
 
   multilineStatus = new QLabel(lineStack);
   multilineStatus->setText(multiline->statusMessage());
   QObject::connect(multiline, SIGNAL(statusUpdated(QString)), multilineStatus, SLOT(setText(QString)));
-  QObject::connect(multiline, SIGNAL(commandEntered(QString, bool)), line, SLOT(processCommand(QString, bool)));
+  QObject::connect(multiline, SIGNAL(commandsEntered(QStringList)), this, SIGNAL(commandsEntered(QStringList)));
   lineStack->addWidget(multilineStatus);
 
   bParse = new QToolButton(this);
@@ -135,11 +131,10 @@ void GaloshTerm::showError(const QString& message)
   writeColorLine("1;4;31", message.toUtf8());
 }
 
-void GaloshTerm::onSlashCommand(const QString& command, const QStringList& args)
+void GaloshTerm::showSlashCommand(const QString& command, const QStringList& args)
 {
   QString message = "/" + command + " " + args.join(" ");
   writeColorLine("1;96", message.toUtf8());
-  emit slashCommand(command, args);
 }
 
 void GaloshTerm::openMultiline(bool on)
@@ -173,14 +168,12 @@ void GaloshTerm::processCommand(const QString& command, bool echo)
   line->processCommand(command, echo);
 }
 
-void GaloshTerm::executeCommand(const QString& command, bool echo)
+void GaloshTerm::transmitCommand(const QString& command, bool echo)
 {
   QByteArray payload = command.toUtf8();
   writeColorLine("93", echo ? payload : QByteArray(command.length(), '*'));
-  if (!commandFilter || !commandFilter(command)) {
-    if (tel->isConnected()) {
-      tel->write(payload + "\r\n");
-    }
+  if (tel->isConnected()) {
+    tel->write(payload + "\r\n");
   }
 }
 
@@ -199,9 +192,14 @@ bool GaloshTerm::eventFilter(QObject* obj, QEvent* event)
         screen->handleCommandFromKeyboard(KeyboardTranslator::ScrollUpToTopCommand);
       } else if (ke->key() == Qt::Key_End) {
         screen->handleCommandFromKeyboard(KeyboardTranslator::ScrollDownToBottomCommand);
-      } else if (!ke->text().isEmpty()) {
-        line->setFocus();
-        line->event(event);
+      } else if (!ke->text().isEmpty() && !(ke->modifiers() & Qt::ControlModifier)) {
+        if (multiline->isVisible()) {
+          multiline->setFocus();
+          static_cast<QObject*>(multiline)->event(event);
+        } else {
+          line->setFocus();
+          line->event(event);
+        }
       }
     } else {
       return false;
@@ -315,19 +313,6 @@ void GaloshTerm::setColorScheme(const ColorScheme& scheme)
 {
   term->setColorTable(scheme.colors);
   darkBackground = scheme.isDarkBackground;
-  /*
-  // TODO: user-configurable
-  QVector<ColorEntry> colors(TABLE_COLORS, ColorEntry());
-  const ColorEntry* defaultTable = term->colorTable();
-  for (int i = 0; i < TABLE_COLORS; i++) {
-    colors[i] = defaultTable[i];
-  }
-  colors[0].color = QColor(24, 240, 24);
-  colors[10].color = QColor(128, 255, 192);
-  colors[1].color = QColor(32, 32, 32);
-  colors[11].color = QColor(192, 255, 224);
-  term->setColorTable(colors.constData());
-  */
 }
 
 bool GaloshTerm::isParsing() const
@@ -342,9 +327,4 @@ void GaloshTerm::setParsing(bool on)
     bParse->setChecked(on);
     emit parsingChanged(on);
   }
-}
-
-void GaloshTerm::setCommandFilter(std::function<bool(const QString&)> filter)
-{
-  commandFilter = filter;
 }

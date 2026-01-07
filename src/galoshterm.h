@@ -36,26 +36,22 @@ public:
 
   bool isParsing() const;
 
-  void setCommandFilter(std::function<bool(const QString&)> filter);
-
 signals:
   void lineReceived(const QString& line);
   void commandEntered(const QString& command, bool echo = true);
-  void commandEnteredForProfile(const QString& profile, const QString& command);
-  void simpleCommandSent();
-  void slashCommand(const QString& command, const QStringList& args);
-  void speedwalk(const QStringList& steps);
+  void commandsEntered(const QStringList& commands);
   bool parsingChanged(bool on);
 
 public slots:
   void setTermFont(const QFont& font);
   void setColorScheme(const ColorScheme& scheme);
+  void showSlashCommand(const QString& command, const QStringList& args);
   void showError(const QString& message);
   void processCommand(const QString& command, bool echo = true);
+  void transmitCommand(const QString& command, bool echo = true);
   void setParsing(bool on);
 
 private slots:
-  void executeCommand(const QString& command, bool echo = true);
   void onConnected();
   void onDisconnected();
   void onSocketError(QAbstractSocket::SocketError err);
@@ -63,7 +59,6 @@ private slots:
   void onReadyRead();
   void scheduleResizeAndScroll(bool scroll);
   void resizeAndScroll();
-  void onSlashCommand(const QString& command, const QStringList& args);
   void openMultiline(bool on = true);
 
 private:
@@ -82,7 +77,6 @@ private:
   QScrollBar* scrollBar;
   bool pendingScroll;
   bool darkBackground;
-  std::function<bool(const QString&)> commandFilter;
 };
 
 #endif

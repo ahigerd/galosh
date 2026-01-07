@@ -28,13 +28,10 @@ void MultiCommandLine::keyPressEvent(QKeyEvent* event)
     // TODO: option to change enter key behavior
     // TODO: option to not close multiline editor
     QString text = toPlainText();
-    QStringList commands = text.isEmpty() ? QStringList() : text.split("\n");
+    QStringList commands = text.isEmpty() ? QStringList() : text.replace("\r", "").split("\n");
     clear();
     emit toggleMultiline(false);
-    // TODO: slow mode?
-    for (const QString& command : commands) {
-      emit commandEntered(command);
-    }
+    emit commandsEntered(commands);
   } else {
     QPlainTextEdit::keyPressEvent(event);
   }

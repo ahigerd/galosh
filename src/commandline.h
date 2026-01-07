@@ -10,7 +10,6 @@ class CommandLine : public QLineEdit
 {
 Q_OBJECT
 public:
-  static QStringList parseSlashCommand(const QString& command);
   static QStringList parseMultilineCommand(const QString& command);
 
   CommandLine(QWidget* parent = nullptr);
@@ -22,10 +21,7 @@ public:
 
 signals:
   void commandEntered(const QString& command, bool echo);
-  void commandEnteredForProfile(const QString& profile, const QString& command);
-  void showError(const QString& message);
-  void slashCommand(const QString& command, const QStringList& args);
-  void speedwalk(const QStringList& steps);
+  void commandsEntered(const QStringList& commands);
   void multilineRequested();
 
 public slots:

@@ -20,6 +20,7 @@ public:
   inline QString name() const { return m_keywords.first(); }
   inline QStringList keywords() const { return m_keywords; }
   virtual QString helpMessage(bool brief) const = 0;
+  virtual bool isHidden() const { return false; }
 
   CommandResult invoke(const QStringList& args);
 
@@ -33,10 +34,11 @@ protected:
   void showMessage(const QString& message);
   void showError(const QString& message);
   void showCommand(const QString& message);
-  CommandResult invokeCommand(const QString& command, bool quiet = true);
   CommandResult invokeCommand(const QString& command, const QStringList& args, bool quiet = true);
 
   void finished(bool error);
+
+  TextCommandProcessor* processor() const { return m_parent; }
 
   // true = requires parameter, false = no parameter
   QMap<QString, bool> supportedKwargs;

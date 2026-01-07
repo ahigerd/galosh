@@ -22,6 +22,10 @@ struct Stepper
   }
 
   void nextStep(const CommandResult* stepResult = nullptr) {
+    if (result.wasAborted()) {
+      delete this;
+      return;
+    }
     if (stepResult && stepResult->hasError()) {
       result.done(true);
       delete this;
@@ -49,7 +53,7 @@ struct Stepper
     QString step = path.takeFirst();
     if (validateAll) {
       const MapRoom* room = cmd->history->currentRoom();
-      dest = room->exits.value(step).dest;
+      dest = room->exits.value(step.toUpper()).dest;
     }
     CommandResult sub;
     sub.setCallback(this, &Stepper::nextStep);

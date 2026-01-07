@@ -3,7 +3,7 @@
 #include "explorehistory.h"
 
 RouteCommand::RouteCommand(MapManager* map, ExploreHistory* history)
-: QObject(nullptr), TextCommand("ROUTE"), map(map), history(history)
+: TextCommand("ROUTE"), map(map), history(history)
 {
   supportedKwargs["-q"] = false;
   supportedKwargs["-g"] = false;

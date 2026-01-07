@@ -27,6 +27,9 @@ CommandResult HelpCommand::handleInvoke(const QStringList& args, const KWArgs&)
     }
     for (QString name : names.keys()) {
       const TextCommand* cmd = names[name];
+      if (cmd->isHidden()) {
+        continue;
+      }
       showMessage(QStringLiteral("%1%2\t%3").arg(commandPrefix).arg(name.leftJustified(8)).arg(cmd->helpMessage(true)));
     }
     return CommandResult::success();
@@ -36,7 +39,7 @@ CommandResult HelpCommand::handleInvoke(const QStringList& args, const KWArgs&)
     name = name.mid(commandPrefix.length());
   }
   const TextCommand* cmd = source->m_commands.value(name);
-  if (!cmd) {
+  if (!cmd || cmd->isHidden()) {
     showError("Unknown command: " + name);
     return CommandResult::fail();
   }

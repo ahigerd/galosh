@@ -86,15 +86,6 @@ void TextCommand::showCommand(const QString& message)
   m_parent->showCommandMessage(this, message, TextCommandProcessor::MT_Subcommand);
 }
 
-CommandResult TextCommand::invokeCommand(const QString& command, bool quiet)
-{
-  Q_ASSERT(m_parent);
-  if (!quiet) {
-    showCommand(command);
-  }
-  return m_parent->handleCommand(command);
-}
-
 CommandResult TextCommand::invokeCommand(const QString& command, const QStringList& args, bool quiet)
 {
   Q_ASSERT(m_parent);

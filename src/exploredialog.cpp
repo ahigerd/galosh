@@ -135,12 +135,8 @@ ExploreDialog::ExploreDialog(GaloshSession* session, int roomId, int lastRoomId,
   addCommand(new SlotCommand("BACK", this, SLOT(goBack()), "Returns to the previous room"));
   addCommand(new SlotCommand("GOTO", this, SLOT(goToRoom(QString)), "Teleports to a room by numeric ID"));
   addCommand(new SlotCommand("RESET", &history, SLOT(reset()), "Clears the exploration history"));
-
-  RouteCommand* route = addCommand(new RouteCommand(map, &history));
-  QObject::connect(route, SIGNAL(speedwalk(QStringList)), this, SLOT(handleSpeedwalk(QStringList)));
-
-  WaypointCommand* waypoint = addCommand(new WaypointCommand(map, &history));
-  QObject::connect(waypoint, SIGNAL(speedwalk(QStringList)), this, SLOT(handleSpeedwalk(QStringList)));
+  addCommand(new RouteCommand(map, &history));
+  addCommand(new WaypointCommand(map, &history));
 
   QSettings settings;
   restoreGeometry(settings.value("explore").toByteArray());
@@ -167,7 +163,7 @@ void ExploreDialog::doCommand()
     // politely ignore slashes
     command.remove(0, 1);
   }
-  handleCommand(command);
+  enqueueCommand(command);
   if (expectResponse) {
     setResponse(responseError, responseLines.join("\n"));
   }

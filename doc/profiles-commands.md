@@ -37,8 +37,10 @@ itself will cause Galosh to hang._)
 
 ## Parameters
 
-Custom commands can make use of parameters, which are given as additional words in the command line separated by spaces. Use quotation marks (`"`)
-to include spaces inside a parameter.
+Custom commands can make use of parameters, which are given as additional words in the command line separated by spaces. When using custom commands,
+use paired quotation marks (`'` or `"`) to include spaces inside a parameter. The quotation marks will not be included as part of the parameter. A
+backslash (`\`) causes the character that follows it to be included in the parameter, even if it would normally be treated differently, such as a
+space or quotation mark. Use `\\` to include a backslash character.
 
 To use parameters, put placeholders in the actions. Like in triggers, placeholders are introduced with a `%` character. `%1` will be replaced by the
 first parameter, `%2` will be replaced by the second parameter, and so on.
@@ -63,6 +65,9 @@ For example, `%2+` will capture the second parameter as well as any other parame
     * Input: `MyCommand "Hello, world!"`
     * Output: `say Hello, world!`
         * _Quotation marks combine multiple words into a single parameter._
+    * Input: `MyCommand "\"Hello, world!\""`
+    * Output: `say "Hello, world!"`
+        * _A backslash allows a quotation mark to be included in a parameter._
 * Command: `od`
 * Action: `unlock %{1:door}`
 * Action: `open %{1:door}`

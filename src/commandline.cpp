@@ -1,4 +1,5 @@
 #include "commandline.h"
+#include "commands/textcommandprocessor.h"
 #include <QAbstractItemView>
 #include <QCompleter>
 #include <QKeyEvent>
@@ -7,17 +8,6 @@
 #include <QtDebug>
 
 static QRegularExpression nonWordChars("[^[:alnum:]_-]+", QRegularExpression::UseUnicodePropertiesOption);
-
-QStringList CommandLine::parseSlashCommand(const QString& command)
-{
-  QStringList tokens = command.simplified().split(' ');
-  if (tokens.isEmpty()) {
-    tokens << "";
-  } else {
-    tokens[0] = tokens[0].toUpper();
-  }
-  return tokens;
-}
 
 QStringList CommandLine::parseMultilineCommand(const QString& command)
 {
@@ -108,39 +98,15 @@ void CommandLine::onReturnPressed()
 
 void CommandLine::processCommand(const QString& command, bool echo)
 {
-  if (isParsing()) {
-    if (command.startsWith('/') && command != "/" && !command.startsWith("//")) {
-      QStringList args = parseSlashCommand(command.mid(1));
-      QString slash = args.takeFirst();
-      emit slashCommand(slash, args);
-    } else if (command.startsWith('.') && command != ".") {
-      // TODO: customizable speedwalk prefix
-      emit slashCommand("SPEEDWALK", { command.mid(1) });
-      /*
-      QStringList dirs = parseSpeedwalk(command.mid(1));
-      if (dirs.isEmpty()) {
-        emit showError("Invalid speedwalk path");
-      } else {
-        emit speedwalk(dirs);
-      }
-      */
+  if (isParsing() && echo) {
+    QStringList lines = parseMultilineCommand(command);
+    for (const QString& line : lines) {
+      onLineReceived(line);
+    }
+    if (lines.length() > 1) {
+      emit commandsEntered(lines);
     } else {
-      QStringList lines = parseMultilineCommand(command);
-      for (QString line : lines) {
-        if (line.startsWith(':')) {
-          int space = line.indexOf(' ');
-          if (space < 2) {
-            emit commandEntered(line, true);
-          } else {
-            emit commandEnteredForProfile(line.mid(1, space - 1), line.mid(space + 1));
-          }
-        } else if (line.startsWith("\\:")) {
-          emit commandEntered(line.mid(1), true);
-        } else {
-          emit commandEntered(line, true);
-        }
-        onLineReceived(line);
-      }
+      emit commandEntered(command, echo);
     }
   } else {
     emit commandEntered(command, echo);

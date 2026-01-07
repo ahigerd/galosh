@@ -14,7 +14,7 @@ CommandResult CommandResult::success()
 }
 
 CommandResult::Impl::Impl(quint64 id)
-: callbackId(id), finished(false), error(false)
+: callbackId(id), finished(false), error(false), aborted(false)
 {
   // initializers only
 }
@@ -45,6 +45,14 @@ bool CommandResult::isFinished() const
     return true;
   }
   return d->finished;
+}
+
+bool CommandResult::wasAborted() const
+{
+  if (!d) {
+    return false;
+  }
+  return d->aborted;
 }
 
 bool CommandResult::hasError() const
@@ -79,6 +87,20 @@ void CommandResult::done(bool error)
   }
 }
 
+void CommandResult::abort()
+{
+  if (isFinished()) {
+    qWarning() << "CommandResult::abort() after command finished";
+    return;
+  }
+  d->finished = true;
+  d->aborted = true;
+  d->error = true;
+  if (d->callback) {
+    d->callback(this);
+  }
+}
+
 void CommandResult::reset()
 {
   if (!isFinished()) {
@@ -86,4 +108,5 @@ void CommandResult::reset()
   }
   d->finished = false;
   d->error = false;
+  d->aborted = false;
 }
