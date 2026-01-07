@@ -10,12 +10,10 @@ QPair<QString, QStringList> TextCommandProcessor::parseCommand(const QString& _c
 {
   QString command = _command.trimmed();
 
-  if (m_commands.contains("SPEEDWALK")) {
-    if (command != speedwalkPrefix && command.startsWith(speedwalkPrefix)) {
-      return { "SPEEDWALK", { command.mid(speedwalkPrefix.length()) } };
-    } else if (command.startsWith("\\" + speedwalkPrefix)) {
-      return { "", { command.mid(1) } };
-    }
+  if (command != speedwalkPrefix && command.startsWith(speedwalkPrefix)) {
+    return { "SPEEDWALK", { command.mid(speedwalkPrefix.length()) } };
+  } else if (command.startsWith("\\" + speedwalkPrefix)) {
+    return { "", { command.mid(1) } };
   }
 
   if (m_commands.contains("SEND")) {
@@ -191,7 +189,9 @@ void TextCommandProcessor::handleNext(const CommandResult* result)
 {
   if (result && (result->wasAborted() || result->hasError())) {
     if (!result->wasAborted()) {
-      showCommandMessage(nullptr, "Command aborted due to error.", MT_Error);
+      if (!m_commandQueue.isEmpty()) {
+        showCommandMessage(nullptr, "Command aborted due to error.", MT_Error);
+      }
     }
     m_commandQueue.clear();
     m_pendingCommand = nullptr;

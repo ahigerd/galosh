@@ -49,6 +49,7 @@ private slots:
 protected:
   virtual void showCommandMessage(TextCommand* command, const QString& message, MessageType msgType) override;
   virtual bool commandFilter(const QString& command, const QStringList& args) override;
+  virtual bool isCustomCommand(const QString& command) const override;
 
   void moveEvent(QMoveEvent*);
   void resizeEvent(QResizeEvent*);

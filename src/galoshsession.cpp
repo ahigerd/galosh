@@ -280,6 +280,7 @@ void GaloshSession::onLineReceived(const QString& line)
   if (!stepResult.isFinished()) {
     // TODO: make triggers configurable
     if (line.contains("Alas, you cannot go that way") || line.endsWith("seems to be closed.")) {
+      term->showError("Speedwalking failed.");
       stepResult.done(true);
     }
   }
@@ -476,13 +477,18 @@ bool GaloshSession::commandFilter(const QString& command, const QStringList& arg
     }
     return true;
   }
+  if (command != "CUSTOM" && command != "SEND") {
+    term->showSlashCommand(command, args);
+  }
   return false;
 }
 
 void GaloshSession::stepTimeout()
 {
+  if (stepResult.isFinished()) {
+    return;
+  }
   term->showError("Speedwalking appears to have stalled. Aborting.");
-  speedPath.clear();
   if (!stepResult.isFinished()) {
     stepResult.done(true);
   }
@@ -490,6 +496,11 @@ void GaloshSession::stepTimeout()
 
 void GaloshSession::speedwalkStep(const QString& step, CommandResult& res, bool fast)
 {
+  if (!term->socket()->isConnected()) {
+    term->showError("Cannot speedwalk while offline.");
+    res.done(true);
+    return;
+  }
   if (!fast) {
     stepResult = res;
     stepTimer.start();

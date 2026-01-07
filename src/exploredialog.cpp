@@ -202,12 +202,25 @@ void ExploreDialog::handleSpeedwalk(const QStringList& dirs)
   roomView()->setRoom(map, room ? room->id : -1);
   roomTitle->setText(room ? room->name : "Unknown location");
   setResponse(error, messages.join("\n"));
+  mapView->setCurrentRoom(room ? room->id : -1);
+}
+
+bool ExploreDialog::isCustomCommand(const QString& command) const
+{
+  if (command.toUpper() == "SPEEDWALK") {
+    return true;
+  }
+  QString dir = MapRoom::normalizeDir(command);
+  return MapRoom::isDir(dir);
 }
 
 bool ExploreDialog::commandFilter(const QString& command, const QStringList& args)
 {
-  if (command.startsWith(".")) {
-    handleSpeedwalk(SpeedwalkCommand::parseSpeedwalk(command + args.join("")));
+  if (command == "SPEEDWALK") {
+    QStringList path = args;
+    path.removeAll(" ");
+    path.removeAll("-v");
+    handleSpeedwalk(path);
     return true;
   }
 

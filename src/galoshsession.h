@@ -91,8 +91,6 @@ private:
 
   AutoMapper autoMap;
   ExploreHistory exploreHistory;
-  QStringList speedPath;
-  QStringList commandQueue;
   QString statusBar;
   QPointer<ExploreDialog> explore;
   QPointer<ItemSearchDialog> itemSearch;
