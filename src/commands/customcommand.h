@@ -14,7 +14,7 @@ public:
   virtual bool isHidden() const { return true; }
 
 protected:
-  virtual int minimumArguments() const override { return 1; }
+  virtual int minimumArguments() const override { return 2; }
   virtual CommandResult handleInvoke(const QStringList& args, const KWArgs& kwargs) override;
 
 private:

@@ -48,6 +48,9 @@ protected:
   void commandErrored();
   // return true if the command matches a custom command
   virtual bool isCustomCommand(const QString& command) const;
+  // return true if the command is an internal command not meant to be used directly by the user
+  bool isInternalCommand(const QString& command) const;
+
 
 private:
   friend class TextCommand;
@@ -60,6 +63,7 @@ private:
   QMap<QString, TextCommand*> m_commands;
   QMap<int, TextCommand*> m_callbacks;
   QString m_commandPrefix;
+  QStringList m_customStack;
   QList<QPair<QString, QStringList>> m_commandQueue;
   CommandResult m_pending;
   TextCommand* m_pendingCommand;

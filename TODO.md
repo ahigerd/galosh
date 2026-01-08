@@ -30,7 +30,6 @@
 ## Incomplete features
 
 * Custom command arg validation options? (or autodetect?)
-* Detect recursive commands
 * Customizable speedwalk prefix
 * Double-click minimap to open map explorer
 * Add right-click menu in mini-map/map explorer

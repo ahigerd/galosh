@@ -11,6 +11,9 @@ CustomCommand::CustomCommand(UserProfile* profile)
 
 QString CustomCommand::helpMessage(bool) const
 {
+  // First parameter: command name
+  // Second parameter: raw input
+  // Rest of parameters: parsed arguments
   return "Executes a custom command.";
 }
 
@@ -18,6 +21,7 @@ CommandResult CustomCommand::handleInvoke(const QStringList& _args, const KWArgs
 {
   QStringList args = _args;
   QString cmd = args.takeFirst();
+  QString raw = args.takeFirst();
 
   QStringList actions = profile->customCommand(cmd);
   if (actions.isEmpty()) {
@@ -53,6 +57,10 @@ CommandResult CustomCommand::handleInvoke(const QStringList& _args, const KWArgs
       pos = match.capturedStart(0) + replacement.length();
     }
     parsed << action;
+  }
+  if (!parsed.isEmpty()) {
+    parsed.insert(0, "\x01PUSH " + cmd);
+    parsed << ("\x01POP");
   }
   processor()->insertCommands(parsed);
   return CommandResult::success();

@@ -31,9 +31,8 @@ Actions may include [slash commands](sessions-commands.md), [speedwalk paths](co
 are used, then the next action will not be run until the previous one is completed. Any other action is sent to the MUD directly, with no delay.
 
 A command may not trigger itself with an action, not even indirectly. If an action matches its own command, or matches any command that triggered it,
-it will be sent to the MUD as-is instead. For example, if a command `wake` had the actions `wake` and `stand`, the MUD will receive `wake` and
-`stand` instead. This may be used to add additional behaviors to a normal MUD command. (_Note: This is currently broken. A command that references
-itself will cause Galosh to hang._)
+it will be sent to the MUD as-is instead. For example, if a command `wake` had the actions `wake` and `stand`, Galosh would not use the custom
+`wake` command, and the MUD would receive `wake` and `stand`. This may be used to add additional behaviors to a normal MUD command.
 
 ## Parameters
 

@@ -34,14 +34,18 @@ QPair<QString, QStringList> TextCommandProcessor::parseCommand(const QString& _c
   QString key = command.section(' ', 0, 0);
   QStringList args;
   if (m_commands.contains("CUSTOM") && isCustomCommand(key)) {
-    args << key;
+    args << key << command;
     key = "CUSTOM";
-  } else if (!key.startsWith(m_commandPrefix)) {
+  } else if (!key.startsWith(m_commandPrefix) && !isInternalCommand(key)) {
     return { "", { command } };
-  } else {
+  } else if (!isInternalCommand(key)) {
     key = key.mid(m_commandPrefix.length()).toUpper();
   }
   command = command.section(' ', 1);
+
+  if (key.startsWith("\x01")) {
+    return { key, { command } };
+  }
 
   QChar quote = '\0';
   QString token;
@@ -99,6 +103,21 @@ void TextCommandProcessor::addCommand(TextCommand* command)
 
 CommandResult TextCommandProcessor::handleCommand(const QString& key, const QStringList& args)
 {
+  if (key == "\x01PUSH") {
+    if (!args.isEmpty()) {
+      m_customStack << args.first();
+    }
+    return CommandResult::success();
+  } else if (key == "\x01POP") {
+    if (!m_customStack.isEmpty()) {
+      m_customStack.takeLast();
+    }
+    return CommandResult::success();
+  } else if (key == "CUSTOM" && args.length() > 1) {
+    if (m_customStack.contains(args.first())) {
+      return handleCommand("", { args[1] });
+    }
+  }
   m_hasError = false;
   if (commandFilter(key, args)) {
     // the command was handled by the filter
@@ -133,6 +152,17 @@ bool TextCommandProcessor::isCustomCommand(const QString&) const
   return false;
 }
 
+bool TextCommandProcessor::isInternalCommand(const QString& command) const
+{
+  if (command.startsWith('\x01')) {
+    return true;
+  }
+  if (m_commands.contains(command)) {
+    return m_commands.value(command)->isHidden();
+  }
+  return false;
+}
+
 bool TextCommandProcessor::isRunning() const
 {
   return m_isRunningSync || !m_commandQueue.isEmpty() || !m_pending.isFinished();
@@ -149,7 +179,7 @@ bool TextCommandProcessor::enqueueCommands(const QStringList& commands, bool bef
   }
   for (int i = start; i != end; i += step) {
     auto [cmd, args] = parseCommand(commands[i]);
-    if (!cmd.isEmpty() && !isCustomCommand(cmd)) {
+    if (!cmd.isEmpty() && !isCustomCommand(cmd) && !isInternalCommand(cmd)) {
       cmd = cmd.toUpper();
       if (!m_commands.contains(cmd)) {
         showCommandMessage(nullptr, m_commandPrefix + cmd + ": unknown command", MT_Error);
@@ -173,11 +203,14 @@ bool TextCommandProcessor::enqueueCommands(const QStringList& commands, bool bef
 
 bool TextCommandProcessor::abortQueue(bool quiet)
 {
-  if (!isRunning()) {
+  if (!quiet && !isRunning()) {
     return false;
   }
+  m_customStack.clear();
   m_commandQueue.clear();
-  m_pending.abort();
+  if (!m_pending.isFinished()) {
+    m_pending.abort();
+  }
   if (!quiet) {
     showCommandMessage(m_pendingCommand, "Aborted.", MT_Error);
   }
@@ -193,8 +226,7 @@ void TextCommandProcessor::handleNext(const CommandResult* result)
         showCommandMessage(nullptr, "Command aborted due to error.", MT_Error);
       }
     }
-    m_commandQueue.clear();
-    m_pendingCommand = nullptr;
+    abortQueue(true);
     return;
   }
   m_isRunningSync = true;
