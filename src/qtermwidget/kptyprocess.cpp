@@ -52,7 +52,7 @@ KPtyProcess::KPtyProcess(int ptyMasterFd, QObject *parent) :
         d->pty->setCTty();
 #if 0
         if (d->addUtmp) {
-            d->pty->login(KUser(KUser::UseRealUserID).loginName().toLocal8Bit().constData(), qgetenv("DISPLAY").constData());
+            d->pty->login(KUser(KUser::UseRealUserID).loginName().toUtf8().constData(), qgetenv("DISPLAY").constData());
         }
 #endif
         if (d->ptyChannels & StdinChannel) {

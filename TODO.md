@@ -57,3 +57,4 @@
 * "Duplicate Profile" button
 * Custom commands in map editor
 * Avoid individual rooms for routing
+* Character set selection

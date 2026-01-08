@@ -3439,7 +3439,7 @@ void TerminalDisplay::dropEvent(QDropEvent* event)
     }
   }
 
-  emit sendStringToEmu(dropText.toLocal8Bit().constData());
+  emit sendStringToEmu(dropText.toUtf8().constData());
 }
 
 void TerminalDisplay::doDrag()

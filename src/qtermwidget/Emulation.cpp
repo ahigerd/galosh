@@ -236,7 +236,7 @@ void Emulation::receiveData(const char* text, int length)
 #if QT_VERSION >= 0x060000
     QString str = _toUtf16(ba);
 #else
-    QString str = QString::fromLocal8Bit(ba);
+    QString str = QString::fromUtf8(ba);
 #endif
     std::wstring unicodeText = str.toStdWString();
 

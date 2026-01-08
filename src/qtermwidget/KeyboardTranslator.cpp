@@ -220,7 +220,7 @@ void KeyboardTranslatorReader::readNext()
             // get text or command
             if ( tokens[2].type == Token::OutputText )
             {
-                text = tokens[2].text.toLocal8Bit();
+                text = tokens[2].text.toUtf8();
             }
             else if ( tokens[2].type == Token::Command )
             {
