@@ -11,7 +11,7 @@ QPair<QString, QStringList> TextCommandProcessor::parseCommand(const QString& _c
   QString command = _command.trimmed();
 
   if (command != speedwalkPrefix && command.startsWith(speedwalkPrefix)) {
-    return { "SPEEDWALK", { command.mid(speedwalkPrefix.length()) } };
+    return { "\x01SPEEDWALK", { command.mid(speedwalkPrefix.length()) } };
   } else if (command.startsWith("\\" + speedwalkPrefix)) {
     return { "", { command.mid(1) } };
   }

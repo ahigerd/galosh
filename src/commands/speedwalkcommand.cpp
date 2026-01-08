@@ -117,6 +117,7 @@ QStringList SpeedwalkCommand::parseSpeedwalk(const QString& dirs)
 SpeedwalkCommand::SpeedwalkCommand(MapManager* map, ExploreHistory* history, WalkFn walkFn, bool quiet)
 : TextCommand("SPEEDWALK"), map(map), history(history), walk(walkFn), quiet(quiet)
 {
+  addKeyword("\x01SPEEDWALK");
   addKeyword("SPEED");
   addKeyword("WALK");
   supportedKwargs["-x"] = true;

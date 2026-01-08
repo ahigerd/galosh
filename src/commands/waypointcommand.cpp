@@ -149,7 +149,7 @@ CommandResult WaypointCommand::handleRoute(const QString& name, bool run, bool f
     if (fast) {
       dirs << "-f";
     }
-    return invokeCommand("SPEEDWALK", dirs);
+    return invokeCommand("\x01SPEEDWALK", dirs);
   } else {
     ExploreHistory path(map);
     path.goTo(startRoomId);

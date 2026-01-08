@@ -207,7 +207,7 @@ void ExploreDialog::handleSpeedwalk(const QStringList& dirs)
 
 bool ExploreDialog::isCustomCommand(const QString& command) const
 {
-  if (command.toUpper() == "SPEEDWALK") {
+  if (command.toUpper().endsWith("SPEEDWALK")) {
     return true;
   }
   QString dir = MapRoom::normalizeDir(command);
@@ -216,11 +216,10 @@ bool ExploreDialog::isCustomCommand(const QString& command) const
 
 bool ExploreDialog::commandFilter(const QString& command, const QStringList& args)
 {
-  if (command == "SPEEDWALK") {
+  if (command.toUpper().endsWith("SPEEDWALK")) {
     QStringList path = args;
-    path.removeAll(" ");
     path.removeAll("-v");
-    handleSpeedwalk(path);
+    handleSpeedwalk(SpeedwalkCommand::parseSpeedwalk(path.join("")));
     return true;
   }
 

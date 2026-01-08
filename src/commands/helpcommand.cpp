@@ -44,14 +44,21 @@ CommandResult HelpCommand::handleInvoke(const QStringList& args, const KWArgs&)
     return CommandResult::fail();
   }
   QString intro = QStringLiteral("Help for %1%2").arg(commandPrefix).arg(cmd->name());
-  if (cmd->keywords().length() > 1) {
-    if (cmd->keywords().length() > 2) {
+  QStringList aliases;
+  for (const QString& alias : cmd->keywords()) {
+    if (alias.startsWith("\x01")) {
+      continue;
+    }
+    aliases << alias;
+  }
+  if (aliases.length() > 1) {
+    if (aliases.length() > 2) {
       intro += " (aliases: ";
     } else {
       intro += " (alias: ";
     }
     bool first = true;
-    for (const QString& alias : cmd->keywords()) {
+    for (const QString& alias : aliases) {
       if (alias != cmd->name()) {
         if (first) {
           first = false;

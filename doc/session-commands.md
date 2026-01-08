@@ -12,6 +12,7 @@ MUD, turn off parsing mode. See the [speedwalking](commands/speedwalk.md) docume
 
 The Galosh main window supports the following slash commands:
 
+* [/.](commands/abort.md): Aborts a long-running command or speedwalk path
 * [/DC](commands/dc.md): Disconnects from the game
 * [/ECHO](commands/echo.md): Displays a line of text
 * [/EQUIP](commands/equip.md): Switches equipment sets, or captures a snapshot of your equipment

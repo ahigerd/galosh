@@ -113,11 +113,11 @@ CommandResult RouteCommand::handleInvoke(const QStringList& args, const KWArgs& 
   if (warnings.isEmpty()) {
     showMessage(messages.join("\n"));
     if (kwargs.contains("-g")) {
-      QStringList walkArgs = QStringList() << " " << "-v" << dirs;
+      QStringList walkArgs = QStringList() << "-v" << messages.first();
       if (kwargs.contains("-f")) {
         walkArgs << "-f";
       }
-      return invokeCommand("SPEEDWALK", walkArgs);
+      return invokeCommand("\x01SPEEDWALK", walkArgs);
     }
   } else {
     showError(messages.join("\n"));
