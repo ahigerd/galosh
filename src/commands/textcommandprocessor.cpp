@@ -241,3 +241,15 @@ void TextCommandProcessor::handleNext(const CommandResult* result)
   }
   m_isRunningSync = false;
 }
+
+bool TextCommandProcessor::isCommandQuiet(const QString& command) const
+{
+  if (isInternalCommand(command)) {
+    return true;
+  }
+  TextCommand* cmd = m_commands.value(command);
+  if (!cmd) {
+    return false;
+  }
+  return cmd->isQuiet();
+}

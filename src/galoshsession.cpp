@@ -10,6 +10,7 @@
 #include "commandline.h"
 #include "commands/textcommand.h"
 #include "commands/customcommand.h"
+#include "commands/echocommand.h"
 #include "commands/equipmentcommand.h"
 #include "commands/identifycommand.h"
 #include "commands/slotcommand.h"
@@ -47,6 +48,7 @@ GaloshSession::GaloshSession(UserProfile* profile, QWidget* parent)
 
   addCommand(new CustomCommand(profile));
   addCommand(new IdentifyCommand(&profile->serverProfile->itemDB));
+  addCommand(new EchoCommand(triggers()));
   addCommand(new EquipmentCommand(this));
   addCommand(new SpeedwalkCommand(map(), &exploreHistory, [this](const QString& step, CommandResult& res, bool fast){ speedwalkStep(step, res, fast); }, false));
   addCommand(new SlotCommand("DC", term->socket(), SLOT(disconnectFromHost()), "Disconnects from the game"))->addKeyword("DISCONNECT");
@@ -477,8 +479,10 @@ bool GaloshSession::commandFilter(const QString& command, const QStringList& arg
     }
     return true;
   }
-  if (command != "CUSTOM" && command != "SEND") {
-    term->showSlashCommand(command, args);
+  if (command == "CUSTOM" && args.length() >= 2) {
+    term->showSlashCommand(args[0], args.mid(2));
+  } else if (!isCommandQuiet(command)) {
+    term->showSlashCommand("/" + command, args);
   }
   return false;
 }

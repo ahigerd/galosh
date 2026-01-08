@@ -133,7 +133,7 @@ void GaloshTerm::showError(const QString& message)
 
 void GaloshTerm::showSlashCommand(const QString& command, const QStringList& args)
 {
-  QString message = "/" + command + " " + args.join(" ");
+  QString message = command + " " + args.join(" ");
   writeColorLine("1;96", message.toUtf8());
 }
 

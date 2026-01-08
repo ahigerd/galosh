@@ -11,6 +11,7 @@ public:
 
   virtual QString helpMessage(bool brief) const override;
 
+  virtual bool isQuiet() const { return true; }
   virtual bool isHidden() const { return true; }
 
 protected:

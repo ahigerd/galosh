@@ -32,6 +32,7 @@ public:
   void help();
 
   QPair<QString, QStringList> parseCommand(const QString& command);
+  bool isCommandQuiet(const QString& command) const;
 
   inline bool insertCommands(const QStringList& commands, bool forgive = false) { return enqueueCommands(commands, true, forgive); }
   inline bool enqueueCommands(const QStringList& commands, bool forgive = false) { return enqueueCommands(commands, false, forgive); }

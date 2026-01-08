@@ -40,7 +40,6 @@
 
 * Command to toggle trigger enablement
     * One-shot trigger option?
-* /ECHO command
 * Prevent navigating into unmapped rooms in the explorer
 * Automap disable prefs (per zone, per server, command toggle)
 * Expose Mudlet import in UI

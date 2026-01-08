@@ -20,6 +20,7 @@ public:
   inline QString name() const { return m_keywords.first(); }
   inline QStringList keywords() const { return m_keywords; }
   virtual QString helpMessage(bool brief) const = 0;
+  virtual bool isQuiet() const { return false; }
   virtual bool isHidden() const { return false; }
 
   CommandResult invoke(const QStringList& args);
