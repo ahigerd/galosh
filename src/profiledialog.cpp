@@ -136,11 +136,15 @@ void ProfileDialog::loadProfiles()
     }
   }
   if (!lastIdx.isValid()) {
+    if (profileList->rowCount() == 0) {
+      newProfile();
+    }
     lastIdx = profileList->index(0, 0);
   }
   auto sel = knownProfiles->selectionModel();
   sel->setCurrentIndex(lastIdx, QItemSelectionModel::ClearAndSelect);
   profileSelected(lastIdx);
+  tServer->setFocus();
 }
 
 void ProfileDialog::selectProfile(const QString& path)
