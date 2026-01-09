@@ -25,13 +25,17 @@ private slots:
   void openColorSchemes();
   void updateColorScheme();
   void setCurrentFont(const QFont& font);
+  void setDefaultFont();
+  void updateFontPreview();
 
 private:
   QComboBox* colorScheme;
   QLabel* fontPreview;
-  QCheckBox* useFontForAll;
+  QCheckBox* useDefaultFont;
   QPushButton* pickFont;
+  QPushButton* setAsDefault;
   QFont currentFont;
+  QFont defaultFont;
 };
 
 #endif

@@ -17,6 +17,18 @@ static ServerProfile* getServerProfile(const QString& host)
   return server;
 }
 
+QFont UserProfile::defaultFont()
+{
+  QSettings globalSettings;
+  return globalSettings.value("Defaults/font", QFontDatabase::systemFont(QFontDatabase::FixedFont)).value<QFont>();
+}
+
+void UserProfile::setDefaultFont(const QFont& font)
+{
+  QSettings globalSettings;
+  globalSettings.setValue("Defaults/font", font);
+}
+
 UserProfile::UserProfile(const QString& profilePath)
 : profilePath(profilePath)
 {
@@ -28,17 +40,10 @@ bool UserProfile::hasLoadError() const
   return loadError;
 }
 
-bool UserProfile::useGlobalFont()
-{
-  QSettings globalSettings;
-  return globalSettings.value("Defaults/fontGlobal").toBool();
-}
-
 QFont UserProfile::font() const
 {
-  QSettings globalSettings;
-  if (!setAsGlobalFont && globalSettings.value("Defaults/fontGlobal").toBool()) {
-    return globalSettings.value("Defaults/font", QFontDatabase::systemFont(QFontDatabase::FixedFont)).value<QFont>();
+  if (useDefaultFont) {
+    return defaultFont();
   } else {
     return selectedFont;
   }
@@ -82,7 +87,13 @@ void UserProfile::reload()
   {
     SettingsGroup sg(&settings, "Appearance");
     colorScheme = settings.value("colors").toString();
-    selectedFont = settings.value("font", QFontDatabase::systemFont(QFontDatabase::FixedFont)).value<QFont>();
+    useDefaultFont = settings.value("useDefaultFont", false).toBool();
+    if (settings.contains("font")) {
+      selectedFont = settings.value("font", QFontDatabase::systemFont(QFontDatabase::FixedFont)).value<QFont>();
+    } else {
+      useDefaultFont = true;
+      selectedFont = defaultFont();
+    }
   }
 
   commandDefs.clear();
@@ -164,20 +175,8 @@ void UserProfile::saveAppearanceSection(QSettings& settings)
     settings.setValue("colors", colorScheme);
   }
 
-  QSettings globalSettings;
-  if (setAsGlobalFont) {
-    isGlobalFont = true;
-    globalSettings.setValue("Defaults/fontGlobal", true);
-    globalSettings.setValue("Defaults/font", selectedFont);
-    settings.remove("font");
-  } else {
-    if (isGlobalFont) {
-      globalSettings.remove("Defaults/fontGlobal");
-      globalSettings.remove("Defaults/font");
-      isGlobalFont = false;
-    }
-    settings.setValue("font", selectedFont);
-  }
+  settings.setValue("font", selectedFont);
+  settings.setValue("useDefaultFont", useDefaultFont);
 }
 
 QStringList UserProfile::itemSets() const

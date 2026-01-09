@@ -4,7 +4,6 @@
 * Validate that commands don't start with `/` or `.`
 * Validate that waypoint names don't contain spaces
 * "Revert Scheme" button doesn't update when creating a new scheme
-* Decide on a better default font strategy
 * Title bar doesn't clear after closing last session (and maybe other things?)
 * Map colors/costs might be getting clobbered
 * Apply button in profiles window doesn't clear dirty flag

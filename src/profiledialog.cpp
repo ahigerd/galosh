@@ -257,6 +257,7 @@ bool ProfileDialog::save()
     if (!ok) {
       return false;
     }
+    dirty = false;
     profile.save();
   }
   emit profileUpdated(path);

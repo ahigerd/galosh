@@ -14,6 +14,9 @@ class ServerProfile;
 class UserProfile
 {
 public:
+  static QFont defaultFont();
+  static void setDefaultFont(const QFont& font);
+
   UserProfile(const QString& profilePath);
 
   bool hasLoadError() const;
@@ -30,13 +33,12 @@ public:
 
   QString colorScheme;
   QFont selectedFont;
-  bool setAsGlobalFont;
+  bool useDefaultFont;
 
   ServerProfile* serverProfile;
   TriggerManager triggers;
 
   QFont font() const;
-  static bool useGlobalFont();
 
   ColorScheme colors() const;
 
