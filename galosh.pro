@@ -37,7 +37,7 @@ include(src/mapping/mapping.pri)
 include(src/commands/commands.pri)
 include(src/qtermwidget/qtermwidget.pri)
 
-VERSION = 0.1.1
+VERSION = 0.1.2
 
 # If git commands can be run without errors, grab the commit hash
 system(git log -1 --pretty=format:) {

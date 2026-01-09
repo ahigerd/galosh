@@ -188,12 +188,12 @@ void TelnetSocket::onConnected()
 #ifndef QT_NO_SSL
 void TelnetSocket::onSslErrors(const QList<QSslError>& errors)
 {
-  // TODO: cert pinning
   bool ok = true;
   for (const QSslError& error : errors) {
     QSslError::SslError errorType = error.error();
     if (errorType != QSslError::SelfSignedCertificate &&
         errorType != QSslError::SelfSignedCertificateInChain &&
+        errorType != QSslError::OcspNoResponseFound &&
         errorType != QSslError::HostNameMismatch) {
       ok = false;
       break;
