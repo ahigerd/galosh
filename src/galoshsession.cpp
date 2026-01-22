@@ -332,11 +332,24 @@ void GaloshSession::equipmentReceived(const ItemDatabase::EquipmentSet& equipmen
   dlg.exec();
 }
 
-static ItemDatabase::EquipmentSet addSlotNumbers(ItemDatabase::EquipmentSet set)
+static ItemDatabase::EquipmentSet addSlotNumbers(ItemDatabase* db, ItemDatabase::EquipmentSet set)
 {
   QMap<QString, int> slotCount;
+  auto order = db->equipmentSlotOrder();
+  std::sort(set.begin(), set.end(), [order](const ItemDatabase::EquipSlot& lhs, const ItemDatabase::EquipSlot& rhs) {
+    int li = order.indexOf(lhs.location.section('.', 0, 0));
+    int ri = order.indexOf(rhs.location.section('.', 0, 0));
+    if (li < ri) {
+      return true;
+    } else if (li > ri) {
+      return false;
+    } else {
+      return lhs.displayName < rhs.displayName;
+    }
+  });
   for (ItemDatabase::EquipSlot& slot : set)
   {
+    slot.location = slot.location.section('.', 0, 0);
     int count = (slotCount[slot.location] += 1);
     if (count > 1) {
       slot.location += QStringLiteral(".%1").arg(count);
@@ -382,10 +395,12 @@ static ItemDatabase::EquipmentSet diffSets(const ItemDatabase* db, const ItemDat
 void GaloshSession::changeEquipment(const ItemDatabase::EquipmentSet& _current, const QString& setName, const QString& toContainer)
 {
   ItemDatabase* db = itemDB();
-  ItemDatabase::EquipmentSet current = addSlotNumbers(_current);
-  ItemDatabase::EquipmentSet target = addSlotNumbers(profile->loadItemSet(setName));
+  ItemDatabase::EquipmentSet current = addSlotNumbers(itemDB(), _current);
+  ItemDatabase::EquipmentSet target = addSlotNumbers(itemDB(), profile->loadItemSet(setName));
   auto toRemove = diffSets(db, current, target, true);
   auto toEquip = diffSets(db, target, current, false);
+
+  bool beltRemoved = false, obeltChanged = false;
 
   QString fromContainer;
   for (auto [slot, name] : target) {
@@ -406,11 +421,15 @@ void GaloshSession::changeEquipment(const ItemDatabase::EquipmentSet& _current, 
       itemKeyword = item.section(' ', -1);
       term->writeColorLine("1;96", QStringLiteral("Keyword not set for \"%1\", using \"%2\"").arg(item).arg(itemKeyword).toUtf8());
     }
+    if (slot == "WAIST" || slot == "BELT") {
+      beltRemoved = true;
+    }
     term->processCommand(QStringLiteral("remove %1").arg(itemKeyword));
     if (!toContainer.isEmpty()) {
       term->processCommand(QStringLiteral("put %1 %2").arg(itemKeyword).arg(toContainer));
     }
   }
+
   for (auto [slot, item] : toEquip) {
     QString itemKeyword = db->itemKeyword(item);
     if (itemKeyword.isEmpty()) {
@@ -420,11 +439,35 @@ void GaloshSession::changeEquipment(const ItemDatabase::EquipmentSet& _current, 
     if (!fromContainer.isEmpty()) {
       term->processCommand(QStringLiteral("get %1 %2").arg(itemKeyword).arg(fromContainer));
     }
+    if (slot == "OBELT") {
+      obeltChanged = true;
+    }
     QString verb = db->parsers.verbs.value(slot);
     if (verb.isEmpty()) {
       term->processCommand(QStringLiteral("wear %1 %2").arg(itemKeyword).arg(slot.toLower()));
     } else {
       term->processCommand(verb.arg(itemKeyword));
+    }
+  }
+
+  if (beltRemoved && !obeltChanged) {
+    QString obeltLocation = db->equipmentSlotType("OBELT").location;
+    // Check both equipment sets in case the target set ignores the OBELT slot
+    for (auto [slot, item] : target + current) {
+      if (slot != obeltLocation) {
+        continue;
+      }
+      if (item.isEmpty()) {
+        break;
+      }
+      QString verb = db->parsers.verbs.value("OBELT");
+      QString itemKeyword = db->itemKeyword(item);
+      if (verb.isEmpty()) {
+        term->processCommand(QStringLiteral("wear %1 %2").arg(itemKeyword).arg(slot.toLower()));
+      } else {
+        term->processCommand(verb.arg(itemKeyword));
+      }
+      break;
     }
   }
 
@@ -550,11 +593,13 @@ void GaloshSession::processTrigger(const QString& command, bool echo)
 void GaloshSession::processCommands(const QStringList& commands)
 {
   bool immediate = true;
-  for (const QString& line : commands) {
-    auto [cmd, args] = parseCommand(line);
-    if (!cmd.isEmpty()) {
-      immediate = false;
-      break;
+  if (term->isParsing()) {
+    for (const QString& line : commands) {
+      auto [cmd, args] = parseCommand(line);
+      if (!cmd.isEmpty()) {
+        immediate = false;
+        break;
+      }
     }
   }
   if (immediate) {

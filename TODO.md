@@ -7,6 +7,7 @@
 * Title bar doesn't clear after closing last session (and maybe other things?)
 * Map colors/costs might be getting clobbered
 * Apply button in profiles window doesn't clear dirty flag
+* -f doesn't work on /route
 
 ## Polish
 
@@ -25,6 +26,7 @@
 * Some table views use bold headers, others don't
 * Decide on "room type" vs "terrain type"
 * Verify button icons on other platforms (or create custom icons for everything)
+* Identify when automap doesn't need updated (better performance)
 
 ## Incomplete features
 
@@ -57,3 +59,7 @@
 * Custom commands in map editor
 * Avoid individual rooms for routing
 * Character set selection
+* Social panel
+    * Really it's just a panel that triggers can send messages to
+* Hide password in output
+* Auto-reconnect

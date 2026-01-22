@@ -334,7 +334,10 @@ void MapLayout::loadZone(const MapZone* zone, bool force)
 void MapLayout::loadClique(MapSearch::Clique::RefR clique, int roomId, int zIndex)
 {
   const MapRoom* room = map->room(roomId);
-  Q_ASSERT(room->zone == currentZone);
+  if (room->zone != currentZone) {
+    qWarning() << "XXX: mismatch in loadClique: room" << roomId << "in" << room->zone << "not" << currentZone;
+    return;
+  }
   if (roomLayers.contains(roomId)) {
     if (zIndex != roomLayers[roomId]) {
       qDebug() << "revisit?" << roomId << roomLayers[roomId] << zIndex;

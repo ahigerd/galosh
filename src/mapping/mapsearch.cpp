@@ -354,16 +354,6 @@ struct GridCollector
     return next;
   }
 
-  Column collectGridColumn(const MapRoom* start)
-  {
-    Column rooms{ start };
-    const MapRoom* step = start;
-    while ((step = gridStep(step, "S"))) {
-      rooms << step;
-    }
-    return rooms;
-  }
-
   MapSearch::Grid collectGrid()
   {
     if (!startRoom) {
@@ -371,7 +361,7 @@ struct GridCollector
     }
     Column steps{ startRoom };
     const MapRoom* step = startRoom;
-    while ((step = gridStep(step, "S"))) {
+    while ((step = gridStep(step, "S")) && !steps.contains(step)) {
       steps << step;
     }
 
@@ -950,7 +940,18 @@ QList<int> MapSearch::findRoute(int startRoomId, const QString& destZone, const 
     }
     steps << CliqueStep{ clique, outRooms, nextRooms };
   }
-  steps << CliqueStep{ cliqueRoute.cliques.last(), steps.last().nextRoomIds, {} };
+  if (steps.isEmpty()) {
+    auto endClique = cliqueRoute.cliques.last();
+    QSet<int> roomIds;
+    for (const CliqueExit& exit : endClique->exits) {
+      if (exit.toClique == endClique) {
+        roomIds << exit.toRoomId;
+      }
+    }
+    steps << CliqueStep{ endClique, roomIds, {} };
+  } else {
+    steps << CliqueStep{ cliqueRoute.cliques.last(), steps.last().nextRoomIds, {} };
+  }
 
   return findRoute(steps, 0, startRoomId).rooms;
 }
