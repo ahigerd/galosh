@@ -794,13 +794,24 @@ MapSearch::CliqueRoute MapSearch::findCliqueRoute(Clique::RefR fromClique, Cliqu
   // StackCounter sc(&depth);
 
   // Step 1: direct connection
+  int bestDirect = -1;
   for (const CliqueExit& exit : fromClique->exits) {
     if (exit.toClique == toClique) {
-      return { { toClique }, 0 };
+      int cost = map->roomCost(exit.toRoomId);
+      if (bestDirect < 0 || cost < bestDirect) {
+        bestDirect = cost;
+      }
     }
   }
+  if (bestDirect >= 0) {
+    return { { toClique }, bestDirect };
+  }
   // Step 2: single transit
+  CliqueRoute bestPath;
   for (const Clique& through : cliqueStore) {
+    if (avoid.contains(Clique::Ref(&through))) {
+      continue;
+    }
     int foundFrom = -1;
     int foundTo = -1;
     for (const CliqueExit& exit : through.exits) {
@@ -813,12 +824,15 @@ MapSearch::CliqueRoute MapSearch::findCliqueRoute(Clique::RefR fromClique, Cliqu
     }
     if (foundFrom > 0 && foundTo > 0) {
       auto path = through.routes[qMakePair(foundFrom, foundTo)];
-      return { { &through, toClique }, through.routes[qMakePair(foundFrom, foundTo)].cost };
+      int cost = through.routes[qMakePair(foundFrom, foundTo)].cost;
+      if (bestPath.cliques.isEmpty() || cost < bestPath.cost) {
+        bestPath.cliques = { &through, toClique };
+        bestPath.cost = cost;
+      }
     }
   }
   // Step 3: recursive search
   avoid << fromClique;
-  CliqueRoute bestPath;
   for (const CliqueExit& exit : fromClique->exits) {
     Clique::Ref next = exit.toClique;
     if (avoid.contains(next) && next != toClique) {
