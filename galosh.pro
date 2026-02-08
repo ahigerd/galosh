@@ -1,13 +1,33 @@
 TEMPLATE = app
 QT = core gui widgets network
 CONFIG += c++2a
-CONFIG += debug
-CONFIG -= debug_and_release release
 INCLUDEPATH += src/ src/qtermwidget src/mapping
 OBJECTS_DIR = .build
 MOC_DIR = .build
 RCC_DIR = .build
 UI_DIR = .build
+
+isEmpty(BUILD) {
+  isEmpty(GALOSH_BUILD) {
+    GALOSH_BUILD = debug
+  }
+  BUILD = $$GALOSH_BUILD
+}
+else {
+  GALOSH_BUILD = $$BUILD
+  cache(GALOSH_BUILD, set)
+}
+
+equals(BUILD, "release") {
+  message("Configuring release build.")
+  CONFIG += release static
+  CONFIG -= debug_and_release debug
+}
+else {
+  message("Configuring debug build.")
+  CONFIG += debug
+  CONFIG -= debug_and_release release
+}
 
 win32 {
   SOURCES += src/mman-win32/mman.c

@@ -1,5 +1,6 @@
 .build
 .qmake.stash
+.qmake.cache
 Makefile*
 galosh
 galosh_plugin_import.cpp
