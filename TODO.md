@@ -8,6 +8,7 @@
 * Map colors/costs might be getting clobbered
 * Apply button in profiles window doesn't clear dirty flag
 * -f doesn't work on /route
+* Equipment sets don't recognize shield as using up a hand
 
 ## Polish
 
@@ -27,6 +28,7 @@
 * Decide on "room type" vs "terrain type"
 * Verify button icons on other platforms (or create custom icons for everything)
 * Identify when automap doesn't need updated (better performance)
+* Add toggle to disable Mudlet map autodownload
 
 ## Incomplete features
 
@@ -63,3 +65,5 @@
     * Really it's just a panel that triggers can send messages to
 * Hide password in output
 * Auto-reconnect
+* Routing flag to ignore room costs (i.e. for flying)
+* Check for updates
