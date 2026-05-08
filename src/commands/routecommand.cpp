@@ -49,8 +49,7 @@ CommandResult RouteCommand::handleInvoke(const QStringList& args, const KWArgs& 
     }
     startRoomId = history->currentRoom()->id;
   }
-  map->search()->precompute(true);
-  map->search()->precomputeRoutes();
+  map->search()->precompute(false);
   QList<int> route;
   QString destName;
   if (kwargs.contains("-z")) {

@@ -70,45 +70,39 @@ public:
   void reset();
   void markDirty(const MapZone* zone = nullptr);
   bool precompute(bool force = false);
-  void precomputeRoutes();
   QList<Clique::Ref> cliquesForZone(const MapZone* zone) const;
   QList<Clique::Ref> findCliqueRoute(int startRoomId, int endRoomId, const QStringList& avoidZones = {}) const;
   QList<int> findRoute(int startRoomId, int endRoomId, const QStringList& avoidZones = {}) const;
   QList<int> findRoute(int startRoomId, const QString& destZone, const QStringList& avoidZones = {}) const;
   QStringList routeDirections(const QList<int>& route) const;
 
-private slots:
-  void precomputeIncremental();
-
 private:
   void getCliquesForZone(const MapZone* zone);
   void crawlClique(Clique::MRefR clique, int roomId);
   void resolveExits(Clique::MRefR clique);
-  void findGrids(Clique::MRefR clique);
-  void fillRoutes(Clique::MRefR clique, int startRoomId);
   QMap<int, int> getCosts(Clique::RefR clique, int startRoomId, int endRoomId = -1) const;
-  Route findRouteInClique(Clique::RefR clique, int startRoomId, int endRoomId, const QMap<int, int>& costs, int maxCost = 0) const;
   Clique::MRef newClique(const MapZone* parent);
   Clique::MRef findClique(const QString& zoneName, int roomId) const;
   Clique::MRef findClique(int roomId) const;
   QList<Clique::Ref> collectCliques(const QStringList& zones) const;
-  CliqueRoute findCliqueRoute(Clique::RefR fromClique, Clique::RefR toClique, QList<Clique::Ref> avoid) const;
 
-  struct CliqueStep {
-    Clique::Ref clique;
-    QSet<int> endRoomIds;
-    QSet<int> nextRoomIds;
+  struct Node {
+    int roomId = -1;
+    int cost;
+    QVector<int> exits;
+    QVector<int> entrances;
   };
-  Route findRoute(const QList<CliqueStep>& steps, int index, int startRoomId) const;
+  QMap<int, Node> nodes;
+  void generateNodes(const MapRoom* start);
+  QHash<int, int> costsFromNode(int startRoomId, bool reverse, const QSet<int>& avoidRooms = {}) const;
+  QPair<QList<int>, int> findRoute(int startRoomId, int endRoomId, const QSet<int>& avoidRooms) const;
 
 public:
   MapManager* map;
   std::list<Clique> cliqueStore;
   QMap<QString, QList<Clique::MRef>> cliques;
-  QSet<Clique::Ref> deadEnds;
   QSet<int> pendingRoomIds;
   QSet<const MapZone*> dirtyZones;
-  std::list<QPair<Clique::MRef, int>> incremental;
 };
 
 #endif

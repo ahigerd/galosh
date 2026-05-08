@@ -132,8 +132,7 @@ CommandResult WaypointCommand::handleRoute(const QString& name, bool run, bool f
     }
     return CommandResult::success();
   }
-  map->search()->precompute(true);
-  map->search()->precomputeRoutes();
+  map->search()->precompute(false);
   QList<int> route = map->search()->findRoute(startRoomId, endRoomId, map->routeAvoidZones());
   QStringList dirs = route.isEmpty() ? QStringList() : map->search()->routeDirections(route);
   if (dirs.isEmpty()) {

@@ -71,6 +71,7 @@ public slots:
 private:
   friend class AutoMapper;
   friend class MapZone;
+  friend class MapSearch;
   void downloadMap(const QString& url);
   void updateRoom(const QVariantMap& info);
 

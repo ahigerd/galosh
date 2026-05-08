@@ -806,6 +806,10 @@ void Vt102Emulation::processToken(int token, wchar_t p, int q)
     case TY_CSI_PR('s', 2004) :         saveMode      (MODE_BracketedPaste); break; //XTERM
     case TY_CSI_PR('r', 2004) :      restoreMode      (MODE_BracketedPaste); break; //XTERM
 
+    // ignore unsupported synchronized output extension
+    case TY_CSI_PR('h', 2026) : break;
+    case TY_CSI_PR('l', 2026) : break;
+
     //FIXME: weird DEC reset sequence
     case TY_CSI_PE('p'      ) : /* IGNORED: reset         (        ) */ break;
 
