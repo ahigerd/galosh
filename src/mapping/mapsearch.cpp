@@ -31,7 +31,7 @@ void MapSearch::markDirty(const MapZone* zone)
 bool MapSearch::precompute(bool force)
 {
   force = force || nodes.isEmpty() || dirtyZones.contains(nullptr);
-  if (!force) {
+  if (!force && dirtyZones.isEmpty()) {
     return false;
   }
 
@@ -56,11 +56,6 @@ bool MapSearch::precompute(bool force)
   }
   for (Clique& clique : cliqueStore) {
     resolveExits(&clique);
-
-    QSet<int> distinctExits;
-    for (const CliqueExit& exit : clique.exits) {
-      distinctExits << exit.fromRoomId;
-    }
   }
 
   nodes.clear();
