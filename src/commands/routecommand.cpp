@@ -22,7 +22,7 @@ QString RouteCommand::helpMessage(bool brief) const
     "    -z        Routes to a zone instead of a room or waypoint\n"
     "    -q        Show as a speedwalking path\n"
     "    -g        Immediately run the speedwalking path\n"
-    "    -f        With -g, run the speedwalking path in fast mode\n"
+    "    -f        Immediately run the speedwalking path in fast mode\n"
     "    start     (Optional) The room ID to start routing from\n"
     "    id        The room ID to route to\n"
     "    waypoint  A predefined waypoint to route to";
@@ -30,10 +30,8 @@ QString RouteCommand::helpMessage(bool brief) const
 
 CommandResult RouteCommand::handleInvoke(const QStringList& args, const KWArgs& kwargs)
 {
-  if (kwargs.contains("-f") && !kwargs.contains("-g")) {
-    showError("Cannot use fast mode without -g.");
-    return CommandResult::fail();
-  }
+  bool fast = kwargs.contains("-f");
+  bool runNow = kwargs.contains("-g") || fast;
   int startRoomId;
   if (args.length() > 1) {
     bool ok = false;
@@ -100,7 +98,7 @@ CommandResult RouteCommand::handleInvoke(const QStringList& args, const KWArgs& 
   QStringList warnings;
   QStringList messages;
   messages << path.speedwalk(-1, false, &warnings);
-  if (kwargs.contains("-q") || kwargs.contains("-g")) {
+  if (kwargs.contains("-q") || runNow) {
     if (!warnings.isEmpty()) {
       messages << "";
       messages += warnings;
@@ -111,10 +109,12 @@ CommandResult RouteCommand::handleInvoke(const QStringList& args, const KWArgs& 
   }
   if (warnings.isEmpty()) {
     showMessage(messages.join("\n"));
-    if (kwargs.contains("-g")) {
-      QStringList walkArgs = QStringList() << "-v" << messages.first();
-      if (kwargs.contains("-f")) {
+    if (runNow) {
+      QStringList walkArgs{ messages.first() };
+      if (fast) {
         walkArgs << "-f";
+      } else {
+        walkArgs << "-v";
       }
       return invokeCommand("\x01SPEEDWALK", walkArgs);
     }

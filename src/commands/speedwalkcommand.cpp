@@ -124,8 +124,6 @@ SpeedwalkCommand::SpeedwalkCommand(MapManager* map, ExploreHistory* history, Wal
   supportedKwargs["-v"] = false;
   supportedKwargs["-f"] = false;
   supportedKwargs["-q"] = false;
-  // path has completed successfully -- impossible to type, used recursively
-  supportedKwargs["\eok"] = false;
   // path is pre-parsed -- impossible to type, used by other commands
   supportedKwargs[" "] = false;
 }
@@ -151,10 +149,6 @@ QString SpeedwalkCommand::helpMessage(bool brief) const
 
 CommandResult SpeedwalkCommand::handleInvoke(const QStringList& args, const KWArgs& kwargs)
 {
-  if (kwargs.contains("\eok")) {
-    return CommandResult::fail();
-  }
-
   QStringList path;
   bool fast = kwargs.contains("-f");
   bool validateAll = kwargs.contains("-v");

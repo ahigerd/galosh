@@ -7,7 +7,6 @@
 * Title bar doesn't clear after closing last session (and maybe other things?)
 * Map colors/costs might be getting clobbered
 * Apply button in profiles window doesn't clear dirty flag
-* -f doesn't work on /route
 * Equipment sets don't recognize shield as using up a hand
 
 ## Polish
@@ -66,4 +65,5 @@
 * Hide password in output
 * Auto-reconnect
 * Routing flag to ignore room costs (i.e. for flying)
+* `/GO` / `/GOTO` alias for `/ROUTE -g`
 * Check for updates
