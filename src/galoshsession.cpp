@@ -402,6 +402,7 @@ void GaloshSession::changeEquipment(const ItemDatabase::EquipmentSet& _current, 
 
   bool beltRemoved = false, obeltChanged = false;
 
+  term->writeColorLine("", "");
   QString fromContainer;
   for (auto [slot, name] : target) {
     if (slot == "_container") {
@@ -414,7 +415,12 @@ void GaloshSession::changeEquipment(const ItemDatabase::EquipmentSet& _current, 
     }
   }
 
-  term->writeColorLine("", "");
+  struct Action {
+    QString slot;
+    QString remove;
+    QString equip;
+  };
+  QList<Action> actions;
   for (auto [slot, item] : toRemove) {
     QString itemKeyword = db->itemKeyword(item);
     if (itemKeyword.isEmpty()) {
@@ -424,10 +430,10 @@ void GaloshSession::changeEquipment(const ItemDatabase::EquipmentSet& _current, 
     if (slot == "WAIST" || slot == "BELT") {
       beltRemoved = true;
     }
-    term->processCommand(QStringLiteral("remove %1").arg(itemKeyword));
-    if (!toContainer.isEmpty()) {
-      term->processCommand(QStringLiteral("put %1 %2").arg(itemKeyword).arg(toContainer));
-    }
+    Action action;
+    action.slot = slot;
+    action.remove = itemKeyword;
+    actions << action;
   }
 
   for (auto [slot, item] : toEquip) {
@@ -436,17 +442,42 @@ void GaloshSession::changeEquipment(const ItemDatabase::EquipmentSet& _current, 
       itemKeyword = item.section(' ', -1);
       term->writeColorLine("1;96", QStringLiteral("Keyword not set for \"%1\", using \"%2\"").arg(item).arg(itemKeyword).toUtf8());
     }
-    if (!fromContainer.isEmpty()) {
-      term->processCommand(QStringLiteral("get %1 %2").arg(itemKeyword).arg(fromContainer));
-    }
     if (slot == "OBELT") {
       obeltChanged = true;
     }
-    QString verb = db->parsers.verbs.value(slot);
-    if (verb.isEmpty()) {
-      term->processCommand(QStringLiteral("wear %1 %2").arg(itemKeyword).arg(slot.toLower()));
-    } else {
-      term->processCommand(verb.arg(itemKeyword));
+    bool equipped = false;
+    for (Action& action : actions) {
+      if (action.slot == slot && action.equip.isEmpty()) {
+        action.equip = itemKeyword;
+        equipped = true;
+        break;
+      }
+    }
+    if (!equipped) {
+      Action action;
+      action.slot = slot;
+      action.equip = itemKeyword;
+      actions << action;
+    }
+  }
+
+  for (auto [slot, remove, equip] : actions) {
+    if (!remove.isEmpty()) {
+      term->processCommand(QStringLiteral("remove %1").arg(remove));
+      if (!toContainer.isEmpty()) {
+        term->processCommand(QStringLiteral("put %1 %2").arg(remove).arg(toContainer));
+      }
+    }
+    if (!equip.isEmpty()) {
+      if (!fromContainer.isEmpty()) {
+        term->processCommand(QStringLiteral("get %1 %2").arg(equip).arg(fromContainer));
+      }
+      QString verb = db->parsers.verbs.value(slot);
+      if (verb.isEmpty()) {
+        term->processCommand(QStringLiteral("wear %1 %2").arg(equip).arg(slot.toLower()));
+      } else {
+        term->processCommand(verb.arg(equip));
+      }
     }
   }
 
