@@ -72,8 +72,8 @@ public:
   bool precompute(bool force = false);
   QList<Clique::Ref> cliquesForZone(const MapZone* zone) const;
   QList<Clique::Ref> findCliqueRoute(int startRoomId, int endRoomId, const QStringList& avoidZones = {}) const;
-  QList<int> findRoute(int startRoomId, int endRoomId, const QStringList& avoidZones = {}) const;
-  QList<int> findRoute(int startRoomId, const QString& destZone, const QStringList& avoidZones = {}) const;
+  QList<int> findRoute(int startRoomId, int endRoomId, bool countRooms = false, const QStringList& avoidZones = {}) const;
+  QList<int> findRoute(int startRoomId, const QString& destZone, bool countRooms = false, const QStringList& avoidZones = {}) const;
   QStringList routeDirections(const QList<int>& route) const;
 
 private:
@@ -94,8 +94,8 @@ private:
   };
   QMap<int, Node> nodes;
   void generateNodes(const MapRoom* start);
-  QHash<int, int> costsFromNode(int startRoomId, bool reverse, const QSet<int>& avoidRooms = {}) const;
-  QPair<QList<int>, int> findRoute(int startRoomId, int endRoomId, const QSet<int>& avoidRooms) const;
+  QHash<int, int> costsFromNode(int startRoomId, int targetRoomId, bool reverse, bool countRooms, const QSet<int>& avoidRooms) const;
+  QPair<QList<int>, int> findRoute(int startRoomId, int endRoomId, bool countRooms, const QSet<int>& avoidRooms) const;
 
 public:
   MapManager* map;

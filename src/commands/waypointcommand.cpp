@@ -10,6 +10,7 @@ WaypointCommand::WaypointCommand(MapManager* map, ExploreHistory* history)
   supportedKwargs["-d"] = true;
   supportedKwargs["-g"] = true;
   supportedKwargs["-f"] = false;
+  supportedKwargs["-1"] = false;
   addKeyword("WAY");
 }
 
@@ -25,13 +26,20 @@ QString WaypointCommand::helpMessage(bool brief) const
     "/WAYPOINT -a <name> <id>  Creates or updates a waypoint in the specified room\n"
     "/WAYPOINT -d <name>       Deletes the named waypoint\n"
     "/WAYPOINT -g <name>       Speedwalks to the named waypoint\n"
-    "             -f           Runs speedwalk in fast mode";
+    "             -f           Runs speedwalk in fast mode\n"
+    "             -1           Ignores movement costs during pathfinding";
 }
 
 CommandResult WaypointCommand::handleInvoke(const QStringList& args, const KWArgs& kwargs)
 {
-  if (kwargs.contains("-f") && !kwargs.contains("-g")) {
+  bool fast = kwargs.contains("-f");
+  if (fast && !kwargs.contains("-g")) {
     showError("Cannot use fast mode without -g.");
+    return CommandResult::fail();
+  }
+  bool countRooms = kwargs.contains("-1");
+  if (countRooms && !kwargs.contains("-g")) {
+    showError("Cannot use -1 without -g.");
     return CommandResult::fail();
   }
   if (!kwargs.isEmpty() && !args.isEmpty() && !kwargs.contains("-a")) {
@@ -40,7 +48,7 @@ CommandResult WaypointCommand::handleInvoke(const QStringList& args, const KWArg
   } else if (kwargs.contains("-d")) {
     return handleDelete(kwargs.value("-d"));
   } else if (kwargs.contains("-g")) {
-    return handleRoute(kwargs.value("-g"), true, kwargs.contains("-f"));
+    return handleRoute(kwargs.value("-g"), true, fast, countRooms);
   } else if (kwargs.contains("-a")) {
     if (args.length() == 1) {
       bool ok;
@@ -51,7 +59,7 @@ CommandResult WaypointCommand::handleInvoke(const QStringList& args, const KWArg
     }
     return CommandResult::fail();
   } else if (args.length() == 1) {
-    return handleRoute(args[0], false, false);
+    return handleRoute(args[0], false, false, countRooms);
   } else {
     QStringList waypoints = map->waypoints();
     if (waypoints.isEmpty()) {
@@ -108,7 +116,7 @@ CommandResult WaypointCommand::handleDelete(const QString& name)
   }
 }
 
-CommandResult WaypointCommand::handleRoute(const QString& name, bool run, bool fast)
+CommandResult WaypointCommand::handleRoute(const QString& name, bool run, bool fast, bool countRooms)
 {
   int startRoomId = history->currentRoom() ? history->currentRoom()->id : -1;
   if (startRoomId < 0) {
@@ -133,7 +141,7 @@ CommandResult WaypointCommand::handleRoute(const QString& name, bool run, bool f
     return CommandResult::success();
   }
   map->search()->precompute(false);
-  QList<int> route = map->search()->findRoute(startRoomId, endRoomId, map->routeAvoidZones());
+  QList<int> route = map->search()->findRoute(startRoomId, endRoomId, countRooms, map->routeAvoidZones());
   QStringList dirs = route.isEmpty() ? QStringList() : map->search()->routeDirections(route);
   if (dirs.isEmpty()) {
     if (run) {

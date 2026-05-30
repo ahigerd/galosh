@@ -20,7 +20,7 @@ protected:
 private:
   CommandResult handleAdd(const QString& name, int roomId);
   CommandResult handleDelete(const QString& name);
-  CommandResult handleRoute(const QString& name, bool run, bool fast);
+  CommandResult handleRoute(const QString& name, bool run, bool fast, bool countRooms);
 
   MapManager* map;
   ExploreHistory* history;

@@ -248,10 +248,14 @@ void MapViewer::setCurrentRoom(int roomId)
     return;
   }
   if (view->currentRoomId != roomId) {
-    loadZone(room->zone);
-    view->currentRoomId = roomId;
-    QPointF pos = mapLayout->roomPos(roomId).center() * view->zoomLevel;
-    scrollArea->ensureVisible(pos.x(), pos.y(), width() / 3, height() / 3);
+    try {
+      loadZone(room->zone);
+      view->currentRoomId = roomId;
+      QPointF pos = mapLayout->roomPos(roomId).center() * view->zoomLevel;
+      scrollArea->ensureVisible(pos.x(), pos.y(), width() / 3, height() / 3);
+    } catch (std::exception& e) {
+      qDebug() << "Error while updating map view:" << e.what();
+    }
   }
   // TODO: recalc map if necessary (will this need a toggle?)
 }

@@ -9,6 +9,7 @@ RouteCommand::RouteCommand(MapManager* map, ExploreHistory* history)
   supportedKwargs["-g"] = false;
   supportedKwargs["-z"] = false;
   supportedKwargs["-f"] = false;
+  supportedKwargs["-1"] = false;
 }
 
 QString RouteCommand::helpMessage(bool brief) const
@@ -17,12 +18,13 @@ QString RouteCommand::helpMessage(bool brief) const
     return "Calculates the path to a specified room";
   }
   // TODO: better docs
-  return "/ROUTE [-q] [-g] [-z] [start] <id|waypoint>\n"
+  return "/ROUTE [-z] [-q] [-g] [-f] [-1] [start] <id|waypoint>\n"
     "Calculates a route to the specified room or waypoint and shows the steps to reach it.\n"
     "    -z        Routes to a zone instead of a room or waypoint\n"
     "    -q        Show as a speedwalking path\n"
     "    -g        Immediately run the speedwalking path\n"
     "    -f        Immediately run the speedwalking path in fast mode\n"
+    "    -1        Ignores movement costs during pathfinding"
     "    start     (Optional) The room ID to start routing from\n"
     "    id        The room ID to route to\n"
     "    waypoint  A predefined waypoint to route to";
@@ -31,6 +33,7 @@ QString RouteCommand::helpMessage(bool brief) const
 CommandResult RouteCommand::handleInvoke(const QStringList& args, const KWArgs& kwargs)
 {
   bool fast = kwargs.contains("-f");
+  bool countRooms = kwargs.contains("-1");
   bool runNow = kwargs.contains("-g") || fast;
   int startRoomId;
   if (args.length() > 1) {
@@ -61,7 +64,7 @@ CommandResult RouteCommand::handleInvoke(const QStringList& args, const KWArgs& 
       return CommandResult::fail();
     }
     destName = zone->name;
-    route = map->search()->findRoute(startRoomId, destName, map->routeAvoidZones());
+    route = map->search()->findRoute(startRoomId, destName, countRooms, map->routeAvoidZones());
   } else {
     int endRoomId = args.last().toInt();
     if (endRoomId) {
@@ -79,7 +82,7 @@ CommandResult RouteCommand::handleInvoke(const QStringList& args, const KWArgs& 
       showError("Start room and destination room are the same");
       return CommandResult::fail();
     }
-    route = map->search()->findRoute(startRoomId, endRoomId, map->routeAvoidZones());
+    route = map->search()->findRoute(startRoomId, endRoomId, countRooms, map->routeAvoidZones());
   }
   if (route.isEmpty()) {
     showError(QStringLiteral("Could not find route from %1 to %2").arg(startRoomId).arg(destName));

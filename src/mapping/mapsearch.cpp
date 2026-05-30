@@ -368,11 +368,12 @@ struct StackCounter
   QByteArray indent;
 };
 
-QHash<int, int> MapSearch::costsFromNode(int startRoomId, bool reverse, const QSet<int>& avoidRooms) const
+QHash<int, int> MapSearch::costsFromNode(int startRoomId, int targetRoomId, bool reverse, bool countRooms, const QSet<int>& avoidRooms) const
 {
   QHash<int, int> costs;
   costs[startRoomId] = 1;
   QSet<int> frontier({ startRoomId });
+  int maxCost = -1;
   while (!frontier.isEmpty()) {
     QSet<int> newFrontier;
     for (int roomId : frontier) {
@@ -382,11 +383,25 @@ QHash<int, int> MapSearch::costsFromNode(int startRoomId, bool reverse, const QS
         if (avoidRooms.contains(destId)) {
           continue;
         }
-        const Node& dest = nodes.value(destId);
-        int newCost = baseCost + dest.cost;
+        int newCost = baseCost;
+        if (countRooms) {
+          newCost += 1;
+        } else {
+          const Node& dest = nodes.value(destId);
+          newCost = baseCost + dest.cost;
+        }
+        if (maxCost >= 0 && newCost > maxCost) {
+          // if we've already discovered the target room, then there's
+          // no benefit to searching a path that's already longer than
+          // the known route.
+          continue;
+        }
         int oldCost = costs.value(destId, -1);
         if (oldCost < 0 || newCost < oldCost) {
           costs[destId] = newCost;
+          if (destId == targetRoomId) {
+            maxCost = newCost + 1;
+          }
           newFrontier << destId;
         }
       }
@@ -396,9 +411,9 @@ QHash<int, int> MapSearch::costsFromNode(int startRoomId, bool reverse, const QS
   return costs;
 }
 
-QPair<QList<int>, int> MapSearch::findRoute(int startRoomId, int endRoomId, const QSet<int>& avoidRooms) const
+QPair<QList<int>, int> MapSearch::findRoute(int startRoomId, int endRoomId, bool countRooms, const QSet<int>& avoidRooms) const
 {
-  QHash<int, int> costs = costsFromNode(endRoomId, true, avoidRooms);
+  QHash<int, int> costs = costsFromNode(endRoomId, startRoomId, true, countRooms, avoidRooms);
   if (!costs.contains(startRoomId)) {
     return {};
   }
@@ -430,7 +445,7 @@ QPair<QList<int>, int> MapSearch::findRoute(int startRoomId, int endRoomId, cons
   return qMakePair(route, costs[startRoomId]);
 }
 
-QList<int> MapSearch::findRoute(int startRoomId, int endRoomId, const QStringList& avoidZones) const
+QList<int> MapSearch::findRoute(int startRoomId, int endRoomId, bool countRooms, const QStringList& avoidZones) const
 {
   QSet<int> avoidRooms;
   for (const QString& zoneName : avoidZones) {
@@ -440,10 +455,10 @@ QList<int> MapSearch::findRoute(int startRoomId, int endRoomId, const QStringLis
     }
   }
 
-  return findRoute(startRoomId, endRoomId, avoidRooms).first;
+  return findRoute(startRoomId, endRoomId, countRooms, avoidRooms).first;
 }
 
-QList<int> MapSearch::findRoute(int startRoomId, const QString& destZone, const QStringList& avoidZones) const
+QList<int> MapSearch::findRoute(int startRoomId, const QString& destZone, bool countRooms, const QStringList& avoidZones) const
 {
   const MapZone* zone = map->zone(destZone);
   if (!zone) {
@@ -461,12 +476,26 @@ QList<int> MapSearch::findRoute(int startRoomId, const QString& destZone, const 
     }
   }
 
-  QHash<int, int> forwardCosts = costsFromNode(startRoomId, false, avoidRooms);
   int endRoomId = -1;
+  for (const QSet<int>& exits : zone->exits) {
+    for (int roomId : exits) {
+      // Pick an arbitrary exit to cap the costsFromNode search.
+      // It doesn't have to be a good guess, just a possible one.
+      endRoomId = roomId;
+      break;
+    }
+    break;
+  }
+
+  QHash<int, int> forwardCosts = costsFromNode(startRoomId, endRoomId, false, countRooms, avoidRooms);
+  endRoomId = -1;
   int bestCost = -1;
   for (const QSet<int>& exits : zone->exits) {
     for (int roomId : exits) {
-      int cost = forwardCosts[roomId];
+      int cost = forwardCosts.value(roomId, -1);
+      if (cost < 0) {
+        continue;
+      }
       if (bestCost < 0 || cost < bestCost) {
         endRoomId = roomId;
         bestCost = cost;
@@ -474,7 +503,7 @@ QList<int> MapSearch::findRoute(int startRoomId, const QString& destZone, const 
     }
   }
 
-  return findRoute(startRoomId, endRoomId, avoidRooms).first;
+  return findRoute(startRoomId, endRoomId, countRooms, avoidRooms).first;
 }
 
 QStringList MapSearch::routeDirections(const QList<int>& route) const
