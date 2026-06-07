@@ -94,7 +94,7 @@ private:
   };
   QMap<int, Node> nodes;
   void generateNodes(const MapRoom* start);
-  QHash<int, int> costsFromNode(int startRoomId, int targetRoomId, bool reverse, bool countRooms, const QSet<int>& avoidRooms) const;
+  QHash<int, int> costsFromNode(int startRoomId, bool reverse, bool countRooms, const QSet<int>& avoidRooms) const;
   QPair<QList<int>, int> findRoute(int startRoomId, int endRoomId, bool countRooms, const QSet<int>& avoidRooms) const;
 
 public:

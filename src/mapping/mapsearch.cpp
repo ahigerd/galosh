@@ -368,12 +368,11 @@ struct StackCounter
   QByteArray indent;
 };
 
-QHash<int, int> MapSearch::costsFromNode(int startRoomId, int targetRoomId, bool reverse, bool countRooms, const QSet<int>& avoidRooms) const
+QHash<int, int> MapSearch::costsFromNode(int startRoomId, bool reverse, bool countRooms, const QSet<int>& avoidRooms) const
 {
   QHash<int, int> costs;
   costs[startRoomId] = 1;
   QSet<int> frontier({ startRoomId });
-  int maxCost = -1;
   while (!frontier.isEmpty()) {
     QSet<int> newFrontier;
     for (int roomId : frontier) {
@@ -390,18 +389,9 @@ QHash<int, int> MapSearch::costsFromNode(int startRoomId, int targetRoomId, bool
           const Node& dest = nodes.value(destId);
           newCost = baseCost + dest.cost;
         }
-        if (maxCost >= 0 && newCost > maxCost) {
-          // if we've already discovered the target room, then there's
-          // no benefit to searching a path that's already longer than
-          // the known route.
-          continue;
-        }
         int oldCost = costs.value(destId, -1);
         if (oldCost < 0 || newCost < oldCost) {
           costs[destId] = newCost;
-          if (destId == targetRoomId) {
-            maxCost = newCost + 1;
-          }
           newFrontier << destId;
         }
       }
@@ -413,7 +403,7 @@ QHash<int, int> MapSearch::costsFromNode(int startRoomId, int targetRoomId, bool
 
 QPair<QList<int>, int> MapSearch::findRoute(int startRoomId, int endRoomId, bool countRooms, const QSet<int>& avoidRooms) const
 {
-  QHash<int, int> costs = costsFromNode(endRoomId, startRoomId, true, countRooms, avoidRooms);
+  QHash<int, int> costs = costsFromNode(endRoomId, true, countRooms, avoidRooms);
   if (!costs.contains(startRoomId)) {
     return {};
   }
@@ -476,19 +466,8 @@ QList<int> MapSearch::findRoute(int startRoomId, const QString& destZone, bool c
     }
   }
 
+  QHash<int, int> forwardCosts = costsFromNode(startRoomId, false, countRooms, avoidRooms);
   int endRoomId = -1;
-  for (const QSet<int>& exits : zone->exits) {
-    for (int roomId : exits) {
-      // Pick an arbitrary exit to cap the costsFromNode search.
-      // It doesn't have to be a good guess, just a possible one.
-      endRoomId = roomId;
-      break;
-    }
-    break;
-  }
-
-  QHash<int, int> forwardCosts = costsFromNode(startRoomId, endRoomId, false, countRooms, avoidRooms);
-  endRoomId = -1;
   int bestCost = -1;
   for (const QSet<int>& exits : zone->exits) {
     for (int roomId : exits) {
