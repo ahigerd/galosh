@@ -10,6 +10,20 @@
 #include <time.h>
 #include <QtDebug>
 
+// TODO: consider unifying with MapZone's dirAbbrev
+static const QMap<QString, QString> dirMapping{
+  { "NORTH", "N" },
+  { "WEST", "W" },
+  { "SOUTH", "S" },
+  { "EAST", "E" },
+  { "NORTHWEST", "NW" },
+  { "SOUTHWEST", "SW" },
+  { "NORTHEAST", "NE" },
+  { "SOUTHEAST", "SE" },
+  { "UP", "U" },
+  { "DOWN", "D" },
+};
+
 QString MapManager::mapForProfile(const QString& profile)
 {
   QSettings settings(profile, QSettings::IniFormat);
@@ -149,9 +163,9 @@ void MapManager::loadMap(const QString& mapFileName)
 
 void MapManager::updateRoom(const QVariantMap& info)
 {
-  QString zoneName = info["zone"].toString();
+  QString zoneName = info.value("zone", info.value("area")).toString();
 
-  int roomId = info["id"].toInt();
+  int roomId = info.value("id", info.value("num")).toInt();
   bool newRoom = !rooms.contains(roomId);
   MapRoom& room = rooms[roomId];
   room.id = roomId;
@@ -167,11 +181,24 @@ void MapManager::updateRoom(const QVariantMap& info)
     }
   }
 
-  QVariantMap exits = info["Exits"].toMap();
-  for (const QString& dir : exits.keys()) {
+  QVariantMap exits = info.value("exits", info.value("Exits")).toMap();
+  for (const QString& rawDir : exits.keys()) {
+    QString dir = dirMapping.value(rawDir.toUpper(), rawDir.toUpper());
     newRoom = newRoom || !room.exits.contains(dir);
+    if (exits[rawDir].canConvert<quint64>()) {
+      quint64 destId = exits[rawDir].value<quint64>();
+      if (destId > 0) {
+        MapExit& exit = room.exits[dir];
+        exit.dest = destId;
+        exit.door = false;
+        exit.locked = false;
+        exit.lockable = false;
+        exit.open = true;
+      }
+      continue;
+    }
     MapExit& exit = room.exits[dir];
-    QVariantMap exitInfo = exits[dir].toMap();
+    QVariantMap exitInfo = exits[rawDir].toMap();
     QString status = exitInfo["door"].toString().toUpper();
     exit.dest = exitInfo["to_room"].toInt();
     exit.door = exitInfo["is_door"].toBool();
@@ -336,7 +363,8 @@ void MapManager::saveRoom(MapRoom* room)
 
   SettingsGroup exitGroup(mapFile, "exit");
 
-  for (const QString& dir : room->exits.keys()) {
+  for (const QString& rawDir : room->exits.keys()) {
+    QString dir = dirMapping.value(rawDir.toUpper(), rawDir);
     SettingsGroup dirGroup(mapFile, dir);
     MapExit& exit = room->exits[dir];
     mapFile->setValue("id", exit.dest);

@@ -87,11 +87,12 @@ void AutoMapper::gmcpEvent(const QString& key, const QVariant& value)
 {
   Q_UNUSED(key);
   Q_UNUSED(value);
-  if (key.toUpper() == "ROOM") {
+  if (key.toUpper() == "ROOM" || key.toUpper() == "ROOM.INFO") {
     map->gmcpMode = true;
-    int roomId = value.toMap().value("id", -1).toInt();
+    const QVariantMap valueMap = value.toMap();
+    int roomId = valueMap.value("id", valueMap.value("num", -1)).toInt();
     if (roomId > 0) {
-      map->updateRoom(value.toMap());
+      map->updateRoom(valueMap);
       currentRoomId = roomId;
       emit currentRoomUpdated(roomId);
     }
@@ -172,11 +173,14 @@ void AutoMapper::processLine(const QString& line)
       logRoomDescription = false;
       pendingDescription = pendingDescription.trimmed().mid(1);
       bool exitsDirty = false;
-      if (line.startsWith("Exits:")) {
+      if (!map->gmcpMode && line.startsWith("Exits:")) {
         QStringList exits = line.mid(6).trimmed().split(' ');
         MapRoom& room = map->rooms[currentRoomId];
         QString back = MapRoom::reverseDir(destinationDir);
         for (QString exit : exits) {
+          exit = exit.replace(",", "");
+          if (exit.isEmpty())
+            continue;
           bool locked = exit.startsWith('[');
           if (locked) {
             exit = exit.mid(1, exit.length() - 2);

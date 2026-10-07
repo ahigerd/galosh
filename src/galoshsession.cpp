@@ -225,7 +225,7 @@ void GaloshSession::gmcpEvent(const QString& rawKey, const QVariant& value)
     }
     statusBar = parts.join(" - ");
     emit statusUpdated();
-  } else if (key != "ROOM") {
+  } else if (key != "ROOM" && !key.startsWith("ROOM.")) {
     qDebug() << key << value;
   }
 }

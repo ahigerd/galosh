@@ -393,7 +393,7 @@ void TelnetSocket::telnetWill(quint8 option, bool wont)
   if (option == TelnetSocket::Echo) {
     emit echoChanged(wont);
   } else if (option == TelnetSocket::EndOfRecord) {
-    useEor = !wont;
+    // useEor = !wont;
   }
   // qDebug() << "<<< IAC" << QMetaEnum::fromType<Telnet>().valueToKey(response[1]) << int(option);
   write(reinterpret_cast<char*>(response), 3);
