@@ -1,4 +1,5 @@
 #include "infomodel.h"
+#include <QtDebug>
 
 InfoModel::InfoModel(QObject* parent)
 : QStandardItemModel(0, 2, parent)
@@ -8,34 +9,64 @@ InfoModel::InfoModel(QObject* parent)
   setHorizontalHeaderLabels({ "Stat", "Value" });
 }
 
-void InfoModel::loadTree(const QVariant& data)
+QStandardItem* InfoModel::ensureItem(const QString& parentPath, const QString& key)
+{
+  QString fullKey = parentPath.isEmpty() ? key : (parentPath + "." + key);
+  QStandardItem* parent = itemsByPath[parentPath];
+  QStandardItem* item = itemsByPath[fullKey];
+  if (!item) {
+    QString label = labelMap.value(key, key);
+    itemsByPath[fullKey] = item = new QStandardItem(label);
+    item->setData(fullKey, Qt::UserRole);
+    item->setData(key, Qt::UserRole + 1);
+    parent->appendRow({ item, new QStandardItem });
+  }
+  return item;
+}
+
+void InfoModel::gmcpChar(const QString& key, const QVariantMap& data)
+{
+  static const QMap<QString, QString> keyMapping = {
+    { "CHAR.VITALS", "Vitals" },
+    { "CHAR.EFFECTS", "Effects" },
+    { "CHAR.STATUS", "Status" },
+    { "CHAR.COMBAT", "Combat" },
+  };
+  QString label = keyMapping.value(key);
+  if (!label.isEmpty()) {
+    ensureItem("", label);
+    recurseLegacyTree("", label, data);
+  } else if (key == "CHAR.STATUSVARS") {
+    labelMap.clear();
+    for (const QString& key : data.keys()) {
+      QString value = data[key].toString();
+      if (value.isEmpty())
+        continue;
+      labelMap[key] = value;
+    }
+  }
+  qDebug() << "GMCP:" << key << data;
+}
+
+void InfoModel::loadLegacyTree(const QVariant& data)
 {
   QVariantMap tree = data.toMap();
   if (tree.isEmpty()) {
     return;
   }
-  recurseTree("", "", tree);
+  recurseLegacyTree("", "", tree);
 }
 
-void InfoModel::recurseTree(const QString& path, const QString& key, QVariant value)
+void InfoModel::recurseLegacyTree(const QString& path, const QString& key, QVariant value)
 {
   value = preprocess(path, key, value);
-  QString fullKey = path + "." + key;
-  if (fullKey == ".") {
-    fullKey = "";
-  }
-  QStandardItem* parent = itemsByPath[path];
-  QStandardItem* item = itemsByPath[fullKey];
-  if (!item) {
-    itemsByPath[fullKey] = item = new QStandardItem(key);
-    item->setData(fullKey, Qt::UserRole);
-    parent->appendRow({ item, new QStandardItem });
-  }
+  QString fullKey = path.isEmpty() ? key : path + "." + key;
+  QStandardItem* item = ensureItem(path, key);
   if (value.type() == QVariant::List) {
     QVariantList list = value.toList();
     int len = list.length();
     for (int i = 0; i < len; i++) {
-      recurseTree(fullKey, QString::number(i + 1), list[i]);
+      recurseLegacyTree(fullKey, QString::number(i + 1), list[i]);
     }
     while (item->rowCount() > len) {
       removeChildren(item, item->rowCount() - 1);
@@ -43,7 +74,7 @@ void InfoModel::recurseTree(const QString& path, const QString& key, QVariant va
   } else if (value.type() == QVariant::Map) {
     QVariantMap map = value.toMap();
     for (const QString& subKey : map.keys()) {
-      recurseTree(fullKey, subKey, map[subKey]);
+      recurseLegacyTree(fullKey, subKey, map[subKey]);
     }
     int len = item->rowCount();
     for (int i = 0; i < len; i++) {
@@ -51,7 +82,7 @@ void InfoModel::recurseTree(const QString& path, const QString& key, QVariant va
       if (!child) {
         continue;
       }
-      if (!map.contains(child->data(Qt::DisplayRole).toString())) {
+      if (!map.contains(child->data(Qt::UserRole + 1).toString())) {
         removeChildren(item, i);
         i--;
         len--;

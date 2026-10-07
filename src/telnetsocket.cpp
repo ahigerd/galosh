@@ -36,7 +36,7 @@ QString TelnetSocket::stripVT100(const QByteArray& payload)
 }
 
 TelnetSocket::TelnetSocket(QObject* parent)
-: QIODevice(parent)
+: QIODevice(parent), connectedPort(0), useTls(false), useEor(false)
 {
   setOpenMode(QIODevice::ReadWrite);
 
@@ -307,6 +307,9 @@ void TelnetSocket::onReadyRead()
         }
         telnetSB(src[i + 2], protocolBuffer.mid(i + 3, endPos - i - 3));
         i = endPos + 1;
+      } else if (useEor && fn == Telnet::EOR) {
+        emit promptWaiting();
+        i += 1;
       } else {
         i += 1;
       }
@@ -353,15 +356,26 @@ qint64 TelnetSocket::writeData(const char* data, qint64 maxSize)
   }
 }
 
+static const QSet<quint8> knownOptions({
+  TelnetSocket::Binary,
+  TelnetSocket::Echo,
+  TelnetSocket::TermType,
+  // TelnetSocket::EndOfRecord, // TODO: re-enable once fierymud-rs does this right
+  TelnetSocket::NAWS,
+  TelnetSocket::NewEnviron,
+  TelnetSocket::Charset,
+  TelnetSocket::MXP, // TODO: actually support this
+  TelnetSocket::GMCP,
+});
+
 void TelnetSocket::telnetDo(quint8 option, bool dont)
 {
   // qDebug() << (dont ? ">>> don't" : ">>> do") << option;
+  // Redpond with WONT by default
   quint8 response[3] = { Telnet::IAC, Telnet::WONT, option };
-  if (!dont) {
-    if (option == 0x18) {
-      // terminal type
-      response[1] = Telnet::WILL;
-    }
+  if (!dont && knownOptions.contains(option)) {
+    // Respond to DO requests for known supported options with WILL
+    response[1] = Telnet::WILL;
   }
   // qDebug() << "<<< IAC" << QMetaEnum::fromType<Telnet>().valueToKey(response[1]) << int(option);
   write(reinterpret_cast<char*>(response), 3);
@@ -370,9 +384,16 @@ void TelnetSocket::telnetDo(quint8 option, bool dont)
 void TelnetSocket::telnetWill(quint8 option, bool wont)
 {
   // qDebug() << (wont ? ">>> won't" : ">>> will") << option;
-  quint8 response[3] = { Telnet::IAC, wont ? Telnet::DONT : Telnet::DO, option };
-  if (option == 1) {
+  // Respond with DONT by default
+  quint8 response[3] = { Telnet::IAC, Telnet::DONT, option };
+  if (!wont && knownOptions.contains(option)) {
+    // Respond to WILL assertions for known supported options with DO
+    response[1] = Telnet::DO;
+  }
+  if (option == TelnetSocket::Echo) {
     emit echoChanged(wont);
+  } else if (option == TelnetSocket::EndOfRecord) {
+    useEor = !wont;
   }
   // qDebug() << "<<< IAC" << QMetaEnum::fromType<Telnet>().valueToKey(response[1]) << int(option);
   write(reinterpret_cast<char*>(response), 3);
@@ -441,6 +462,10 @@ void TelnetSocket::processLines()
 
 void TelnetSocket::checkForPrompts()
 {
+  if (useEor) {
+    // prompts will be explicitly announced, don't try to detect
+    return;
+  }
   if (lineBuffer.isEmpty() || lineBuffer.contains('\n')) {
     // Either nothing to do, or onReadyRead will handle it
     return;

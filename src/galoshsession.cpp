@@ -204,12 +204,15 @@ void GaloshSession::serverCertificate(const QMap<QString, QString>& info, bool s
   }
 }
 
-void GaloshSession::gmcpEvent(const QString& key, const QVariant& value)
+void GaloshSession::gmcpEvent(const QString& rawKey, const QVariant& value)
 {
-  if (key.toUpper() == "CHAR") {
-    infoModel->loadTree(value);
+  QString key = rawKey.toUpper();
+  if (key == "CHAR") {
+    infoModel->loadLegacyTree(value);
     emit statusUpdated();
-  } else if (key.toUpper() == "EXTERNAL.DISCORD.STATUS") {
+  } else if (key.startsWith("CHAR.")) {
+    infoModel->gmcpChar(key, value.toMap());
+  } else if (key == "EXTERNAL.DISCORD.STATUS") {
     QVariantMap map = value.toMap();
     QString state = map["state"].toString();
     QString details = map["details"].toString();
@@ -222,7 +225,7 @@ void GaloshSession::gmcpEvent(const QString& key, const QVariant& value)
     }
     statusBar = parts.join(" - ");
     emit statusUpdated();
-  } else if (key.toUpper() != "ROOM") {
+  } else if (key != "ROOM") {
     qDebug() << key << value;
   }
 }

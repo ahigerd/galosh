@@ -25,6 +25,7 @@ public:
   static QString stripVT100(const QByteArray& payload);
 
   enum Telnet : quint8 {
+    EOR = 239,
     SE = 240,
     SB = 250,
     WILL = 251,
@@ -34,6 +35,22 @@ public:
     IAC = 255,
   };
   Q_ENUM(Telnet);
+
+  enum TelnetOptions : quint8 {
+    Binary = 0,
+    Echo = 1,
+    TermType = 24,
+    EndOfRecord = 25,
+    NAWS = 31,
+    NewEnviron = 39,
+    Charset = 42,
+    MCCP1 = 85,
+    MCCP2 = 86,
+    MCCP3 = 87,
+    MXP = 91,
+    GMCP = 201,
+  };
+  Q_ENUM(TelnetOptions);
 
   TelnetSocket(QObject* parent = nullptr);
 
@@ -95,6 +112,7 @@ private:
   QStringList commandArgs;
   quint16 connectedPort;
   bool useTls;
+  bool useEor;
 };
 
 using Telnet = TelnetSocket::Telnet;
