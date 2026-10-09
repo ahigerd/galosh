@@ -40,7 +40,7 @@ signals:
   void lineReceived(const QString& line);
   void commandEntered(const QString& command, bool echo = true);
   void commandsEntered(const QStringList& commands);
-  bool parsingChanged(bool on);
+  void parsingChanged(bool on);
 
 public slots:
   void setTermFont(const QFont& font);
@@ -57,6 +57,7 @@ private slots:
   void onSocketError(QAbstractSocket::SocketError err);
   void onEchoChanged(bool on);
   void onReadyRead();
+  void onWindowSizeRequested();
   void scheduleResizeAndScroll(bool scroll);
   void resizeAndScroll();
   void openMultiline(bool on = true);

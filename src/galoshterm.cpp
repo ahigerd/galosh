@@ -32,6 +32,7 @@ GaloshTerm::GaloshTerm(QWidget* parent)
   QObject::connect(tel, SIGNAL(disconnected()), this, SLOT(onDisconnected()));
   QObject::connect(tel, SIGNAL(errorOccurred(QAbstractSocket::SocketError)), this, SLOT(onSocketError(QAbstractSocket::SocketError)));
   QObject::connect(tel, SIGNAL(readyRead()), this, SLOT(onReadyRead()));
+  QObject::connect(tel, SIGNAL(windowSizeRequested()), this, SLOT(onWindowSizeRequested()));
   QObject::connect(tel, SIGNAL(lineReceived(QString)), this, SIGNAL(lineReceived(QString)));
 
   QVBoxLayout* layout = new QVBoxLayout(this);
@@ -266,6 +267,11 @@ void GaloshTerm::onReadyRead()
   scheduleResizeAndScroll(false);
 }
 
+void GaloshTerm::onWindowSizeRequested()
+{
+  tel->setWindowSize(term->lines(), term->columns());
+}
+
 void GaloshTerm::writeColorLine(const QByteArray& colorCode, const QByteArray& message)
 {
   QByteArray payload;
@@ -293,6 +299,7 @@ void GaloshTerm::resizeAndScroll()
   QSize current = vt102.imageSize();
   if (term->lines() > 1 && term->columns() > 1 && term->lines() != current.height() && term->columns() != term->width()) {
     vt102.setImageSize(term->lines(), term->columns());
+    tel->setWindowSize(term->lines(), term->columns());
   }
   term->updateImage();
   if (pendingScroll) {

@@ -44,6 +44,7 @@ public:
     NAWS = 31,
     NewEnviron = 39,
     Charset = 42,
+    MSSP = 70,
     MCCP1 = 85,
     MCCP2 = 86,
     MCCP3 = 87,
@@ -78,8 +79,10 @@ signals:
   void lineReceived(const QString& line);
   void promptWaiting();
   void serverCertificate(const QMap<QString, QString>& info, bool selfSigned, bool nameMismatch);
+  void windowSizeRequested();
 
 public slots:
+  void setWindowSize(int rows, int cols);
   void disconnectFromHost();
 
 private slots:
@@ -113,6 +116,7 @@ private:
   quint16 connectedPort;
   bool useTls;
   bool useEor;
+  bool useNaws;
 };
 
 using Telnet = TelnetSocket::Telnet;

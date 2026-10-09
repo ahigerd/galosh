@@ -9,21 +9,40 @@
 #include <map>
 #include <cstring>
 
+// Private OSC escape sequence:
+// ESC+]: Operating System Control
+// 641: Numeric approximation of "GAL"
+// EOR: Indicates a Telnet "End Of Record"
+// ESC+\: String Terminator
+static const QByteArray EOR_OSC("\x1b]641;EOR\x1b\\");
+
 QString TelnetSocket::stripVT100(const QByteArray& payload)
 {
   QByteArray result;
   int len = payload.size();
   bool escape = false;
   bool csi = false;
+  bool wantsST = false;
   for (int i = 0; i < len; i++) {
     char ch = payload[i];
     if (csi) {
       if ((ch >= 'A' && ch <= 'Z') || (ch >= 'a' && ch <= 'z')) {
         csi = false;
       }
+    } else if (wantsST) {
+      if (escape) {
+        if (ch == '\\') {
+          wantsST = false;
+        }
+        escape = false;
+      } else if (ch == '\x07') {
+        wantsST = false;
+      }
     } else if (escape) {
       if (ch == '[') {
         csi = true;
+      } else if (ch == ']') {
+        wantsST = true;
       }
       escape = false;
     } else if (ch == '\x1b') {
@@ -36,7 +55,7 @@ QString TelnetSocket::stripVT100(const QByteArray& payload)
 }
 
 TelnetSocket::TelnetSocket(QObject* parent)
-: QIODevice(parent), connectedPort(0), useTls(false), useEor(false)
+: QIODevice(parent), connectedPort(0), useTls(false), useEor(false), useNaws(false)
 {
   setOpenMode(QIODevice::ReadWrite);
 
@@ -182,6 +201,8 @@ void TelnetSocket::onConnected()
   }
 #endif
 
+  useEor = false;
+  useNaws = false;
   emit connected();
 }
 
@@ -277,6 +298,7 @@ void TelnetSocket::onReadyRead()
   qint64 i = 0;
   const quint8* src = reinterpret_cast<const quint8*>(protocolBuffer.constData());
   bool didExtend = false;
+  bool gotEor = false;
   for (; i < len; i++) {
     if (src[i] == 0xFF) {
       if (i + 1 >= len) {
@@ -308,7 +330,9 @@ void TelnetSocket::onReadyRead()
         telnetSB(src[i + 2], protocolBuffer.mid(i + 3, endPos - i - 3));
         i = endPos + 1;
       } else if (useEor && fn == Telnet::EOR) {
-        emit promptWaiting();
+        gotEor = true;
+        outputBuffer.append(EOR_OSC);
+        didExtend = true;
         i += 1;
       } else {
         i += 1;
@@ -322,6 +346,9 @@ void TelnetSocket::onReadyRead()
   if (didExtend) {
     emit readyRead();
   }
+  if (gotEor) {
+    processLines();
+  }
 }
 
 qint64 TelnetSocket::readData(char* data, qint64 maxSize)
@@ -331,7 +358,7 @@ qint64 TelnetSocket::readData(char* data, qint64 maxSize)
   outputBuffer.remove(0, size);
 
   lineBuffer += QByteArray::fromRawData(data, size);
-  if (lineBuffer.contains('\n')) {
+  if (lineBuffer.contains('\n') || lineBuffer.contains(EOR_OSC)) {
     QTimer::singleShot(0, this, SLOT(processLines()));
   } else {
     lineTimer.start();
@@ -360,30 +387,36 @@ static const QSet<quint8> knownOptions({
   TelnetSocket::Binary,
   TelnetSocket::Echo,
   TelnetSocket::TermType,
-  // TelnetSocket::EndOfRecord, // TODO: re-enable once fierymud-rs does this right
+  TelnetSocket::EndOfRecord,
   TelnetSocket::NAWS,
   TelnetSocket::NewEnviron,
   TelnetSocket::Charset,
+  TelnetSocket::MSSP,
   TelnetSocket::MXP, // TODO: actually support this
   TelnetSocket::GMCP,
 });
 
 void TelnetSocket::telnetDo(quint8 option, bool dont)
 {
-  // qDebug() << (dont ? ">>> don't" : ">>> do") << option;
+  //qDebug() << (dont ? ">>> don't" : ">>> do") << option;
   // Redpond with WONT by default
   quint8 response[3] = { Telnet::IAC, Telnet::WONT, option };
   if (!dont && knownOptions.contains(option)) {
     // Respond to DO requests for known supported options with WILL
     response[1] = Telnet::WILL;
   }
-  // qDebug() << "<<< IAC" << QMetaEnum::fromType<Telnet>().valueToKey(response[1]) << int(option);
+  if (option == TelnetSocket::NAWS) {
+    useNaws = !dont;
+    if (useNaws)
+      emit windowSizeRequested();
+  }
+  //qDebug() << "<<< IAC" << QMetaEnum::fromType<Telnet>().valueToKey(response[1]) << int(option) << QMetaEnum::fromType<TelnetOptions>().valueToKey(option);
   write(reinterpret_cast<char*>(response), 3);
 }
 
 void TelnetSocket::telnetWill(quint8 option, bool wont)
 {
-  // qDebug() << (wont ? ">>> won't" : ">>> will") << option;
+  //qDebug() << (wont ? ">>> won't" : ">>> will") << option;
   // Respond with DONT by default
   quint8 response[3] = { Telnet::IAC, Telnet::DONT, option };
   if (!wont && knownOptions.contains(option)) {
@@ -393,9 +426,9 @@ void TelnetSocket::telnetWill(quint8 option, bool wont)
   if (option == TelnetSocket::Echo) {
     emit echoChanged(wont);
   } else if (option == TelnetSocket::EndOfRecord) {
-    // useEor = !wont;
+    useEor = !wont;
   }
-  // qDebug() << "<<< IAC" << QMetaEnum::fromType<Telnet>().valueToKey(response[1]) << int(option);
+  //qDebug() << "<<< IAC" << QMetaEnum::fromType<Telnet>().valueToKey(response[1]) << int(option) << QMetaEnum::fromType<TelnetOptions>().valueToKey(option);
   write(reinterpret_cast<char*>(response), 3);
 }
 
@@ -446,8 +479,8 @@ void TelnetSocket::telnetSB(quint8 option, const QByteArray& payload)
 
 void TelnetSocket::processLines()
 {
-  if (lineBuffer.contains('\n')) {
-    QByteArrayList lines = lineBuffer.replace("\r", "").split('\n');
+  if (lineBuffer.contains('\n') || lineBuffer.contains(EOR_OSC)) {
+    QByteArrayList lines = lineBuffer.replace(EOR_OSC, "\n").replace("\r", "").split('\n');
     lineBuffer = lines.takeLast();
     for (const QByteArray& line : lines) {
       emit lineReceived(stripVT100(line));
@@ -473,4 +506,22 @@ void TelnetSocket::checkForPrompts()
   emit lineReceived(stripVT100(lineBuffer));
   emit promptWaiting();
   lineBuffer.clear();
+}
+
+void TelnetSocket::setWindowSize(int rows, int cols)
+{
+  if (!useNaws) {
+    return;
+  }
+  // Sanity checks that should hopefully never be relevant
+  rows = std::clamp(rows, 1, 32767);
+  cols = std::clamp(cols, 1, 32767);
+
+  quint8 payload[] = {
+    Telnet::IAC, Telnet::SB, TelnetOptions::NAWS,
+    quint8(cols & 0xFF), quint8((cols >> 8) & 0xFF),
+    quint8(rows & 0xFF), quint8((rows >> 8) & 0xFF),
+    Telnet::IAC, Telnet::SE
+  };
+  write(reinterpret_cast<char*>(payload), sizeof(payload));
 }
