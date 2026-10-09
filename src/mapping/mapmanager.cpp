@@ -181,7 +181,7 @@ void MapManager::updateRoom(const QVariantMap& info)
     }
   }
 
-  QVariantMap exits = info.value("exits", info.value("Exits")).toMap();
+  QVariantMap exits = info.value("exit_details", info.value("exits", info.value("Exits"))).toMap();
   for (const QString& rawDir : exits.keys()) {
     QString dir = dirMapping.value(rawDir.toUpper(), rawDir.toUpper());
     newRoom = newRoom || !room.exits.contains(dir);
@@ -197,15 +197,24 @@ void MapManager::updateRoom(const QVariantMap& info)
       }
       continue;
     }
+
     MapExit& exit = room.exits[dir];
     QVariantMap exitInfo = exits[rawDir].toMap();
-    QString status = exitInfo["door"].toString().toUpper();
-    exit.dest = exitInfo["to_room"].toInt();
-    exit.door = exitInfo["is_door"].toBool();
-    exit.locked = exit.door && status == "LOCKED";
-    exit.lockable = exit.lockable || exit.locked;
-    exit.open = exit.door && !exit.locked && status != "CLOSED";
-    exit.name = exitInfo["door_name"].toString();
+    if (exitInfo.contains("is_door")) {
+      // legacy FieryMUD
+      QString status = exitInfo["door"].toString().toUpper();
+      exit.dest = exitInfo["to_room"].toInt();
+      exit.door = exitInfo["is_door"].toBool();
+      exit.locked = exit.door && status == "LOCKED";
+      exit.lockable = exit.lockable || exit.locked;
+      exit.open = exit.door && !exit.locked && status != "CLOSED";
+      exit.name = exitInfo["door_name"].toString();
+    } else {
+      // FieryMUD NEXT
+      exit.dest = exitInfo["to"].toInt();
+      exit.door = exitInfo["door"].toBool();
+      exit.name = exitInfo["door_name"].toString();
+    }
     if (exit.name.isEmpty()) {
       exit.name = "door";
     }
