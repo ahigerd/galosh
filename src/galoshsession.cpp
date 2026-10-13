@@ -211,7 +211,7 @@ void GaloshSession::gmcpEvent(const QString& rawKey, const QVariant& value)
     infoModel->loadLegacyTree(value);
     emit statusUpdated();
   } else if (key.startsWith("CHAR.")) {
-    infoModel->gmcpChar(key, value.toMap());
+    infoModel->gmcpChar(key, value);
   } else if (key == "EXTERNAL.DISCORD.STATUS") {
     QVariantMap map = value.toMap();
     QString state = map["state"].toString();
@@ -225,9 +225,14 @@ void GaloshSession::gmcpEvent(const QString& rawKey, const QVariant& value)
     }
     statusBar = parts.join(" - ");
     emit statusUpdated();
+  } else if (key == "EXTERNAL.DISCORD.INFO") {
+    // TODO: new UI
+  } else if (key == "CLIENT.GUI") {
+    // Mudlet-only, ignore
   } else if (key != "ROOM" && !key.startsWith("ROOM.")) {
     qDebug() << key << value;
   }
+  // TODO: Comm packages
 }
 
 void GaloshSession::setLastRoom(int roomId)

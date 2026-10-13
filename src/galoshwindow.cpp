@@ -279,6 +279,8 @@ void GaloshWindow::updateStatus()
     } else {
       roomView->setRoom(sess->map(), -1);
     }
+    QObject::disconnect(infoView->model(), 0, infoView, 0);
+    QObject::connect(sess->infoModel, SIGNAL(rowsInserted(QModelIndex,int,int)), infoView, SLOT(expandAll()));
     infoView->setModel(sess->infoModel);
     infoView->expandAll();
     parsingAction->setChecked(sess->term->isParsing());

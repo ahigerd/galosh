@@ -11,7 +11,7 @@ public:
   InfoModel(QObject* parent = nullptr);
 
   void loadLegacyTree(const QVariant& data);
-  void gmcpChar(const QString& key, const QVariantMap& data);
+  void gmcpChar(const QString& key, const QVariant& data);
 
 private:
   QStandardItem* ensureItem(const QString& parentPath, const QString& key);

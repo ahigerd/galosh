@@ -7,6 +7,7 @@ InfoModel::InfoModel(QObject* parent)
   itemsByPath[""] = invisibleRootItem();
 
   setHorizontalHeaderLabels({ "Stat", "Value" });
+  setSortRole(Qt::UserRole + 1);
 }
 
 QStandardItem* InfoModel::ensureItem(const QString& parentPath, const QString& key)
@@ -18,34 +19,56 @@ QStandardItem* InfoModel::ensureItem(const QString& parentPath, const QString& k
     QString label = labelMap.value(key, key);
     itemsByPath[fullKey] = item = new QStandardItem(label);
     item->setData(fullKey, Qt::UserRole);
-    item->setData(key, Qt::UserRole + 1);
+    bool isInt = false;
+    int intVal = key.toInt(&isInt);
+    if (isInt) {
+      item->setData(intVal, Qt::UserRole + 1);
+    } else {
+      item->setData(key, Qt::UserRole + 1);
+    }
+    item->setFlags(Qt::ItemIsSelectable | Qt::ItemIsEnabled);
     parent->appendRow({ item, new QStandardItem });
+    sort(0, Qt::AscendingOrder);
   }
   return item;
 }
 
-void InfoModel::gmcpChar(const QString& key, const QVariantMap& data)
+void InfoModel::gmcpChar(const QString& key, const QVariant& data)
 {
   static const QMap<QString, QString> keyMapping = {
     { "CHAR.VITALS", "Vitals" },
     { "CHAR.EFFECTS", "Effects" },
     { "CHAR.STATUS", "Status" },
     { "CHAR.COMBAT", "Combat" },
+    { "CHAR.WORTH", "Worth" },
+    { "CHAR.SPELLSLOTS", "Spell Slots" },
   };
+  static const QSet<QString> ignoreKeys = {
+    "CHAR.NAME", // redundant with Char.Status
+    "CHAR.SKILLS", // TODO: separate model
+    "CHAR.ITEMS.LIST", // TODO: separate model
+  };
+  if (ignoreKeys.contains(key)) {
+    return;
+  }
   QString label = keyMapping.value(key);
   if (!label.isEmpty()) {
     ensureItem("", label);
     recurseLegacyTree("", label, data);
   } else if (key == "CHAR.STATUSVARS") {
     labelMap.clear();
-    for (const QString& key : data.keys()) {
-      QString value = data[key].toString();
+    QVariantMap dataMap = data.toMap();
+    for (const QString& key : dataMap.keys()) {
+      QString value = dataMap[key].toString();
       if (value.isEmpty())
         continue;
       labelMap[key] = value;
     }
+    return;
   }
-  qDebug() << "GMCP:" << key << data;
+  if (label.isEmpty() || key == "CHAR.EFFECTS") {
+    qDebug() << "GMCP:" << key << data;
+  }
 }
 
 void InfoModel::loadLegacyTree(const QVariant& data)
@@ -96,12 +119,28 @@ void InfoModel::recurseLegacyTree(const QString& path, const QString& key, QVari
 
 QVariant InfoModel::preprocess(const QString& path, const QString& key, const QVariant& value)
 {
-  if (path == "" && key == "Effects") {
+  if (path == "" && (key == "Effects" || key == "Affliction" || key == "Defences")) {
     QVariantMap newValue;
     for (const QVariant& effect : value.toList()) {
       QVariantMap map = effect.toMap();
       QString name = map["name"].toString();
-      newValue[name] = QStringLiteral("%1 hours").arg(map["duration"].toInt());
+      if (map.contains("duration") || map.contains("duration_hours")) {
+        int duration;
+        if (map.contains("duration_hours")) {
+          duration = map["duration_hours"].toInt();
+        } else {
+          duration = map["duration"].toInt();
+        }
+        if (duration < 0) {
+          newValue[name] = "permanent";
+        } else {
+          newValue[name] = QStringLiteral("%1 hours").arg(duration);
+        }
+      } else if (map.contains("desc")) {
+        newValue[name] = map["desc"];
+      } else {
+        newValue[name] = "";
+      }
     }
     return newValue;
   }

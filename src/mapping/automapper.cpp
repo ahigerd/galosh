@@ -88,6 +88,7 @@ void AutoMapper::gmcpEvent(const QString& key, const QVariant& value)
   Q_UNUSED(key);
   Q_UNUSED(value);
   if (key.toUpper() == "ROOM" || key.toUpper() == "ROOM.INFO") {
+    // TODO: coords
     map->gmcpMode = true;
     const QVariantMap valueMap = value.toMap();
     int roomId = valueMap.value("id", valueMap.value("num", -1)).toInt();
